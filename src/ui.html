@@ -1,0 +1,642 @@
+<title>코드 트레이너</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Music&display=swap">
+<style>
+/* Layout: practice desk on the left (chord card + keyboard), lesson settings as a side sheet on the right; stacks on phones. Accent = piano key-felt red. */
+:root {
+  --bg: #F2F3F6;
+  --surface: #FFFFFF;
+  --sunken: #E8EAEF;
+  --ink: #191C27;
+  --muted: #5B6174;
+  --line: #D9DCE4;
+  --accent: #A8233A;
+  --accent-ink: #FFFFFF;
+  --accent-deep: #741528;
+  --accent-soft: #F7E4E8;
+  --ok: #17845A;
+  --ok-soft: #DDF3E9;
+  --ok-deep: #0E5C3E;
+  --warn: #A35A00;
+  --warn-soft: #FCEBD3;
+  --key-white: #FFFFFF;
+  --key-white-edge: #C9CCD6;
+  --key-black: #1B1D24;
+  --font-display: "DM Serif Display", "Noto Music", "Noto Serif KR", Georgia, serif;
+  --font-body: "IBM Plex Sans KR", "Noto Music", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101219; --surface: #191C26; --sunken: #232735; --ink: #E8EAF1; --muted: #9AA0B4; --line: #2C3142;
+    --accent: #E25670; --accent-ink: #1A0B10; --accent-deep: #A83650; --accent-soft: #3A1C24;
+    --ok: #42C48E; --ok-soft: #14302A; --ok-deep: #24865D; --warn: #F2A64C; --warn-soft: #33260F;
+    --key-white: #E9EAEE; --key-white-edge: #9EA2B0; --key-black: #0A0B0F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101219; --surface: #191C26; --sunken: #232735; --ink: #E8EAF1; --muted: #9AA0B4; --line: #2C3142;
+  --accent: #E25670; --accent-ink: #1A0B10; --accent-deep: #A83650; --accent-soft: #3A1C24;
+  --ok: #42C48E; --ok-soft: #14302A; --ok-deep: #24865D; --warn: #F2A64C; --warn-soft: #33260F;
+  --key-white: #E9EAEE; --key-white-edge: #9EA2B0; --key-black: #0A0B0F;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.app { max-width: 1180px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand h1 { font-family: var(--font-display); font-weight: 400; font-size: 28px; margin: 0; letter-spacing: 0.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat b { color: var(--ink); font-weight: 600; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* practice desk */
+.desk { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.prompt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-block: 6px 2px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.symbol { font-family: var(--font-display); font-size: clamp(52px, 11vw, 92px); line-height: 1.05; letter-spacing: 0.01em; min-height: 1.1em; word-break: break-word; }
+.symbol.empty { font-size: 22px; font-family: var(--font-body); color: var(--muted); min-height: auto; padding-block: 24px; }
+.hint { font-size: 13px; color: var(--muted); }
+.hint:empty { display: none; }
+
+.feedback { border-radius: 10px; padding: 6px 12px; font-size: 13px; line-height: 1.45; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; align-items: baseline; margin-top: 4px; max-width: 100%; }
+/* when feedback is showing it takes the hint's place */
+.prompt:has(.feedback:not(:empty)) .hint,
+.prompt:has(.feedback:not(:empty)) .eyebrow { display: none; }
+.feedback:empty { display: none; }
+.feedback.ok { background: var(--ok-soft); color: var(--ok); }
+.feedback.no { background: var(--warn-soft); color: var(--warn); }
+.feedback.info { background: var(--sunken); color: var(--ink); }
+.feedback strong { font-weight: 600; }
+.feedback .tones { color: var(--ink); font-family: var(--font-body); }
+
+/* keyboard */
+.kb-wrap { width: 100%; }
+.keyboard { position: relative; width: 100%; height: clamp(130px, 22vw, 200px); display: flex; user-select: none; -webkit-user-select: none; touch-action: manipulation; border-top: 6px solid var(--accent); border-radius: 4px 4px 0 0; }
+.key { position: relative; border: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; transition: background-color 60ms; }
+.key.white { flex: 1 1 0; background: var(--key-white); border: 1px solid var(--key-white-edge); border-top: none; margin-left: -1px; border-radius: 0 0 6px 6px; color: #5B6174; padding-bottom: 8px; }
+.key.white:first-child { margin-left: 0; }
+.key.black { position: absolute; top: 0; height: 62%; width: calc(100% / 15 * 0.66); background: var(--key-black); border-radius: 0 0 4px 4px; z-index: 2; color: #C9CCD6; padding-bottom: 6px; font-size: 9px; box-shadow: inset 0 -3px 0 rgba(255,255,255,0.08); }
+.key.sel.white { background: var(--accent); color: #fff; border-color: var(--accent); }
+.key.sel.black { background: var(--accent-deep); color: #fff; }
+.key.ans::after { content: ""; position: absolute; left: 50%; bottom: 26px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(23,132,90,0.25); }
+.key.black.ans::after { bottom: 18px; width: 9px; height: 9px; margin-left: -4.5px; }
+.key.sel.ans::after { box-shadow: 0 0 0 2px #FFFFFF; }
+/* correct answer: the student's own keys turn green */
+.key.sel.good.white { background: var(--ok); border-color: var(--ok); }
+.key.sel.good.black { background: var(--ok-deep); }
+.key .lbl { pointer-events: none; }
+.keyboard.nolabels .lbl { display: none; }
+@media (max-width: 520px) { .key .lbl { font-size: 8px; } .key.black .lbl { display: none; } }
+
+.kb-wrap { display: flex; flex-direction: column; gap: 8px; }
+.kb-bar { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: space-between; align-items: center; }
+.selline { font-size: 13px; color: var(--muted); min-width: 0; }
+.selline output { color: var(--ink); font-weight: 500; }
+.mini { display: flex; gap: 6px; margin-left: auto; }
+.mini-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 500; color: var(--muted); }
+.mini-btn:hover { background: var(--sunken); color: var(--ink); }
+.legend { display: flex; gap: 12px; align-items: center; justify-content: flex-end; font-size: 12px; color: var(--muted); }
+/* stacked tensions, jazz-chart style */
+.symbol .stack { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 0.03em; margin-block: 0.2em; }
+.symbol .paren { display: inline-block; transform: scaleY(1.45); font-size: 0.9em; line-height: 1; }
+.symbol .col { display: inline-flex; flex-direction: column; align-items: center; font-size: 0.4em; line-height: 1.08; padding-inline: 0.06em; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.actions .next { grid-column: 1 / -1; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 500; font-size: 14px; }
+.btn:hover { background: var(--sunken); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
+.btn:disabled, .btn:disabled:hover { opacity: 0.4; cursor: not-allowed; filter: none; }
+.btn:not(.primary):disabled:hover { background: var(--surface); }
+.btn.next:not(:disabled) { border-color: var(--ink); font-weight: 600; }
+.btn { padding-block: 11px; }
+.btn kbd { font-family: inherit; font-size: 11px; opacity: 0.7; margin-left: 6px; }
+@media (max-width: 520px) { .btn kbd { display: none; } }
+.small-toggles { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+
+/* settings sheet */
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.sheet h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.sheet h3 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.linkbtn { border: none; background: none; color: var(--accent); font-size: 12px; font-weight: 600; padding: 2px 4px; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chip span { display: inline-block; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 14px; background: var(--surface); min-width: 44px; text-align: center; }
+.chip input:checked + span { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.divider { border: none; border-top: 1px solid var(--line); margin: 0; }
+
+.opt { display: flex; flex-direction: column; gap: 8px; }
+.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 14px; }
+.check input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+.check small { display: block; color: var(--muted); font-size: 12px; }
+.tag { font-size: 11px; font-weight: 700; color: var(--accent); margin-right: 4px; }
+.sub { margin-left: 26px; display: flex; flex-direction: column; gap: 8px; }
+.bases { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.bases .chip span { min-width: 0; width: 100%; padding: 5px 2px; font-size: 13px; }
+.radios { display: flex; gap: 6px; }
+.adv-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 1px dashed var(--line); background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
+.adv-toggle .chev { transition: transform 150ms; }
+.adv-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.adv { display: flex; flex-direction: column; gap: 12px; }
+.warnbox { font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; margin: 0; }
+.warnbox:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.rotate-tip { display: none; margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+
+/* Narrow screens: shorter play label */
+@media (max-width: 400px) { .long-lbl { display: none; } }
+
+/* Phone in portrait: compact header, edge-to-edge keyboard, action bar pinned to the bottom */
+@media (max-width: 600px) and (orientation: portrait) {
+  .app { padding-block: 10px 32px; gap: 10px; }
+  .top { flex-wrap: nowrap; }
+  .brand h1 { font-size: 22px; }
+  .brand span { display: none; }
+  .stat { padding: 2px 10px; font-size: 12px; }
+  .desk { padding: 14px 12px 0; gap: 12px; }
+  .symbol { font-size: clamp(48px, 15vw, 72px); }
+  .kb-wrap { width: auto; margin-inline: -11px; }
+  .kb-bar, .legend { padding-inline: 11px; }
+  .keyboard { border-radius: 0; }
+  .rotate-tip:not([hidden]) { display: block; }
+  .actions {
+    position: sticky; bottom: 0; z-index: 5;
+    grid-template-columns: 1fr 1fr 1fr; gap: 6px;
+    margin-inline: -12px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface); border-top: 1px solid var(--line);
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .actions .next { grid-column: auto; }
+  .btn { padding: 11px 6px; font-size: 14px; }
+  .small-toggles { padding-bottom: 14px; }
+}
+
+/* Phone in landscape: chord + buttons in a left column, keyboard fills the right, all in one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .app { padding-block: 6px 24px; gap: 8px; }
+  .top { flex-wrap: nowrap; }
+  .brand h1 { font-size: 20px; }
+  .brand span { display: none; }
+  .stat { padding: 2px 10px; font-size: 12px; }
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .desk {
+    display: grid;
+    grid-template-columns: minmax(180px, 30%) minmax(0, 1fr);
+    grid-template-areas: "prompt kb" "actions kb" "toggles toggles";
+    grid-template-rows: auto 1fr auto;
+    gap: 8px 16px; padding: 10px 14px;
+  }
+  .prompt { grid-area: prompt; padding: 0; gap: 0; }
+  .eyebrow { font-size: 10px; }
+  .symbol { font-size: clamp(36px, 13vh, 56px); }
+  .symbol.empty { font-size: 14px; padding-block: 8px; }
+  .hint { font-size: 11px; line-height: 1.35; }
+  #feedback { font-size: 12px; padding: 5px 8px; }
+  .kb-wrap { grid-area: kb; gap: 4px; }
+  .keyboard { height: clamp(150px, calc(100dvh - 140px), 300px); }
+  .actions { grid-area: actions; align-self: end; gap: 6px; }
+  .btn { padding-block: 8px; font-size: 13px; }
+  .btn kbd { display: none; }
+  .small-toggles { grid-area: toggles; padding-top: 8px; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Chord Lab</h1>
+      <span>수업에서 배운 코드, 건반으로 복습하기</span>
+    </div>
+    <div class="stats" aria-label="이번 연습 기록">
+      <span class="stat">첫 시도 정답 <b id="stFirst">0</b> / <b id="stTotal">0</b></span>
+      <span class="stat">연속 <b id="stStreak">0</b></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="desk" aria-label="연습">
+      <div class="prompt">
+        <div class="eyebrow">이 코드를 건반에서 눌러보세요</div>
+        <div class="symbol" id="symbol" aria-live="polite">C</div>
+        <div class="hint" id="hint"></div>
+        <div class="feedback" id="feedback" role="status"></div>
+      </div>
+
+      <div class="kb-wrap">
+        <div class="kb-bar">
+          <div class="selline">선택한 음: <output id="selNotes">없음</output></div>
+          <div class="mini">
+            <button class="mini-btn" id="btnPlaySel" title="눌린 건반 재생 (Space)">▶ <span class="long-lbl">눌린 건반 </span>재생</button>
+            <button class="mini-btn" id="btnClear" title="지우기 (Esc)">지우기</button>
+          </div>
+        </div>
+        <div class="keyboard" id="keyboard" aria-label="피아노 건반 (C3–C5)"></div>
+        <div class="legend">
+          <span><i class="dot" style="background: var(--accent)"></i>내가 누른 음</span>
+          <span><i class="dot" style="background: var(--ok)"></i>정답 음</span>
+        </div>
+        <p class="rotate-tip" id="rotateTip" hidden>폰을 가로로 돌리면 건반이 커져요. <button class="linkbtn" id="rotateTipClose" type="button">닫기</button></p>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="btnCheck">채점<kbd>Enter</kbd></button>
+        <button class="btn" id="btnReveal">정답 보기</button>
+        <button class="btn next" id="btnNext">다음 문제 →<kbd>N</kbd></button>
+      </div>
+
+      <div class="small-toggles">
+        <label class="check"><input type="checkbox" id="optLabels"> 건반에 음이름 표시</label>
+        <label class="check"><input type="checkbox" id="optSound" checked> 건반 누를 때 소리</label>
+      </div>
+    </section>
+
+    <aside class="sheet" aria-label="출제 설정">
+      <h2>출제 설정</h2>
+
+      <div id="typeGroups" class="group" style="gap: 16px"></div>
+
+      <hr class="divider">
+
+      <div class="opt">
+        <h3>출제 범위</h3>
+        <label class="check"><input type="checkbox" id="optA"><span><span class="tag">A</span>흰 건반 베이스의 코드만 출제<small>C D E F G A B 근음만 나와요. 입문자용.</small></span></label>
+        <label class="check"><input type="checkbox" id="optB"><span><span class="tag">B</span>특정 베이스의 코드만 출제<small>원하는 근음만 골라서 연습해요.</small></span></label>
+        <div class="sub" id="basesBox" hidden>
+          <div class="bases" id="bases"></div>
+          <div><button class="linkbtn" id="basesAll" type="button">모두 선택</button><button class="linkbtn" id="basesNone" type="button">모두 해제</button></div>
+        </div>
+        <label class="check"><input type="checkbox" id="optC"><span><span class="tag">C</span>세븐코드에 텐션 추가 허용<small>도미넌트 7에는 7alt 문제도 나와요.</small></span></label>
+        <div class="sub" id="cBox" hidden>
+          <div class="chips radios" role="radiogroup" aria-label="텐션 개수">
+            <label class="chip"><input type="radio" name="cMax" id="cMax1" value="1" checked><span>최대 1개</span></label>
+            <label class="chip"><input type="radio" name="cMax" id="cMax2" value="2"><span>최대 2개</span></label>
+          </div>
+          <p class="note">텐션이 붙은 코드는 완전5도를 생략해도 정답이에요. 도미넌트 계열의 ♯5, ♭5 텐션이 주어질 때 완전5도를 입력하면 오답이에요. 7alt는 R·3·♭7에 ♭9, ♯9, ♯11, ♭13 중 하나 이상을 더하면 정답.</p>
+        </div>
+      </div>
+
+      <button class="adv-toggle" id="advToggle" aria-expanded="false" aria-controls="advBox"><span>[심화] 입시 대비 표기 옵션</span><span class="chev" aria-hidden="true">▾</span></button>
+      <div class="adv" id="advBox" hidden>
+        <label class="check"><input type="checkbox" id="optD"><span><span class="tag">D</span>기호(△, -, +, °, ø) 코드 표기 허용<small>CM7 → C△7, Cm7 → C-7, Caug → C+, Cdim7 → C°7, Cm7(♭5) → Cø7 처럼 섞어서 나와요.</small></span></label>
+        <label class="check"><input type="checkbox" id="optE"><span><span class="tag">E</span>복잡한 음 표현 허용<small>E♯, C♭, A𝄫, F𝄪 등의 표현 허용</small></span></label>
+      </div>
+
+      <p class="warnbox" id="settingsWarn"></p>
+    </aside>
+  </main>
+</div>
+
+<script>
+/*ENGINE*/
+</script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const GROUPS = [
+    { id: "triad", title: "3화음" },
+    { id: "sus", title: "sus 코드" },
+    { id: "seventh", title: "7화음" },
+    { id: "sixth", title: "6화음" },
+    { id: "add", title: "add 코드 (비화성음 포함)" },
+    { id: "tension", title: "텐션 코드", note: "5음과 중간 텐션은 생략해도 정답이에요. (예: C13 = C E B♭ A)" },
+  ];
+  const LOW = 48, HIGH = 72; // C3..C5
+  const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
+  const NAMES = Engine.PC_NAMES;
+
+  // ---------- settings ----------
+  const DEFAULTS = {
+    types: { maj: true, min: true, dim: true, aug: true },
+    optA: false, optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
+    labels: false, sound: true, adv: false,
+  };
+  let S = structuredClone(DEFAULTS);
+  const STORE_KEY = "chordlab.settings.v2";
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (saved && typeof saved === "object") S = Object.assign(structuredClone(DEFAULTS), saved);
+  } catch (e) {}
+  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // ---------- build settings UI ----------
+  const tg = $("typeGroups");
+  for (const g of GROUPS) {
+    const types = Engine.TYPES.filter(t => t.group === g.id);
+    const box = document.createElement("div");
+    box.className = "group";
+    box.innerHTML = `<div class="group-head"><h3>${g.title}</h3><button class="linkbtn" type="button" data-group="${g.id}">전체</button></div>` +
+      (g.note ? `<p class="note">${g.note}</p>` : "") +
+      `<div class="chips">${types.map(t => `<label class="chip"><input type="checkbox" id="type-${t.id}" data-type="${t.id}"><span>${t.name}</span></label>`).join("")}</div>`;
+    tg.appendChild(box);
+  }
+  tg.addEventListener("change", e => {
+    const id = e.target.dataset.type; if (!id) return;
+    S.types[id] = e.target.checked; onSettings();
+  });
+  tg.addEventListener("click", e => {
+    const g = e.target.dataset.group; if (!g) return;
+    const types = Engine.TYPES.filter(t => t.group === g);
+    const allOn = types.every(t => S.types[t.id]);
+    types.forEach(t => { S.types[t.id] = !allOn; });
+    syncSettingsUI(); onSettings();
+  });
+
+  const basesEl = $("bases");
+  basesEl.innerHTML = NAMES.map((n, i) => `<label class="chip"><input type="checkbox" id="base-${i}" data-base="${i}"><span>${n.replace("/", "<br>")}</span></label>`).join("");
+  basesEl.addEventListener("change", e => { const i = e.target.dataset.base; if (i == null) return; S.bases[+i] = e.target.checked; onSettings(); });
+  $("basesAll").onclick = () => { S.bases = Array(12).fill(true); syncSettingsUI(); onSettings(); };
+  $("basesNone").onclick = () => { S.bases = Array(12).fill(false); syncSettingsUI(); onSettings(); };
+
+  $("optA").onchange = e => { S.optA = e.target.checked; if (S.optA) S.optB = false; syncSettingsUI(); onSettings(); };
+  $("optB").onchange = e => { S.optB = e.target.checked; if (S.optB) S.optA = false; syncSettingsUI(); onSettings(); };
+  $("optC").onchange = e => { S.optC = e.target.checked; syncSettingsUI(); onSettings(); };
+  $("cMax1").onchange = () => { S.cMax = 1; onSettings(); };
+  $("cMax2").onchange = () => { S.cMax = 2; onSettings(); };
+  $("optD").onchange = e => { S.optD = e.target.checked; onSettings(); };
+  $("optE").onchange = e => { S.optE = e.target.checked; onSettings(); };
+  $("advToggle").onclick = () => { S.adv = !S.adv; syncSettingsUI(); save(); };
+  $("optLabels").onchange = e => { S.labels = e.target.checked; syncSettingsUI(); save(); };
+  $("optSound").onchange = e => { S.sound = e.target.checked; save(); };
+
+  function syncSettingsUI() {
+    Engine.TYPES.forEach(t => { $("type-" + t.id).checked = !!S.types[t.id]; });
+    S.bases.forEach((v, i) => { $("base-" + i).checked = v; });
+    $("optA").checked = S.optA; $("optB").checked = S.optB; $("basesBox").hidden = !S.optB;
+    $("optC").checked = S.optC; $("cBox").hidden = !S.optC;
+    $("cMax1").checked = S.cMax !== 2; $("cMax2").checked = S.cMax === 2;
+    $("optD").checked = S.optD; $("optE").checked = S.optE;
+    $("advToggle").setAttribute("aria-expanded", String(S.adv)); $("advBox").hidden = !S.adv;
+    $("optLabels").checked = S.labels; $("optSound").checked = S.sound;
+    $("keyboard").classList.toggle("nolabels", !S.labels);
+    const warn = [];
+    const has7 = Engine.TYPES.some(t => t.seventh && S.types[t.id]);
+    if (S.optC && !has7) warn.push("옵션 C는 7화음을 하나 이상 고르면 적용돼요.");
+    if (S.optE && S.optA) warn.push("옵션 A가 켜져 있으면 흰 건반 이름(C–B)만 나와요.");
+    $("settingsWarn").textContent = warn.join(" ");
+  }
+
+  let settingsTimer;
+  function onSettings() { syncSettingsUI(); save(); clearTimeout(settingsTimer); settingsTimer = setTimeout(newQuestion, 250); }
+
+  // ---------- keyboard ----------
+  const kb = $("keyboard");
+  const keyEls = new Map();
+  let whiteIndex = 0;
+  for (let m = LOW; m <= HIGH; m++) {
+    const pc = m % 12, oct = Math.floor(m / 12) - 1;
+    const isWhite = WHITE_PCS.includes(pc);
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "key " + (isWhite ? "white" : "black");
+    el.dataset.midi = m;
+    const label = isWhite ? NAMES[pc] + (pc === 0 ? oct : "") : NAMES[pc].split("/")[0];
+    el.innerHTML = `<span class="lbl">${label}</span>`;
+    el.dataset.pc = pc;
+    el.setAttribute("aria-label", NAMES[pc] + oct);
+    el.setAttribute("aria-pressed", "false");
+    if (isWhite) whiteIndex++;
+    else el.style.left = `calc(100% / 15 * ${whiteIndex} - 100% / 15 * 0.33)`;
+    kb.appendChild(el);
+    keyEls.set(m, el);
+  }
+  const selected = new Set();
+  // Mouse: press on pointerdown. Touch/pen: press on release, and only if the finger
+  // didn't move (a swipe to scroll the page is ignored).
+  let pending = null;
+  kb.addEventListener("pointerdown", e => {
+    const el = e.target.closest(".key"); if (!el) return;
+    if (e.pointerType === "mouse") { e.preventDefault(); toggleKey(+el.dataset.midi); return; }
+    pending = { id: e.pointerId, midi: +el.dataset.midi, x: e.clientX, y: e.clientY };
+  });
+  kb.addEventListener("pointermove", e => {
+    if (pending && e.pointerId === pending.id && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > 10) pending = null;
+  });
+  kb.addEventListener("pointerup", e => {
+    if (!pending || e.pointerId !== pending.id) return;
+    const p = pending; pending = null;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const key = el && el.closest(".key");
+    if (key && +key.dataset.midi === p.midi) { e.preventDefault(); toggleKey(p.midi); }
+  });
+  kb.addEventListener("pointercancel", () => { pending = null; });
+  kb.addEventListener("keydown", e => {
+    if ((e.key === " " || e.key === "Enter") && e.target.classList.contains("key")) { e.preventDefault(); e.stopPropagation(); toggleKey(+e.target.dataset.midi); }
+  });
+  function toggleKey(m) {
+    if (selected.has(m)) selected.delete(m);
+    else { selected.add(m); if (S.sound) Audio.note(m); }
+    renderKeys();
+    if (state.locked) return;
+    $("feedback").className = "feedback"; $("feedback").textContent = "";
+  }
+  // Note names follow the current chord: chord tones use the chord's own spelling,
+  // other black keys follow the chord's direction (more ♯ → ♯, more ♭ → ♭), otherwise common names.
+  const COMMON = { 1: "C♯", 3: "E♭", 6: "F♯", 8: "A♭", 10: "B♭" };
+  function pcLabel(pc) {
+    const q = state.q;
+    const white = WHITE_PCS.includes(pc);
+    if (!q) return white ? NAMES[pc] : COMMON[pc];
+    const tone = q.tones.find(t => t.pc === pc);
+    if (tone) return /[𝄪𝄫]/.test(tone.name) ? Engine.simpleName(pc, tone.a) : tone.name; // key list never shows double accidentals
+    if (white) return NAMES[pc];
+    const text = q.rootName + q.tones.map(t => t.name).join("");
+    const dir = (text.match(/♯/g) || []).length - (text.match(/♭/g) || []).length;
+    return dir === 0 ? COMMON[pc] : Engine.simpleName(pc, dir);
+  }
+  function relabelKeys() {
+    for (const [m, el] of keyEls) {
+      const pc = m % 12;
+      if (!WHITE_PCS.includes(pc)) el.querySelector(".lbl").textContent = pcLabel(pc);
+    }
+  }
+
+  function renderKeys() {
+    for (const [m, el] of keyEls) {
+      el.classList.toggle("sel", selected.has(m));
+      el.classList.toggle("ans", state.answer.has(m));
+      el.classList.toggle("good", state.good.has(m) && selected.has(m));
+      el.setAttribute("aria-pressed", String(selected.has(m)));
+    }
+    $("selNotes").textContent = selected.size ? [...selected].sort((a, b) => a - b).map(m => pcLabel(m % 12)).join(" · ") : "없음";
+  }
+
+  // ---------- audio (Web Audio piano-ish synth) ----------
+  const Audio = (() => {
+    let ctx, out;
+    function init() {
+      if (ctx) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+      ctx = new AC();
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -18; comp.ratio.value = 4;
+      out = ctx.createGain(); out.gain.value = 0.55;
+      out.connect(comp); comp.connect(ctx.destination);
+      return ctx;
+    }
+    function note(m, when = 0, dur = 1.8, vel = 0.5) {
+      if (!init()) return;
+      if (ctx.state === "suspended") ctx.resume();
+      const t0 = ctx.currentTime + when + 0.005;
+      const f = 440 * Math.pow(2, (m - 69) / 12);
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.setValueAtTime(Math.min(9000, f * 9), t0); lp.frequency.exponentialRampToValueAtTime(Math.max(400, f * 2), t0 + dur);
+      lp.connect(out);
+      const partials = [[1, 1, 1], [2, 0.42, 0.7], [3, 0.18, 0.5], [4, 0.09, 0.35], [5, 0.05, 0.25]];
+      for (const [h, g, decayK] of partials) {
+        const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f * h * (1 + (h - 1) * 0.0007);
+        const gn = ctx.createGain();
+        const peak = vel * g * 0.35;
+        gn.gain.setValueAtTime(0.0001, t0);
+        gn.gain.exponentialRampToValueAtTime(peak, t0 + 0.006);
+        gn.gain.exponentialRampToValueAtTime(peak * 0.35, t0 + 0.25 * decayK + 0.1);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur * decayK + 0.2);
+        o.connect(gn); gn.connect(lp);
+        o.start(t0); o.stop(t0 + dur + 0.3);
+      }
+    }
+    function chord(midis, arp = true) {
+      const ms = [...midis].sort((a, b) => a - b);
+      if (arp) { ms.forEach((m, i) => note(m, i * 0.16, 1.2, 0.45)); ms.forEach(m => note(m, ms.length * 0.16 + 0.15, 2.2, 0.38)); }
+      else ms.forEach(m => note(m, 0, 2.2, 0.4));
+    }
+    return { note, chord };
+  })();
+
+  // ---------- quiz state ----------
+  const state = { q: null, answer: new Set(), good: new Set(), locked: false };
+  const stats = { first: 0, total: 0, streak: 0 };
+  function renderStats() { $("stFirst").textContent = stats.first; $("stTotal").textContent = stats.total; $("stStreak").textContent = stats.streak; }
+
+  function hintFor(q) {
+    if (q.alt) return "R·3·♭7 + altered 텐션 1개 이상(♭9 ♯9 ♯11 ♭13)";
+    if (q.tens.some(t => t === "#5" || t === "b5")) return "자리바꿈 허용 · ♯5/♭5가 5음을 대신해요 (완전5도를 누르면 오답)";
+    if (q.optional.size) return "자리바꿈 허용 · 완전5도와 중간 텐션은 생략 가능";
+    return "자리바꿈 허용 · 옥타브 상관없이 구성음을 모두 누르면 정답";
+  }
+
+  // 2+ items in parentheses are stacked vertically, highest tension on top
+  function symbolHTML(q) {
+    const base = q.rootName + q.head;
+    if (q.items.length < 2) return base + (q.items.length ? `(${q.items[0]})` : "");
+    const col = q.items.slice().reverse().map(t => `<span>${t}</span>`).join("");
+    return `${base}<span class="stack" aria-hidden="true"><span class="paren">(</span><span class="col">${col}</span><span class="paren">)</span></span>`;
+  }
+
+  function newQuestion() {
+    const q = Engine.generate(S, Math.random, state.q && state.q.symbol);
+    selected.clear(); state.answer = new Set(); state.good = new Set(); state.locked = false; state.attempted = false;
+    $("btnCheck").disabled = !!q.error; $("btnReveal").disabled = !!q.error;
+    const fb = $("feedback"); fb.className = "feedback"; fb.textContent = "";
+    const sym = $("symbol");
+    if (q.error) {
+      state.q = null; sym.textContent = q.error; sym.removeAttribute("aria-label"); sym.classList.add("empty"); $("hint").textContent = "";
+    } else {
+      state.q = q; sym.innerHTML = symbolHTML(q); sym.setAttribute("aria-label", q.symbol); sym.classList.remove("empty"); $("hint").textContent = hintFor(q);
+    }
+    relabelKeys();
+    renderKeys();
+  }
+
+  function toneList(q) {
+    if (q.alt) {
+      const core = q.tones.filter(t => t.role === "chord").map(t => t.name).join(" ");
+      const alts = q.tones.filter(t => t.role === "alt").map(t => t.name).join(" ");
+      return `${core} + altered 텐션 1개 이상(${alts})`;
+    }
+    return q.tones.map(t => t.role === "optional" ? `(${t.name})` : t.name).join(" ");
+  }
+
+  function setFeedback(kind, html) { const fb = $("feedback"); fb.className = "feedback " + kind; fb.innerHTML = html; }
+
+  // after a correct 채점 or 정답 보기 the question is closed: only 다음 문제 stays active
+  function lock() {
+    state.locked = true;
+    $("btnCheck").disabled = true; $("btnReveal").disabled = true;
+    $("btnNext").focus({ preventScroll: true });
+  }
+
+  function check() {
+    const q = state.q; if (!q || state.locked) return;
+    if (!selected.size) { setFeedback("info", "건반을 눌러 코드의 구성음을 골라 주세요."); return; }
+    const g = Engine.grade(selected, q);
+    const first = !state.attempted;
+    if (first) { state.attempted = true; stats.total++; }
+    if (g.correct) {
+      if (first) { stats.first++; stats.streak++; }
+      setFeedback("ok", `<strong>정답!</strong><span class="tones">${q.symbol} = ${toneList(q)}</span>`);
+      state.good = new Set(selected); renderKeys();
+      Audio.chord(selected, false);
+      lock();
+    } else {
+      // wrong: hint only, the student can keep trying or press 정답 보기
+      stats.streak = 0;
+      const parts = [];
+      if (g.missing) parts.push(`빠진 음 ${g.missing}개`);
+      if (g.extra) parts.push(`필요 없는 음 ${g.extra}개`);
+      if (q.alt && !g.anyOk) parts.push("altered 텐션이 없어요");
+      setFeedback("no", `<strong>아직 아니에요.</strong><span>${parts.join(" · ")}</span>`);
+    }
+    renderStats();
+  }
+
+  function reveal() {
+    const q = state.q; if (!q || state.locked) return;
+    if (!state.attempted) { state.attempted = true; stats.total++; }
+    stats.streak = 0;
+    const v = Engine.voicing(q);
+    // green dots on the answer voicing, plus on any key the student already pressed that is a chord tone
+    const chordPcs = new Set([...q.required, ...q.optional, ...q.anyOf]);
+    state.answer = new Set([...v, ...[...selected].filter(m => chordPcs.has(m % 12))]);
+    renderKeys(); renderStats();
+    setFeedback("info", `<strong>정답</strong><span class="tones">${q.symbol} = ${toneList(q)}</span>`);
+    Audio.chord(v, true);
+    lock();
+  }
+
+  $("btnCheck").onclick = check;
+  $("btnReveal").onclick = reveal;
+  $("btnNext").onclick = newQuestion;
+  $("btnClear").onclick = () => { selected.clear(); renderKeys(); };
+  $("btnPlaySel").onclick = () => { if (selected.size) Audio.chord(selected, false); };
+
+  document.addEventListener("keydown", e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = (e.target.tagName || "").toLowerCase();
+    const onKey = e.target.classList && e.target.classList.contains("key");
+    if (tag === "input" || (tag === "button" && !onKey)) return;
+    if (e.key === "Enter") { e.preventDefault(); check(); }
+    else if (e.key === " ") { e.preventDefault(); if (selected.size) Audio.chord(selected, false); }
+    else if (e.key === "Escape" || e.key === "Backspace") { selected.clear(); renderKeys(); }
+    else if (e.key === "n" || e.key === "N" || e.key === "ArrowRight") newQuestion();
+  });
+
+  // one-time tip for portrait phones (CSS decides where it shows)
+  try { $("rotateTip").hidden = localStorage.getItem("chordlab.rotateTip") === "closed"; } catch (e) { $("rotateTip").hidden = false; }
+  $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; try { localStorage.setItem("chordlab.rotateTip", "closed"); } catch (e) {} };
+
+  syncSettingsUI();
+  renderStats();
+  newQuestion();
+})();
+</script>
