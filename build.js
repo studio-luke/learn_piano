@@ -1,8 +1,9 @@
-// Rebuilds index.html from src/ui.html + src/engine.js:  node build.js
+// Rebuilds index.html from src/ui.html + src/engine.js + src/i18n.js:  node build.js
 const fs = require("fs");
 const ui = fs.readFileSync(__dirname + "/src/ui.html", "utf8");
 const engine = fs.readFileSync(__dirname + "/src/engine.js", "utf8");
-const page = ui.replace("/*ENGINE*/", () => engine);
+const i18n = fs.readFileSync(__dirname + "/src/i18n.js", "utf8");
+const page = ui.replace("/*ENGINE*/", () => engine).replace("/*I18N*/", () => i18n);
 const cut = page.indexOf("</style>") + "</style>".length;
 const head = page.slice(0, cut).replace('<meta name="claude:viewport-fit-sides" content="cover">\n', "");
 const body = page.slice(cut);

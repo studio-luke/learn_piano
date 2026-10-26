@@ -128,9 +128,9 @@ const Engine = (() => {
   // returns {error} or question
   function generate(s, rnd = Math.random, prevSymbol = null) {
     const types = TYPES.filter(t => s.types[t.id]);
-    if (!types.length) return { error: "출제할 코드 종류를 하나 이상 선택하세요." };
+    if (!types.length) return { error: "noTypes" };   // error codes; the UI translates them
     const pcs = rootPool(s);
-    if (!pcs.length) return { error: "출제할 베이스(근음)를 하나 이상 선택하세요." };
+    if (!pcs.length) return { error: "noBases" };
 
     for (let tries = 0; tries < 80; tries++) {
       const type = pickWeighted(types, rnd);
@@ -195,7 +195,7 @@ const Engine = (() => {
       if (symbol === prevSymbol && tries < 79) continue;
       return { symbol, rootName, label, head, items, rootPc: pc, type: type.id, group: type.group, tens, alt, tones, required, optional, anyOf };
     }
-    return { error: "조건에 맞는 코드를 만들지 못했어요. 설정을 바꿔 보세요." };
+    return { error: "noChord" };
   }
 
   function grade(selected, q) {
