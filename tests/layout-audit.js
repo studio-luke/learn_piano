@@ -28,6 +28,13 @@ async function setup(page, state) {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForTimeout(200);
+  // the log-in button is hidden until Supabase is configured; check the header with it shown (long nickname)
+  await page.evaluate(() => {
+    const b = document.getElementById("accountBtn");
+    b.hidden = false; b.classList.add("signed-in");
+    document.getElementById("accountLogin").hidden = true;
+    const n = document.getElementById("accountName"); n.hidden = false; n.textContent = "가나다라마바사아자차카타파하";
+  });
   if (state === "long") {
     for (const g of ["sus", "seventh", "sixth", "add", "tension"]) await page.click(`[data-group="${g}"]`);
     await page.click("#optC"); await page.click("#cMax2"); await page.click("#advToggle"); await page.click("#optD");

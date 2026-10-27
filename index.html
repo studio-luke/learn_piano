@@ -202,6 +202,40 @@ button { cursor: pointer; }
 .warnbox { font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; margin: 0; }
 .warnbox:empty { display: none; }
 
+/* account: header button + log-in dialog */
+.account-btn { font-size: 12px; font-weight: 600; color: var(--accent-ink); background: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 4px 12px; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-btn:hover { filter: brightness(1.06); }
+.account-btn.signed-in { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.account-btn.signed-in:hover { background: var(--sunken); filter: none; }
+dialog.auth { width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 22px 20px 20px; box-shadow: 0 24px 60px -24px rgba(40,20,10,.5); }
+dialog.auth::backdrop { background: rgba(40,25,15,.45); }
+.auth h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0 36px 14px 0; line-height: 1.2; }
+.auth-close { position: absolute; top: 12px; right: 12px; margin: 0; }
+.icon-btn { border: none; background: none; color: var(--muted); font-size: 15px; width: 32px; height: 32px; border-radius: 8px; }
+.icon-btn:hover { background: var(--sunken); color: var(--ink); }
+.auth-form { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.auth-note { font-size: 12px; color: var(--muted); margin: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
+.field small { color: var(--muted); font-weight: 400; font-size: 12px; }
+/* 16px stops iOS from zooming into the field */
+.field input, .field select { font-size: 16px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+/* password field with a show-password eye inside it */
+.pw-wrap { position: relative; display: flex; }
+.pw-wrap input { width: 100%; padding-right: 46px; }
+.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 38px; height: 36px; border: none; background: none; border-radius: 8px; color: var(--muted); display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pw-eye:hover, .pw-eye.on { color: var(--accent); }
+.auth .check { font-size: 13px; }
+.auth .check a { color: var(--accent); }
+.auth-links { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.auth-msg { font-size: 13px; border-radius: 8px; padding: 8px 10px; margin: 0 0 12px; }
+.auth-msg:empty { display: none; }
+.auth-msg.ok { background: var(--ok-soft); color: var(--ok); }
+.auth-msg.no { background: var(--warn-soft); color: var(--warn); }
+.acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
+.acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
+.linkbtn.danger { color: var(--warn); align-self: flex-start; }
+
 /* contact footer */
 .contact { border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 28px; font-size: 13px; color: var(--muted); }
 .contact h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
@@ -213,6 +247,10 @@ button { cursor: pointer; }
 a.contact-val { text-decoration: none; border-bottom: 1px solid var(--line); user-select: auto; -webkit-user-select: auto; }
 a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); }
 .contact .mini-btn { padding: 2px 8px; font-size: 11px; }
+.legal-links { display: flex; gap: 16px; margin-left: auto; }
+.legal-links[hidden] { display: none; }
+.legal-links a { color: var(--muted); }
+.legal-links a:hover { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 .hint-narrow { display: none; }
@@ -228,6 +266,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   .top { flex-wrap: wrap; row-gap: 6px; }
   .top-right { display: contents; }
   .lang { order: 2; margin-left: auto; }
+  .account-btn { order: 2; }
   .stats { order: 3; width: 100%; }
   .brand h1 { font-size: 22px; }
   .brand span { display: none; }
@@ -304,6 +343,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
           <option value="zh">简体中文</option>
         </select>
       </label>
+      <button class="account-btn" id="accountBtn" type="button" hidden><span id="accountLogin" data-i18n="login">로그인</span><span id="accountName" hidden></span></button>
     </div>
   </header>
 
@@ -392,8 +432,84 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
         <dd><a class="contact-val" href="https://www.instagram.com/thrill_kim/" target="_blank" rel="noopener">@thrill_kim</a></dd>
       </div>
     </dl>
+    <nav class="legal-links" hidden><a href="terms.html" data-i18n="termsLink">이용약관</a><a href="privacy.html" data-i18n="privacyLink">개인정보처리방침</a></nav>
   </footer>
 </div>
+
+<dialog class="auth" id="authDlg" aria-labelledby="authTitle">
+  <form method="dialog" class="auth-close"><button class="icon-btn" aria-label="닫기" data-i18n-aria="close">✕</button></form>
+  <h2 id="authTitle"></h2>
+  <p class="auth-msg" id="authMsg" role="status"></p>
+
+  <form class="auth-form" data-view="login" novalidate>
+    <p class="auth-note" data-i18n="loginNote">로그인하지 않아도 연습할 수 있어요. 로그인하면 출제 설정이 계정에 저장돼요.</p>
+    <label class="field"><span data-i18n="email">이메일</span><input type="email" name="email" autocomplete="email" required></label>
+    <label class="field"><span data-i18n="password">비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <button class="btn primary" type="submit" data-i18n="login">로그인</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="signup" data-i18n="goSignup">계정이 없나요? 회원가입</button><button type="button" class="linkbtn" data-go="reset" data-i18n="goReset">비밀번호를 잊으셨나요?</button></div>
+  </form>
+
+  <form class="auth-form" data-view="signup" novalidate hidden>
+    <label class="field"><span data-i18n="fullName">성명</span><input type="text" name="fullName" autocomplete="name" maxlength="50" required><small data-i18n="fullNameHint">본인과 선생님만 볼 수 있어요.</small></label>
+    <label class="field"><span data-i18n="nickname">닉네임</span><input type="text" name="nickname" autocomplete="nickname" maxlength="20" required><small data-i18n="nicknameHint">화면에 표시되는 이름이에요. 최대 20자</small></label>
+    <label class="field"><span data-i18n="email">이메일</span><input type="email" name="email" autocomplete="email" required></label>
+    <label class="field"><span data-i18n="password">비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span><small data-i18n="pwHint">8자 이상</small></label>
+    <label class="field"><span data-i18n="passwordConfirm">비밀번호 확인</span><span class="pw-wrap"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <label class="field"><span data-i18n="prefLang">사용 언어</span>
+      <select name="lang" id="signupLang">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">简体中文</option>
+      </select><small data-i18n="prefLangHint">로그인하면 이 언어로 화면이 표시돼요.</small></label>
+    <label class="check"><input type="checkbox" name="age14" required><span data-i18n="agreeAge">만 14세 이상입니다 (필수)</span></label>
+    <label class="check"><input type="checkbox" name="terms" required><span data-i18n="agreeTermsHTML"></span></label>
+    <label class="check"><input type="checkbox" name="privacy" required><span data-i18n="agreePrivacyHTML"></span></label>
+    <button class="btn primary" type="submit" data-i18n="doSignup">가입하기</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="goLogin">이미 계정이 있어요</button></div>
+  </form>
+
+  <form class="auth-form" data-view="reset" novalidate hidden>
+    <label class="field"><span data-i18n="email">이메일</span><input type="email" name="email" autocomplete="email" required></label>
+    <button class="btn primary" type="submit" data-i18n="doReset">재설정 메일 보내기</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="backLogin">← 로그인으로</button></div>
+  </form>
+
+  <form class="auth-form" data-view="newpw" novalidate hidden>
+    <label class="field"><span data-i18n="newPassword">새 비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span><small data-i18n="pwHint">8자 이상</small></label>
+    <label class="field"><span data-i18n="newPasswordConfirm">새 비밀번호 확인</span><span class="pw-wrap"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <button class="btn primary" type="submit" data-i18n="doNewpw">비밀번호 변경</button>
+  </form>
+
+  <form class="auth-form" data-view="changepw" novalidate hidden>
+    <label class="field"><span data-i18n="currentPassword">현재 비밀번호</span><span class="pw-wrap"><input type="password" name="current" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <label class="field"><span data-i18n="newPassword">새 비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span><small data-i18n="pwHint">8자 이상</small></label>
+    <label class="field"><span data-i18n="newPasswordConfirm">새 비밀번호 확인</span><span class="pw-wrap"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <button class="btn primary" type="submit" data-i18n="doNewpw">비밀번호 변경</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount">← 내 계정으로</button></div>
+  </form>
+
+  <div class="auth-form" data-view="restore" hidden>
+    <p class="auth-note" id="restoreText"></p>
+    <button class="btn primary" type="button" id="restoreBtn" data-i18n="doRestore">계정 복구</button>
+    <button class="btn" type="button" id="restoreLogoutBtn" data-i18n="logout">로그아웃</button>
+  </div>
+
+  <form class="auth-form" data-view="complete" novalidate hidden>
+    <p class="auth-note" data-i18n="completeNote">새로 필요한 정보가 생겼어요. 아래 항목을 입력해 주세요.</p>
+    <label class="field"><span data-i18n="fullName">성명</span><input type="text" name="fullName" id="completeName" autocomplete="name" maxlength="50" required><small data-i18n="fullNameHint">본인과 선생님만 볼 수 있어요.</small></label>
+    <button class="btn primary" type="submit" data-i18n="doSave">저장</button>
+  </form>
+
+  <div class="auth-form" data-view="account" hidden>
+    <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
+    <p class="auth-note" data-i18n="syncNote">로그인하는 동안 출제 설정이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.</p>
+    <button class="btn" type="button" id="logoutBtn" data-i18n="logout">로그아웃</button>
+    <button class="linkbtn" type="button" data-go="changepw" data-i18n="changePw">비밀번호 변경</button>
+    <hr class="divider">
+    <button class="linkbtn danger" type="button" id="deleteAcctBtn" data-i18n="deleteAcct">회원 탈퇴</button>
+  </div>
+</dialog>
 
 <script>
 // ===== Chord engine (pure, no DOM) =====
@@ -706,6 +822,74 @@ const I18N = {
     contactH: "문의",
     copy: "복사",
     copied: "복사됨",
+    // accounts
+    login: "로그인",
+    logout: "로그아웃",
+    viewLogin: "로그인",
+    viewSignup: "회원가입",
+    viewReset: "비밀번호 재설정",
+    viewNewpw: "새 비밀번호 설정",
+    viewAccount: "내 계정",
+    loginNote: "로그인하지 않아도 연습할 수 있어요. 로그인하면 출제 설정이 계정에 저장돼요.",
+    syncNote: "로그인하는 동안 출제 설정이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.",
+    email: "이메일",
+    password: "비밀번호",
+    newPassword: "새 비밀번호",
+    pwHint: "8자 이상",
+    nickname: "닉네임",
+    nicknameHint: "화면에 표시되는 이름이에요. 최대 20자",
+    fullName: "성명",
+    fullNameHint: "본인과 선생님만 볼 수 있어요.",
+    prefLang: "사용 언어",
+    prefLangHint: "로그인하면 이 언어로 화면이 표시돼요.",
+    viewComplete: "정보 추가 입력",
+    completeNote: "새로 필요한 정보가 생겼어요. 아래 항목을 입력해 주세요.",
+    doSave: "저장",
+    msgSaved: "저장했어요.",
+    showPw: "비밀번호 보기 (누르고 있는 동안)",
+    passwordConfirm: "비밀번호 확인",
+    currentPassword: "현재 비밀번호",
+    newPasswordConfirm: "새 비밀번호 확인",
+    viewChangepw: "비밀번호 변경",
+    backAccount: "← 내 계정으로",
+    errPwMismatch: "비밀번호가 서로 달라요. 다시 확인해 주세요.",
+    errCurrentPw: "현재 비밀번호가 맞지 않아요.",
+    viewRestore: "계정 복구",
+    restoreNote: "탈퇴를 신청한 계정이에요. {date}에 계정과 저장된 설정이 완전히 삭제돼요. 복구하면 지금처럼 계속 쓸 수 있어요.",
+    doRestore: "계정 복구",
+    msgRestored: "계정을 복구했어요. 다시 만나서 반가워요!",
+    errFullName: "성명을 입력해 주세요 (최대 50자).",
+    agreeAge: "만 14세 이상입니다 (필수)",
+    agreeTermsHTML: "<a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">이용약관</a>에 동의합니다 (필수)",
+    agreePrivacyHTML: "<a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">개인정보 수집·이용</a>에 동의합니다 (필수)",
+    doSignup: "가입하기",
+    doReset: "재설정 메일 보내기",
+    doNewpw: "비밀번호 변경",
+    changePw: "비밀번호 변경",
+    goSignup: "계정이 없나요? 회원가입",
+    goLogin: "이미 계정이 있어요",
+    goReset: "비밀번호를 잊으셨나요?",
+    backLogin: "← 로그인으로",
+    deleteAcct: "회원 탈퇴",
+    deleteConfirm: "탈퇴를 신청할까요? 7일 동안은 다시 로그인해서 계정을 복구할 수 있고, 7일이 지나면 계정과 저장된 설정이 완전히 삭제돼요.",
+    termsLink: "이용약관",
+    privacyLink: "개인정보처리방침",
+    msgSignupSent: "인증 메일을 보냈어요. 메일의 링크를 누른 뒤 로그인하세요. 메일이 안 보이면 스팸함도 확인해 주세요.",
+    msgResetSent: "비밀번호 재설정 메일을 보냈어요. 메일의 링크를 눌러 새 비밀번호를 정하세요.",
+    msgPwChanged: "비밀번호를 바꿨어요.",
+    msgDeleted: "탈퇴 신청이 완료됐어요. {date}까지 다시 로그인하면 계정을 복구할 수 있어요.",
+    errEmail: "이메일 주소를 확인해 주세요.",
+    errPwShort: "비밀번호는 8자 이상이어야 해요.",
+    errNickname: "닉네임을 입력해 주세요 (최대 20자).",
+    errAgree: "필수 항목에 모두 동의해 주세요.",
+    errInvalid: "이메일 또는 비밀번호가 맞지 않아요.",
+    errNotConfirmed: "아직 이메일 인증이 안 됐어요. 받은 메일의 링크를 먼저 눌러 주세요.",
+    errExists: "이미 가입된 이메일이에요.",
+    errWeak: "더 안전한 비밀번호를 써 주세요.",
+    errSamePw: "지금과 다른 비밀번호를 입력해 주세요.",
+    errRate: "요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+    errNetwork: "서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.",
+    errGeneric: "문제가 생겼어요. 잠시 후 다시 시도해 주세요.",
   },
   en: {
     docTitle: "Chord Trainer",
@@ -780,6 +964,74 @@ const I18N = {
     contactH: "Contact",
     copy: "Copy",
     copied: "Copied",
+    // accounts
+    login: "Log in",
+    logout: "Log out",
+    viewLogin: "Log in",
+    viewSignup: "Sign up",
+    viewReset: "Reset password",
+    viewNewpw: "Set a new password",
+    viewAccount: "My account",
+    loginNote: "You can practice without an account. Log in to save your practice settings to your account.",
+    syncNote: "While you're logged in, your practice settings are saved to your account and follow you to other devices.",
+    email: "Email",
+    password: "Password",
+    newPassword: "New password",
+    pwHint: "At least 8 characters",
+    nickname: "Nickname",
+    nicknameHint: "The name shown on screen. Up to 20 characters",
+    fullName: "Full name",
+    fullNameHint: "Only you and your teacher can see this.",
+    prefLang: "Preferred language",
+    prefLangHint: "When you log in, the site is shown in this language.",
+    viewComplete: "Complete your profile",
+    completeNote: "We need a little more information. Please fill in the item below.",
+    doSave: "Save",
+    msgSaved: "Saved.",
+    showPw: "Show password (while held)",
+    passwordConfirm: "Confirm password",
+    currentPassword: "Current password",
+    newPasswordConfirm: "Confirm new password",
+    viewChangepw: "Change password",
+    backAccount: "← Back to my account",
+    errPwMismatch: "The passwords don't match. Please check them again.",
+    errCurrentPw: "Your current password is incorrect.",
+    viewRestore: "Restore account",
+    restoreNote: "You asked to delete this account. It and its saved settings will be permanently deleted on {date}. Restore it to keep using it as before.",
+    doRestore: "Restore account",
+    msgRestored: "Your account has been restored. Welcome back!",
+    errFullName: "Please enter your full name (up to 50 characters).",
+    agreeAge: "I am 14 or older (required)",
+    agreeTermsHTML: "I agree to the <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">Terms of Service</a> (required)",
+    agreePrivacyHTML: "I agree to the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">collection and use of personal data</a> (required)",
+    doSignup: "Create account",
+    doReset: "Send reset email",
+    doNewpw: "Change password",
+    changePw: "Change password",
+    goSignup: "No account? Sign up",
+    goLogin: "I already have an account",
+    goReset: "Forgot your password?",
+    backLogin: "← Back to log in",
+    deleteAcct: "Delete account",
+    deleteConfirm: "Delete your account? For 7 days you can log in again to restore it; after that, your account and saved settings are deleted permanently.",
+    termsLink: "Terms of Service",
+    privacyLink: "Privacy Policy",
+    msgSignupSent: "We sent you a confirmation email. Open the link in it, then log in. If you don't see it, check your spam folder.",
+    msgResetSent: "We sent a password reset email. Open the link in it to set a new password.",
+    msgPwChanged: "Your password has been changed.",
+    msgDeleted: "Your account is scheduled for deletion. Log in again before {date} to restore it.",
+    errEmail: "Please check your email address.",
+    errPwShort: "Your password must be at least 8 characters.",
+    errNickname: "Please enter a nickname (up to 20 characters).",
+    errAgree: "Please check all the required items.",
+    errInvalid: "Incorrect email or password.",
+    errNotConfirmed: "Your email isn't confirmed yet. Please open the link in the confirmation email first.",
+    errExists: "This email is already registered.",
+    errWeak: "Please choose a stronger password.",
+    errSamePw: "Please choose a password different from your current one.",
+    errRate: "Too many attempts. Please try again in a moment.",
+    errNetwork: "Couldn't reach the server. Please check your internet connection.",
+    errGeneric: "Something went wrong. Please try again later.",
   },
   ja: {
     docTitle: "コードトレーナー",
@@ -854,6 +1106,74 @@ const I18N = {
     contactH: "お問い合わせ",
     copy: "コピー",
     copied: "コピーしました",
+    // accounts
+    login: "ログイン",
+    logout: "ログアウト",
+    viewLogin: "ログイン",
+    viewSignup: "新規登録",
+    viewReset: "パスワード再設定",
+    viewNewpw: "新しいパスワードの設定",
+    viewAccount: "マイアカウント",
+    loginNote: "ログインしなくても練習できます。ログインすると出題設定がアカウントに保存されます。",
+    syncNote: "ログイン中は出題設定がアカウントに保存され、他の端末でも続けて使えます。",
+    email: "メールアドレス",
+    password: "パスワード",
+    newPassword: "新しいパスワード",
+    pwHint: "8文字以上",
+    nickname: "ニックネーム",
+    nicknameHint: "画面に表示される名前です。最大20文字",
+    fullName: "氏名",
+    fullNameHint: "本人と先生だけが見られます。",
+    prefLang: "使用言語",
+    prefLangHint: "ログインするとこの言語で表示されます。",
+    viewComplete: "情報の追加入力",
+    completeNote: "新しく必要な情報があります。以下の項目を入力してください。",
+    doSave: "保存",
+    msgSaved: "保存しました。",
+    showPw: "パスワードを表示（押している間）",
+    passwordConfirm: "パスワード（確認）",
+    currentPassword: "現在のパスワード",
+    newPasswordConfirm: "新しいパスワード（確認）",
+    viewChangepw: "パスワードを変更",
+    backAccount: "← マイアカウントに戻る",
+    errPwMismatch: "パスワードが一致しません。もう一度ご確認ください。",
+    errCurrentPw: "現在のパスワードが正しくありません。",
+    viewRestore: "アカウントの復元",
+    restoreNote: "退会を申請したアカウントです。{date}にアカウントと保存した設定が完全に削除されます。復元すると今まで通り使えます。",
+    doRestore: "アカウントを復元",
+    msgRestored: "アカウントを復元しました。おかえりなさい！",
+    errFullName: "氏名を入力してください（最大50文字）。",
+    agreeAge: "14歳以上です（必須）",
+    agreeTermsHTML: "<a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">利用規約</a>に同意します（必須）",
+    agreePrivacyHTML: "<a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">個人情報の収集・利用</a>に同意します（必須）",
+    doSignup: "登録する",
+    doReset: "再設定メールを送信",
+    doNewpw: "パスワードを変更",
+    changePw: "パスワードを変更",
+    goSignup: "アカウントがない方は新規登録",
+    goLogin: "すでにアカウントをお持ちの方",
+    goReset: "パスワードをお忘れですか？",
+    backLogin: "← ログインに戻る",
+    deleteAcct: "退会する",
+    deleteConfirm: "退会を申請しますか？7日間は再ログインしてアカウントを復元できます。7日を過ぎるとアカウントと保存した設定は完全に削除されます。",
+    termsLink: "利用規約",
+    privacyLink: "プライバシーポリシー",
+    msgSignupSent: "確認メールを送信しました。メール内のリンクを開いてからログインしてください。届かない場合は迷惑メールフォルダもご確認ください。",
+    msgResetSent: "パスワード再設定メールを送信しました。メール内のリンクから新しいパスワードを設定してください。",
+    msgPwChanged: "パスワードを変更しました。",
+    msgDeleted: "退会申請が完了しました。{date}までに再ログインするとアカウントを復元できます。",
+    errEmail: "メールアドレスをご確認ください。",
+    errPwShort: "パスワードは8文字以上にしてください。",
+    errNickname: "ニックネームを入力してください（最大20文字）。",
+    errAgree: "必須項目にすべて同意してください。",
+    errInvalid: "メールアドレスまたはパスワードが正しくありません。",
+    errNotConfirmed: "まだメール認証が完了していません。届いたメールのリンクを先に開いてください。",
+    errExists: "このメールアドレスはすでに登録されています。",
+    errWeak: "より安全なパスワードを設定してください。",
+    errSamePw: "現在と異なるパスワードを入力してください。",
+    errRate: "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+    errNetwork: "サーバーに接続できませんでした。インターネット接続をご確認ください。",
+    errGeneric: "問題が発生しました。しばらくしてからもう一度お試しください。",
   },
   zh: {
     docTitle: "和弦练习",
@@ -928,8 +1248,432 @@ const I18N = {
     contactH: "联系方式",
     copy: "复制",
     copied: "已复制",
+    // accounts
+    login: "登录",
+    logout: "退出登录",
+    viewLogin: "登录",
+    viewSignup: "注册",
+    viewReset: "重置密码",
+    viewNewpw: "设置新密码",
+    viewAccount: "我的账户",
+    loginNote: "不登录也可以练习。登录后，出题设置会保存到账户。",
+    syncNote: "登录期间，出题设置会保存到账户，可在其他设备上继续使用。",
+    email: "邮箱",
+    password: "密码",
+    newPassword: "新密码",
+    pwHint: "至少 8 个字符",
+    nickname: "昵称",
+    nicknameHint: "页面上显示的名字，最多 20 个字符",
+    fullName: "姓名",
+    fullNameHint: "仅本人和老师可见。",
+    prefLang: "使用语言",
+    prefLangHint: "登录后将以此语言显示页面。",
+    viewComplete: "补充信息",
+    completeNote: "需要补充一些信息，请填写以下项目。",
+    doSave: "保存",
+    msgSaved: "已保存。",
+    showPw: "显示密码（按住时）",
+    passwordConfirm: "确认密码",
+    currentPassword: "当前密码",
+    newPasswordConfirm: "确认新密码",
+    viewChangepw: "修改密码",
+    backAccount: "← 返回我的账户",
+    errPwMismatch: "两次输入的密码不一致，请重新确认。",
+    errCurrentPw: "当前密码不正确。",
+    viewRestore: "恢复账户",
+    restoreNote: "该账户已申请注销，将于 {date} 永久删除账户及已保存的设置。恢复后即可照常使用。",
+    doRestore: "恢复账户",
+    msgRestored: "账户已恢复，欢迎回来！",
+    errFullName: "请输入姓名（最多 50 个字符）。",
+    agreeAge: "我已年满 14 周岁（必填）",
+    agreeTermsHTML: "我同意<a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">服务条款</a>（必填）",
+    agreePrivacyHTML: "我同意<a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">个人信息的收集与使用</a>（必填）",
+    doSignup: "注册",
+    doReset: "发送重置邮件",
+    doNewpw: "修改密码",
+    changePw: "修改密码",
+    goSignup: "还没有账户？注册",
+    goLogin: "已有账户",
+    goReset: "忘记密码？",
+    backLogin: "← 返回登录",
+    deleteAcct: "注销账户",
+    deleteConfirm: "确定要申请注销吗？7 天内重新登录即可恢复账户；7 天后账户和已保存的设置将被永久删除。",
+    termsLink: "服务条款",
+    privacyLink: "隐私政策",
+    msgSignupSent: "验证邮件已发送。请点击邮件中的链接后再登录。如未收到，请检查垃圾邮件箱。",
+    msgResetSent: "重置密码邮件已发送。请点击邮件中的链接设置新密码。",
+    msgPwChanged: "密码已修改。",
+    msgDeleted: "注销申请已完成。在 {date} 之前重新登录即可恢复账户。",
+    errEmail: "请检查邮箱地址。",
+    errPwShort: "密码至少需要 8 个字符。",
+    errNickname: "请输入昵称（最多 20 个字符）。",
+    errAgree: "请勾选所有必填项。",
+    errInvalid: "邮箱或密码不正确。",
+    errNotConfirmed: "邮箱尚未验证，请先点击验证邮件中的链接。",
+    errExists: "该邮箱已注册。",
+    errWeak: "请设置更安全的密码。",
+    errSamePw: "请输入与当前不同的密码。",
+    errRate: "请求过于频繁，请稍后再试。",
+    errNetwork: "无法连接服务器，请检查网络连接。",
+    errGeneric: "出现问题，请稍后再试。",
   },
 };
+
+</script>
+<script>
+// ===== Site configuration =====
+// Supabase project (Dashboard → Project Settings → API). Leave both empty to run without accounts:
+// the log-in button stays hidden and the trainer works as before.
+// supabaseKey must be the PUBLIC key ("anon" / "publishable"). This file is published with the site —
+// never put the service_role / secret key here (npm test fails if you do).
+const CONFIG = {
+  supabaseUrl: "https://joxtekvxbivcvreyjhrv.supabase.co",
+  supabaseKey: "sb_publishable_R-IxJhURzrREQIdFC7hvhg_NHCritIT",
+};
+if (typeof module !== "undefined") module.exports = CONFIG;
+
+</script>
+<script>
+// ===== Accounts (Supabase Auth) =====
+// Sign-up / log-in / password reset and change / account deletion with a 7-day grace period,
+// and syncing practice settings to the account.
+// Everyone signs up as a student; the admin role is set by hand in the database (supabase/schema.sql).
+// Does nothing unless CONFIG has a Supabase URL and public key — then the trainer runs without accounts.
+// The pure helpers (errorKey, syncable, isPublicKey, missingFields, langForTimeZone) are exported for tests/account.test.js.
+const Account = (() => {
+  // supabase-js is loaded from the CDN only when accounts are configured; integrity pins the exact file
+  const SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
+  const SDK_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
+  // date of the terms/privacy policy the user agrees to at sign-up; bump it when either page changes
+  const TERMS_VERSION = "2026-10-27";
+  // settings that belong to the device, not the account (a phone has no computer keyboard)
+  const LOCAL_ONLY = ["kbd", "kbdTouched"];
+  const PW_MIN = 8, NICK_MAX = 20, NAME_MAX = 50;
+  // profile fields every member must have. Members who joined before a field was added get the
+  // "complete your profile" view on their next log-in (see docs/supabase-setup.md, 회원가입 항목 추가).
+  const REQUIRED = ["full_name"];
+  const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at";
+  const GRACE_DAYS = 7;   // must match the interval in supabase/schema.sql
+
+  // Supabase error → i18n key
+  function errorKey(err) {
+    if (!err) return "errGeneric";
+    const code = err.code || "", msg = String(err.message || "");
+    const byCode = {
+      invalid_credentials: "errInvalid", email_not_confirmed: "errNotConfirmed",
+      user_already_exists: "errExists", email_exists: "errExists",
+      weak_password: "errWeak", same_password: "errSamePw", email_address_invalid: "errEmail",
+      over_email_send_rate_limit: "errRate", over_request_rate_limit: "errRate",
+    };
+    if (byCode[code]) return byCode[code];
+    if (err.status === 429) return "errRate";
+    if (err.name === "AuthRetryableFetchError" || err.status === 0 || /fetch|network/i.test(msg)) return "errNetwork";
+    return "errGeneric";
+  }
+  // sign-up language guess from the device's time zone (set by the OS from the user's region; no permission prompt)
+  const TZ_LANG = [[/^Asia\/(Seoul|Pyongyang)$/, "ko"], [/^Asia\/Tokyo$/, "ja"],
+    [/^Asia\/(Shanghai|Chongqing|Harbin|Urumqi|Kashgar|Hong_Kong|Macau|Taipei)$|^PRC$|^ROC$/, "zh"]];
+  function langForTimeZone(tz) {
+    for (const [re, lang] of TZ_LANG) if (re.test(tz || "")) return lang;
+    return "en";
+  }
+  const missingFields = p => REQUIRED.filter(k => !p || p[k] == null || String(p[k]).trim() === "");
+  function syncable(settings) {
+    const out = { ...settings };
+    LOCAL_ONLY.forEach(k => delete out[k]);
+    return out;
+  }
+  // true for the public anon/publishable key; false for a secret key, which must never ship with the site
+  function isPublicKey(key) {
+    if (!key) return false;
+    if (/^sb_secret_/.test(key)) return false;
+    if (/^sb_publishable_/.test(key)) return true;
+    const part = key.split(".")[1];
+    if (!part) return false;
+    try {
+      const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+      const json = typeof atob === "function" ? atob(b64) : Buffer.from(b64, "base64").toString("utf8");
+      return JSON.parse(json).role === "anon";
+    } catch (e) { return false; }
+  }
+
+  const cfg = typeof CONFIG !== "undefined" ? CONFIG : {};
+  const configured = () => !!(cfg.supabaseUrl && cfg.supabaseKey);
+
+  let ctx, sb = null, user = null, profile = null, view = "login", pushTimer;
+  const $ = id => document.getElementById(id);
+
+  function loadSDK() {
+    return new Promise((resolve, reject) => {
+      if (window.supabase) return resolve();
+      const s = document.createElement("script");
+      s.src = SDK_URL; s.integrity = SDK_SRI; s.crossOrigin = "anonymous";
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  // ctx: { t, getSettings, applySettings } from the trainer
+  function init(c) {
+    ctx = c;
+    if (!configured()) return;
+    if (!isPublicKey(cfg.supabaseKey)) { console.error("CONFIG.supabaseKey is not a public key — accounts disabled"); return; }
+    $("accountBtn").hidden = false;
+    document.querySelectorAll(".legal-links").forEach(el => { el.hidden = false; });
+    wireUI();
+    render();
+    loadSDK().then(start, () => console.warn("Could not load supabase-js"));
+  }
+
+  function start() {
+    sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+    sb.auth.onAuthStateChange((event, session) => {
+      const prev = user && user.id;
+      user = session ? session.user : null;
+      if (!user) profile = null;
+      // Supabase calls inside this callback can deadlock, so they run on the next tick
+      if (user && user.id !== prev) setTimeout(loadProfile, 0);
+      if (event === "PASSWORD_RECOVERY") setTimeout(() => open("newpw"), 0);
+      render();
+    });
+  }
+
+  async function loadProfile() {
+    const { data, error } = await sb.from("profiles").select(PROFILE_COLS).eq("id", user.id).single();
+    if (error) { console.warn("profile", error); return; }
+    profile = data;
+    render();
+    // asked to leave within the last 7 days: offer to restore before anything else is synced
+    if (profile.deleted_at) return open("restore");
+    useProfile();
+  }
+  function useProfile() {
+    if (profile.settings) ctx.applySettings(profile.settings);
+    else pushSettings();   // first log-in: this device's settings become the account's
+    // the account's language wins on every device
+    if (profile.preferred_lang && profile.preferred_lang !== ctx.lang()) ctx.setLang(profile.preferred_lang);
+    render();
+    if (missingFields(profile).length) open("complete");
+  }
+  async function updateProfile(fields) {
+    if (!sb || !user) return { error: null };
+    const res = await sb.from("profiles").update(fields).eq("id", user.id);
+    if (res.error) console.warn("profile update", res.error);
+    else if (profile) Object.assign(profile, fields);
+    return res;
+  }
+  async function pushSettings() {
+    if (!sb || !user) return;
+    const { error } = await sb.from("profiles").update({ settings: syncable(ctx.getSettings()) }).eq("id", user.id);
+    if (error) console.warn("settings sync", error);
+  }
+  const active = () => user && profile && !profile.deleted_at;
+  // called by the trainer when the user picks another language
+  function langChanged(lang) { if (active() && profile.preferred_lang !== lang) updateProfile({ preferred_lang: lang }); }
+  // called by the trainer after every settings save
+  function settingsChanged() {
+    if (!active()) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushSettings, 1200);
+  }
+
+  // ---------- dialog ----------
+  const TITLES = { login: "viewLogin", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw",
+    account: "viewAccount", complete: "viewComplete", restore: "viewRestore" };
+  function fmtDate(d) {
+    const tag = { ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" }[ctx.lang()] || "en-US";
+    return new Date(d).toLocaleDateString(tag, { year: "numeric", month: "long", day: "numeric" });
+  }
+  const purgeDate = since => new Date(new Date(since).getTime() + GRACE_DAYS * 864e5);
+  function open(v, msg) {
+    const dlg = $("authDlg");
+    show(v, msg);
+    if (!dlg.open) dlg.showModal();
+    const first = dlg.querySelector(`[data-view="${v}"] input`);
+    if (first) first.focus();
+  }
+  function show(v, msg) {
+    view = v;
+    if (v === "signup") {
+      let tz = "";
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
+      $("signupLang").value = langForTimeZone(tz);
+    }
+    if (v === "complete" && profile) $("completeName").value = profile.full_name || "";
+    // a password left visible on one view must not stay visible on the next
+    document.querySelectorAll("#authDlg .pw-wrap input").forEach(i => { i.type = "password"; });
+    document.querySelectorAll("#authDlg .pw-eye").forEach(b => b.classList.remove("on"));
+    document.querySelectorAll("#authDlg [data-view]").forEach(el => { el.hidden = el.dataset.view !== v; });
+    $("authTitle").textContent = ctx.t(TITLES[v]);
+    setMsg(msg ? msg.kind : "", msg ? msg.key : "", msg && msg.vars);
+  }
+  let msgVars = {};
+  function setMsg(kind, key, vars) {
+    const el = $("authMsg");
+    el.className = "auth-msg" + (kind ? " " + kind : "");
+    el.dataset.key = key || "";
+    msgVars = vars || {};
+    el.textContent = key ? ctx.t(key, msgVars) : "";
+  }
+  function render() {
+    const name = profile ? profile.nickname : user ? (user.email || "").split("@")[0] : "";
+    $("accountBtn").classList.toggle("signed-in", !!user);
+    $("accountLogin").hidden = !!user;
+    $("accountName").hidden = !user;
+    $("accountName").textContent = name;
+    $("acctName").textContent = name;
+    $("acctFullName").textContent = profile && profile.full_name ? profile.full_name : "";
+    $("acctEmail").textContent = user ? user.email : "";
+    $("restoreText").textContent = profile && profile.deleted_at ? ctx.t("restoreNote", { date: fmtDate(purgeDate(profile.deleted_at)) }) : "";
+    // the account view makes no sense once logged out (and vice versa)
+    if ($("authDlg").open && view === "account" && !user) show("login");
+  }
+  // language changed: redraw the text the dialog set itself
+  function refresh() {
+    if (!ctx || !configured()) return;
+    $("authTitle").textContent = ctx.t(TITLES[view]);
+    const key = $("authMsg").dataset.key;
+    if (key) $("authMsg").textContent = ctx.t(key, msgVars);
+    render();
+  }
+
+  // eye button: shows the password while the mouse is over it, or while a finger / key holds it down
+  function wireEyes() {
+    document.querySelectorAll("#authDlg .pw-eye").forEach(btn => {
+      const input = btn.parentElement.querySelector("input");
+      const set = on => { input.type = on ? "text" : "password"; btn.classList.toggle("on", on); };
+      btn.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") set(true); });
+      btn.addEventListener("pointerleave", () => set(false));
+      btn.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse") { e.preventDefault(); set(true); } });
+      btn.addEventListener("pointerup", e => { if (e.pointerType !== "mouse") set(false); });
+      btn.addEventListener("pointercancel", () => set(false));
+      btn.addEventListener("contextmenu", e => e.preventDefault());   // no long-press menu while holding
+      btn.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); set(true); } });
+      btn.addEventListener("keyup", () => set(false));
+      btn.addEventListener("blur", () => set(false));
+    });
+  }
+
+  async function busy(form, fn) {
+    const btn = form.querySelector('[type="submit"]');
+    if (btn) btn.disabled = true;
+    try { await fn(); } catch (e) { setMsg("no", errorKey(e)); } finally { if (btn) btn.disabled = false; }
+  }
+  const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  const back = () => location.origin + location.pathname;
+
+  function wireUI() {
+    wireEyes();
+    $("accountBtn").onclick = () => open(!user ? "login" : profile && profile.deleted_at ? "restore" : "account");
+    // the user closing the restore prompt (✕, Esc, backdrop) keeps the deletion and logs out.
+    // Handled on those actions, not on the dialog's "close" event, which Chrome may drop when the dialog
+    // is closed and reopened in quick succession (log-in closes it, the restore prompt reopens it).
+    const declineRestore = () => { if (view === "restore" && profile && profile.deleted_at && sb) sb.auth.signOut(); };
+    $("authDlg").addEventListener("cancel", declineRestore);
+    document.querySelector("#authDlg .auth-close button").addEventListener("click", declineRestore);
+    $("authDlg").addEventListener("click", e => {
+      const go = e.target.closest("[data-go]");
+      if (go) { e.preventDefault(); open(go.dataset.go); }
+      else if (e.target === $("authDlg")) {
+        // the dialog element itself is hit both by its padding and by the backdrop — close only outside the box
+        const r = $("authDlg").getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) { declineRestore(); $("authDlg").close(); }
+      }
+    });
+
+    const forms = {
+      login: async f => {
+        const email = f.email.value.trim(), password = f.password.value;
+        if (!validEmail(email)) return setMsg("no", "errEmail");
+        if (!sb) return setMsg("no", "errNetwork");
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) return setMsg("no", errorKey(error));
+        f.reset(); $("authDlg").close();
+      },
+      signup: async f => {
+        const fullName = f.fullName.value.trim(), nickname = f.nickname.value.trim(), email = f.email.value.trim(), password = f.password.value;
+        const lang = f.lang.value;
+        if (!fullName || fullName.length > NAME_MAX) return setMsg("no", "errFullName");
+        if (!nickname || nickname.length > NICK_MAX) return setMsg("no", "errNickname");
+        if (!validEmail(email)) return setMsg("no", "errEmail");
+        if (password.length < PW_MIN) return setMsg("no", "errPwShort");
+        if (f.password2.value !== password) return setMsg("no", "errPwMismatch");
+        if (!f.age14.checked || !f.terms.checked || !f.privacy.checked) return setMsg("no", "errAgree");
+        if (!sb) return setMsg("no", "errNetwork");
+        const { data, error } = await sb.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: back(), data: { nickname, full_name: fullName, preferred_lang: lang, age14: true, terms_version: TERMS_VERSION } },
+        });
+        if (error) return setMsg("no", errorKey(error));
+        f.reset();
+        // with e-mail confirmation on there is no session yet; an existing address also lands here (no hint of which)
+        if (data.session) $("authDlg").close(); else show("login", { kind: "ok", key: "msgSignupSent" });
+        // the language picked here is also the screen language from now on
+        if (lang !== ctx.lang()) ctx.setLang(lang);
+      },
+      complete: async f => {
+        const fullName = f.fullName.value.trim();
+        if (!fullName || fullName.length > NAME_MAX) return setMsg("no", "errFullName");
+        const { error } = await updateProfile({ full_name: fullName });
+        if (error) return setMsg("no", errorKey(error));
+        render(); show("account", { kind: "ok", key: "msgSaved" });
+      },
+      reset: async f => {
+        const email = f.email.value.trim();
+        if (!validEmail(email)) return setMsg("no", "errEmail");
+        if (!sb) return setMsg("no", "errNetwork");
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: back() });
+        if (error) return setMsg("no", errorKey(error));
+        f.reset(); show("login", { kind: "ok", key: "msgResetSent" });
+      },
+      // after a reset e-mail: there is no current password to ask for
+      newpw: async f => {
+        const password = f.password.value;
+        if (password.length < PW_MIN) return setMsg("no", "errPwShort");
+        if (f.password2.value !== password) return setMsg("no", "errPwMismatch");
+        const { error } = await sb.auth.updateUser({ password });
+        if (error) return setMsg("no", errorKey(error));
+        f.reset(); show("account", { kind: "ok", key: "msgPwChanged" });
+      },
+      // from "my account": the current password is checked by logging in with it again
+      changepw: async f => {
+        const current = f.current.value, password = f.password.value;
+        if (!current) return setMsg("no", "errCurrentPw");
+        if (password.length < PW_MIN) return setMsg("no", "errPwShort");
+        if (f.password2.value !== password) return setMsg("no", "errPwMismatch");
+        const check = await sb.auth.signInWithPassword({ email: user.email, password: current });
+        if (check.error) return setMsg("no", check.error.code === "invalid_credentials" ? "errCurrentPw" : errorKey(check.error));
+        const { error } = await sb.auth.updateUser({ password });
+        if (error) return setMsg("no", errorKey(error));
+        f.reset(); show("account", { kind: "ok", key: "msgPwChanged" });
+      },
+    };
+    document.querySelectorAll("#authDlg form[data-view]").forEach(f => {
+      f.addEventListener("submit", e => { e.preventDefault(); busy(f, () => forms[f.dataset.view](f)); });
+    });
+
+    $("logoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
+    $("deleteAcctBtn").onclick = async () => {
+      if (!confirm(ctx.t("deleteConfirm"))) return;
+      const { data, error } = await sb.rpc("request_account_deletion");
+      if (error) return setMsg("no", errorKey(error));
+      profile = null;   // so the close/sign-out below is not taken for a declined restore
+      await sb.auth.signOut();
+      show("login", { kind: "ok", key: "msgDeleted", vars: { date: fmtDate(data) } });
+    };
+    $("restoreBtn").onclick = async () => {
+      const { error } = await sb.rpc("restore_account");
+      if (error) return setMsg("no", errorKey(error));
+      profile.deleted_at = null;
+      useProfile();
+      if (!missingFields(profile).length) show("account", { kind: "ok", key: "msgRestored" });
+    };
+    $("restoreLogoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
+  }
+
+  return { init, settingsChanged, langChanged, refresh, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
+})();
+if (typeof module !== "undefined") module.exports = Account;
 
 </script>
 <script>
@@ -988,7 +1732,8 @@ const I18N = {
     if (saved && typeof saved === "object") S = Object.assign(structuredClone(DEFAULTS), saved);
     if (!S.kbdTouched) S.kbd = IS_PC;   // keyboard input is on by default on computers until the user changes it
   } catch (e) {}
-  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
+  const saveLocal = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
+  const save = () => { saveLocal(); Account.settingsChanged(); };
 
   // ---------- build settings UI ----------
   const tg = $("typeGroups");
@@ -1291,6 +2036,7 @@ const I18N = {
   // except in the language dropdown. Keys are matched by e.code so the Korean IME doesn't break them.
   document.addEventListener("keydown", e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if ($("authDlg").open) return;   // typing in the log-in dialog must not play the piano
     const el = e.target, tag = (el.tagName || "").toLowerCase();
     if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
     const onPianoKey = el.classList && el.classList.contains("key");
@@ -1323,6 +2069,7 @@ const I18N = {
     document.querySelectorAll("[data-i18n-title]").forEach(el => el.setAttribute("title", t(el.dataset.i18nTitle)));
     $("langSel").value = LANG;
     syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys();
+    Account.refresh();
   }
   // copy works only inside a click; if the clipboard is refused, select the address instead
   $("copyMail").onclick = () => {
@@ -1332,16 +2079,28 @@ const I18N = {
     try { navigator.clipboard.writeText(text).then(done, fallback); } catch (err) { fallback(); }
   };
 
-  $("langSel").onchange = e => {
-    LANG = e.target.value;
+  function setLang(l) {
+    if (!I18N.LANGS.includes(l)) return;
+    LANG = l;
     try { localStorage.setItem(LANG_KEY, LANG); } catch (err) {}
     applyLang();
-  };
+  }
+  $("langSel").onchange = e => { setLang(e.target.value); Account.langChanged(LANG); };
 
   syncSettingsUI();
   renderStats();
   newQuestion();
   applyLang();
+  // accounts: settings follow the account; computer-keyboard input stays per device
+  Account.init({
+    t, setLang,
+    lang: () => LANG,
+    getSettings: () => S,
+    applySettings: remote => {
+      S = Object.assign(structuredClone(DEFAULTS), remote, { kbd: S.kbd, kbdTouched: S.kbdTouched });
+      saveLocal(); syncSettingsUI(); newQuestion();
+    },
+  });
 })();
 </script>
 

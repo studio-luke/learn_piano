@@ -190,6 +190,40 @@ button { cursor: pointer; }
 .warnbox { font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; margin: 0; }
 .warnbox:empty { display: none; }
 
+/* account: header button + log-in dialog */
+.account-btn { font-size: 12px; font-weight: 600; color: var(--accent-ink); background: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 4px 12px; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-btn:hover { filter: brightness(1.06); }
+.account-btn.signed-in { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.account-btn.signed-in:hover { background: var(--sunken); filter: none; }
+dialog.auth { width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 22px 20px 20px; box-shadow: 0 24px 60px -24px rgba(40,20,10,.5); }
+dialog.auth::backdrop { background: rgba(40,25,15,.45); }
+.auth h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0 36px 14px 0; line-height: 1.2; }
+.auth-close { position: absolute; top: 12px; right: 12px; margin: 0; }
+.icon-btn { border: none; background: none; color: var(--muted); font-size: 15px; width: 32px; height: 32px; border-radius: 8px; }
+.icon-btn:hover { background: var(--sunken); color: var(--ink); }
+.auth-form { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.auth-note { font-size: 12px; color: var(--muted); margin: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
+.field small { color: var(--muted); font-weight: 400; font-size: 12px; }
+/* 16px stops iOS from zooming into the field */
+.field input, .field select { font-size: 16px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+/* password field with a show-password eye inside it */
+.pw-wrap { position: relative; display: flex; }
+.pw-wrap input { width: 100%; padding-right: 46px; }
+.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 38px; height: 36px; border: none; background: none; border-radius: 8px; color: var(--muted); display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pw-eye:hover, .pw-eye.on { color: var(--accent); }
+.auth .check { font-size: 13px; }
+.auth .check a { color: var(--accent); }
+.auth-links { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.auth-msg { font-size: 13px; border-radius: 8px; padding: 8px 10px; margin: 0 0 12px; }
+.auth-msg:empty { display: none; }
+.auth-msg.ok { background: var(--ok-soft); color: var(--ok); }
+.auth-msg.no { background: var(--warn-soft); color: var(--warn); }
+.acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
+.acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
+.linkbtn.danger { color: var(--warn); align-self: flex-start; }
+
 /* contact footer */
 .contact { border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 28px; font-size: 13px; color: var(--muted); }
 .contact h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
@@ -201,6 +235,10 @@ button { cursor: pointer; }
 a.contact-val { text-decoration: none; border-bottom: 1px solid var(--line); user-select: auto; -webkit-user-select: auto; }
 a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); }
 .contact .mini-btn { padding: 2px 8px; font-size: 11px; }
+.legal-links { display: flex; gap: 16px; margin-left: auto; }
+.legal-links[hidden] { display: none; }
+.legal-links a { color: var(--muted); }
+.legal-links a:hover { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 .hint-narrow { display: none; }
@@ -216,6 +254,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   .top { flex-wrap: wrap; row-gap: 6px; }
   .top-right { display: contents; }
   .lang { order: 2; margin-left: auto; }
+  .account-btn { order: 2; }
   .stats { order: 3; width: 100%; }
   .brand h1 { font-size: 22px; }
   .brand span { display: none; }
@@ -290,6 +329,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
           <option value="zh">简体中文</option>
         </select>
       </label>
+      <button class="account-btn" id="accountBtn" type="button" hidden><span id="accountLogin" data-i18n="login">로그인</span><span id="accountName" hidden></span></button>
     </div>
   </header>
 
@@ -378,14 +418,96 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
         <dd><a class="contact-val" href="https://www.instagram.com/thrill_kim/" target="_blank" rel="noopener">@thrill_kim</a></dd>
       </div>
     </dl>
+    <nav class="legal-links" hidden><a href="terms.html" data-i18n="termsLink">이용약관</a><a href="privacy.html" data-i18n="privacyLink">개인정보처리방침</a></nav>
   </footer>
 </div>
+
+<dialog class="auth" id="authDlg" aria-labelledby="authTitle">
+  <form method="dialog" class="auth-close"><button class="icon-btn" aria-label="닫기" data-i18n-aria="close">✕</button></form>
+  <h2 id="authTitle"></h2>
+  <p class="auth-msg" id="authMsg" role="status"></p>
+
+  <form class="auth-form" data-view="login" novalidate>
+    <p class="auth-note" data-i18n="loginNote">로그인하지 않아도 연습할 수 있어요. 로그인하면 출제 설정이 계정에 저장돼요.</p>
+    <label class="field"><span data-i18n="email">이메일</span><input type="email" name="email" autocomplete="email" required></label>
+    <label class="field"><span data-i18n="password">비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <button class="btn primary" type="submit" data-i18n="login">로그인</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="signup" data-i18n="goSignup">계정이 없나요? 회원가입</button><button type="button" class="linkbtn" data-go="reset" data-i18n="goReset">비밀번호를 잊으셨나요?</button></div>
+  </form>
+
+  <form class="auth-form" data-view="signup" novalidate hidden>
+    <label class="field"><span data-i18n="fullName">성명</span><input type="text" name="fullName" autocomplete="name" maxlength="50" required><small data-i18n="fullNameHint">본인과 선생님만 볼 수 있어요.</small></label>
+    <label class="field"><span data-i18n="nickname">닉네임</span><input type="text" name="nickname" autocomplete="nickname" maxlength="20" required><small data-i18n="nicknameHint">화면에 표시되는 이름이에요. 최대 20자</small></label>
+    <label class="field"><span data-i18n="email">이메일</span><input type="email" name="email" autocomplete="email" required></label>
+    <label class="field"><span data-i18n="password">비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span><small data-i18n="pwHint">8자 이상</small></label>
+    <label class="field"><span data-i18n="passwordConfirm">비밀번호 확인</span><span class="pw-wrap"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <label class="field"><span data-i18n="prefLang">사용 언어</span>
+      <select name="lang" id="signupLang">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">简体中文</option>
+      </select><small data-i18n="prefLangHint">로그인하면 이 언어로 화면이 표시돼요.</small></label>
+    <label class="check"><input type="checkbox" name="age14" required><span data-i18n="agreeAge">만 14세 이상입니다 (필수)</span></label>
+    <label class="check"><input type="checkbox" name="terms" required><span data-i18n="agreeTermsHTML"></span></label>
+    <label class="check"><input type="checkbox" name="privacy" required><span data-i18n="agreePrivacyHTML"></span></label>
+    <button class="btn primary" type="submit" data-i18n="doSignup">가입하기</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="goLogin">이미 계정이 있어요</button></div>
+  </form>
+
+  <form class="auth-form" data-view="reset" novalidate hidden>
+    <label class="field"><span data-i18n="email">이메일</span><input type="email" name="email" autocomplete="email" required></label>
+    <button class="btn primary" type="submit" data-i18n="doReset">재설정 메일 보내기</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="backLogin">← 로그인으로</button></div>
+  </form>
+
+  <form class="auth-form" data-view="newpw" novalidate hidden>
+    <label class="field"><span data-i18n="newPassword">새 비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span><small data-i18n="pwHint">8자 이상</small></label>
+    <label class="field"><span data-i18n="newPasswordConfirm">새 비밀번호 확인</span><span class="pw-wrap"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <button class="btn primary" type="submit" data-i18n="doNewpw">비밀번호 변경</button>
+  </form>
+
+  <form class="auth-form" data-view="changepw" novalidate hidden>
+    <label class="field"><span data-i18n="currentPassword">현재 비밀번호</span><span class="pw-wrap"><input type="password" name="current" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <label class="field"><span data-i18n="newPassword">새 비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span><small data-i18n="pwHint">8자 이상</small></label>
+    <label class="field"><span data-i18n="newPasswordConfirm">새 비밀번호 확인</span><span class="pw-wrap"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <button class="btn primary" type="submit" data-i18n="doNewpw">비밀번호 변경</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount">← 내 계정으로</button></div>
+  </form>
+
+  <div class="auth-form" data-view="restore" hidden>
+    <p class="auth-note" id="restoreText"></p>
+    <button class="btn primary" type="button" id="restoreBtn" data-i18n="doRestore">계정 복구</button>
+    <button class="btn" type="button" id="restoreLogoutBtn" data-i18n="logout">로그아웃</button>
+  </div>
+
+  <form class="auth-form" data-view="complete" novalidate hidden>
+    <p class="auth-note" data-i18n="completeNote">새로 필요한 정보가 생겼어요. 아래 항목을 입력해 주세요.</p>
+    <label class="field"><span data-i18n="fullName">성명</span><input type="text" name="fullName" id="completeName" autocomplete="name" maxlength="50" required><small data-i18n="fullNameHint">본인과 선생님만 볼 수 있어요.</small></label>
+    <button class="btn primary" type="submit" data-i18n="doSave">저장</button>
+  </form>
+
+  <div class="auth-form" data-view="account" hidden>
+    <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
+    <p class="auth-note" data-i18n="syncNote">로그인하는 동안 출제 설정이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.</p>
+    <button class="btn" type="button" id="logoutBtn" data-i18n="logout">로그아웃</button>
+    <button class="linkbtn" type="button" data-go="changepw" data-i18n="changePw">비밀번호 변경</button>
+    <hr class="divider">
+    <button class="linkbtn danger" type="button" id="deleteAcctBtn" data-i18n="deleteAcct">회원 탈퇴</button>
+  </div>
+</dialog>
 
 <script>
 /*ENGINE*/
 </script>
 <script>
 /*I18N*/
+</script>
+<script>
+/*CONFIG*/
+</script>
+<script>
+/*ACCOUNT*/
 </script>
 <script>
 (() => {
@@ -443,7 +565,8 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     if (saved && typeof saved === "object") S = Object.assign(structuredClone(DEFAULTS), saved);
     if (!S.kbdTouched) S.kbd = IS_PC;   // keyboard input is on by default on computers until the user changes it
   } catch (e) {}
-  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
+  const saveLocal = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
+  const save = () => { saveLocal(); Account.settingsChanged(); };
 
   // ---------- build settings UI ----------
   const tg = $("typeGroups");
@@ -746,6 +869,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   // except in the language dropdown. Keys are matched by e.code so the Korean IME doesn't break them.
   document.addEventListener("keydown", e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if ($("authDlg").open) return;   // typing in the log-in dialog must not play the piano
     const el = e.target, tag = (el.tagName || "").toLowerCase();
     if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
     const onPianoKey = el.classList && el.classList.contains("key");
@@ -778,6 +902,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     document.querySelectorAll("[data-i18n-title]").forEach(el => el.setAttribute("title", t(el.dataset.i18nTitle)));
     $("langSel").value = LANG;
     syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys();
+    Account.refresh();
   }
   // copy works only inside a click; if the clipboard is refused, select the address instead
   $("copyMail").onclick = () => {
@@ -787,15 +912,27 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     try { navigator.clipboard.writeText(text).then(done, fallback); } catch (err) { fallback(); }
   };
 
-  $("langSel").onchange = e => {
-    LANG = e.target.value;
+  function setLang(l) {
+    if (!I18N.LANGS.includes(l)) return;
+    LANG = l;
     try { localStorage.setItem(LANG_KEY, LANG); } catch (err) {}
     applyLang();
-  };
+  }
+  $("langSel").onchange = e => { setLang(e.target.value); Account.langChanged(LANG); };
 
   syncSettingsUI();
   renderStats();
   newQuestion();
   applyLang();
+  // accounts: settings follow the account; computer-keyboard input stays per device
+  Account.init({
+    t, setLang,
+    lang: () => LANG,
+    getSettings: () => S,
+    applySettings: remote => {
+      S = Object.assign(structuredClone(DEFAULTS), remote, { kbd: S.kbd, kbdTouched: S.kbdTouched });
+      saveLocal(); syncSettingsUI(); newQuestion();
+    },
+  });
 })();
 </script>
