@@ -17,6 +17,7 @@
 | `tests/engine.test.js` | 엔진 규칙·번역 키 자동 검사 (`npm test`) |
 | `tests/layout-audit.js` | 16개 폰 화면 크기에서 버튼·건반 잘림 검사 (`npm run audit`) |
 | `package.json` | `npm run build` / `npm test` / `npm run audit` 명령 정의 |
+| `wrangler.jsonc`, `.assetsignore` | Cloudflare 배포 설정. 저장소 루트를 사이트로 올리되 `node_modules` 등은 제외 |
 
 수정할 때는 `src/` 파일을 고친 뒤 `npm run build`(= `node build.js`)와 `npm test`를 실행하면 됩니다. `index.html`을 직접 고쳐도 동작은 하지만, 다음 빌드 때 덮어써집니다.
 

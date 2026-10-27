@@ -38,7 +38,8 @@ tests/          engine.test.js (node:test), layout-audit.js (Playwright)
 - **Cloudflare는 빌드를 하지 않는다.** 저장소에 커밋된 `index.html`을 그대로 서비스한다. 그러므로 `src/`를 고쳤으면 반드시 `npm run build`로 만든 `index.html`까지 같은 커밋에 포함할 것. (src만 커밋하면 사이트가 안 바뀜)
 - 저장소 루트 전체가 공개 사이트에 올라간다 (README.md, CLAUDE.md, src/, tests/도 주소로 열람 가능). 비밀 정보(API 키, 비밀번호, 학생 개인정보)는 절대 커밋하지 말 것.
 - push 순서: 수정 → `npm run build` → `npm test` → 사용자에게 바뀐 점 요약 → 사용자 확인 후 commit & push. 큰 변경은 별도 브랜치로 push하면 Cloudflare 미리보기 주소에서 먼저 확인 가능.
-- 다음 배포가 비정상적으로 느리거나 실패하면 Cloudflare 배포 로그를 확인 (`package.json`의 devDependency 설치 때문일 수 있음 → 필요하면 Cloudflare 환경변수 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`).
+- Cloudflare는 `package.json`이 있으면 의존성을 설치한 뒤 `npx wrangler deploy`를 실행하고, 루트(`.`) 전체를 사이트 파일로 올린다. `wrangler.jsonc`가 그 설정이고, `.assetsignore`로 `node_modules` 등을 제외한다 — 빠지면 `node_modules`의 137MB 파일 때문에 "Asset too large"(25MiB 제한)로 배포 실패. 새 대용량·비공개 폴더가 생기면 `.assetsignore`에 추가할 것.
+- 배포가 비정상적으로 느리거나 실패하면 Cloudflare 배포 로그를 확인 (devDependency 설치 때문이면 Cloudflare 환경변수 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`).
 
 ## 꼭 알아야 할 설계 결정
 
