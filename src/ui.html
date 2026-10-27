@@ -1,51 +1,62 @@
 <title>코드 트레이너</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#F5ECDD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1E1612" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Music&display=swap">
 <style>
-/* Layout: practice desk on the left (chord card + keyboard), lesson settings as a side sheet on the right; stacks on phones. Accent = piano key-felt red. */
+/* Layout: practice desk on the left (chord card + keyboard), lesson settings as a side sheet on the right; stacks on phones.
+   Theme "Cream & Cocoa" (ChordOven): cream paper-grain background, cocoa ink, terracotta accent. */
 :root {
-  --bg: #F2F3F6;
-  --surface: #FFFFFF;
-  --sunken: #E8EAEF;
-  --ink: #191C27;
-  --muted: #5B6174;
-  --line: #D9DCE4;
-  --accent: #A8233A;
-  --accent-ink: #FFFFFF;
-  --accent-deep: #741528;
-  --accent-soft: #F7E4E8;
-  --ok: #17845A;
-  --ok-soft: #DDF3E9;
-  --ok-deep: #0E5C3E;
-  --warn: #A35A00;
-  --warn-soft: #FCEBD3;
-  --key-white: #FFFFFF;
-  --key-white-edge: #C9CCD6;
-  --key-black: #1B1D24;
+  --bg: #F5ECDD;
+  --surface: #FFFAF2;
+  --sunken: #EFE3D0;
+  --ink: #3A271C;
+  --muted: #806A59;
+  --line: #E5D5BE;
+  --accent: #B8502F;
+  --accent-ink: #FFF8EE;
+  --accent-deep: #8A3519;
+  --accent-soft: #F7E0D4;
+  --ok: #4E7A3A;
+  --ok-soft: #E4EEDB;
+  --ok-deep: #365A27;
+  --warn: #9A5A12;
+  --warn-soft: #FBE8D0;
+  --key-white: #FFFDF8;
+  --key-white-edge: #D8C7AE;
+  --key-black: #3A271C;
+  --key-lbl: #806A59;
+  --key-black-lbl: #FFFDF8;
+  --card-shadow: 0 1px 0 rgba(90,55,30,.06), 0 6px 18px -10px rgba(90,55,30,.25);
   --font-display: "DM Serif Display", "Noto Music", "Noto Serif KR", Georgia, serif;
   --font-body: "IBM Plex Sans KR", "Noto Music", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --radius: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #101219; --surface: #191C26; --sunken: #232735; --ink: #E8EAF1; --muted: #9AA0B4; --line: #2C3142;
-    --accent: #E25670; --accent-ink: #1A0B10; --accent-deep: #A83650; --accent-soft: #3A1C24;
-    --ok: #42C48E; --ok-soft: #14302A; --ok-deep: #24865D; --warn: #F2A64C; --warn-soft: #33260F;
-    --key-white: #E9EAEE; --key-white-edge: #9EA2B0; --key-black: #0A0B0F;
+    --bg: #1E1612; --surface: #2A1F19; --sunken: #352821; --ink: #F3E6D6; --muted: #B9A38F; --line: #43332A;
+    --accent: #E07A52; --accent-ink: #2A1209; --accent-deep: #A9512F; --accent-soft: #46271B;
+    --ok: #8DBE72; --ok-soft: #253222; --ok-deep: #5E8F48; --warn: #E8A65A; --warn-soft: #3A2A17;
+    --key-white: #EFE4D4; --key-white-edge: #A48F78; --key-black: #120C09; --key-lbl: #806A59; --key-black-lbl: #EFE4D4;
+    --card-shadow: none;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #101219; --surface: #191C26; --sunken: #232735; --ink: #E8EAF1; --muted: #9AA0B4; --line: #2C3142;
-  --accent: #E25670; --accent-ink: #1A0B10; --accent-deep: #A83650; --accent-soft: #3A1C24;
-  --ok: #42C48E; --ok-soft: #14302A; --ok-deep: #24865D; --warn: #F2A64C; --warn-soft: #33260F;
-  --key-white: #E9EAEE; --key-white-edge: #9EA2B0; --key-black: #0A0B0F;
+  --bg: #1E1612; --surface: #2A1F19; --sunken: #352821; --ink: #F3E6D6; --muted: #B9A38F; --line: #43332A;
+  --accent: #E07A52; --accent-ink: #2A1209; --accent-deep: #A9512F; --accent-soft: #46271B;
+  --ok: #8DBE72; --ok-soft: #253222; --ok-deep: #5E8F48; --warn: #E8A65A; --warn-soft: #3A2A17;
+  --key-white: #EFE4D4; --key-white-edge: #A48F78; --key-black: #120C09; --key-lbl: #806A59; --key-black-lbl: #EFE4D4;
+  --card-shadow: none;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+body { background-color: var(--bg); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .22 0 0 0 0 .12 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
 .app { max-width: 1180px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -55,6 +66,7 @@ button { cursor: pointer; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
 .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .brand h1 { font-family: var(--font-display); font-weight: 400; font-size: 28px; margin: 0; letter-spacing: 0.01em; }
+.brand h1 em { font-style: normal; color: var(--accent); }
 .brand span { color: var(--muted); font-size: 13px; }
 .stats { display: flex; gap: 8px; flex-wrap: wrap; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -70,7 +82,7 @@ button { cursor: pointer; }
 @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* practice desk */
-.desk { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.desk { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 24px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .prompt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-block: 6px 2px; }
 .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
 .symbol { font-family: var(--font-display); font-size: clamp(52px, 11vw, 92px); line-height: 1.05; letter-spacing: 0.01em; min-height: 1.1em; word-break: break-word; }
@@ -93,22 +105,22 @@ button { cursor: pointer; }
 .kb-wrap { width: 100%; }
 .keyboard { position: relative; width: 100%; height: clamp(130px, 22vw, 200px); display: flex; user-select: none; -webkit-user-select: none; touch-action: manipulation; border-top: 6px solid var(--accent); border-radius: 4px 4px 0 0; }
 .key { position: relative; border: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; transition: background-color 60ms; }
-.key.white { flex: 1 1 0; background: var(--key-white); border: 1px solid var(--key-white-edge); border-top: none; margin-left: -1px; border-radius: 0 0 6px 6px; color: #5B6174; padding-bottom: 8px; }
+.key.white { flex: 1 1 0; background: var(--key-white); border: 1px solid var(--key-white-edge); border-top: none; margin-left: -1px; border-radius: 0 0 6px 6px; color: var(--key-lbl); padding-bottom: 8px; }
 .key.white:first-child { margin-left: 0; }
-.key.black { position: absolute; top: 0; height: 62%; width: calc(100% / 15 * 0.66); background: var(--key-black); border-radius: 0 0 4px 4px; z-index: 2; color: #C9CCD6; padding-bottom: 6px; font-size: 9px; box-shadow: inset 0 -3px 0 rgba(255,255,255,0.08); }
-.key.sel.white { background: var(--accent); color: #fff; border-color: var(--accent); }
+.key.black { position: absolute; top: 0; height: 62%; width: calc(100% / 15 * 0.66); background: var(--key-black); border-radius: 0 0 4px 4px; z-index: 2; color: var(--key-black-lbl); padding-bottom: 6px; font-size: 9px; box-shadow: inset 0 -3px 0 rgba(255,255,255,0.08); }
+.key.sel.white { background: var(--accent); color: #fff; border-color: color-mix(in srgb, var(--accent) 55%, var(--accent-deep)); }
 .key.sel.black { background: var(--accent-deep); color: #fff; }
-.key.ans::after { content: ""; position: absolute; left: 50%; bottom: 26px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(23,132,90,0.25); }
+.key.ans::after { content: ""; position: absolute; left: 50%; bottom: 26px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 30%, transparent); }
 .key.black.ans::after { bottom: 18px; width: 9px; height: 9px; margin-left: -4.5px; }
 .key.sel.ans::after { box-shadow: 0 0 0 2px #FFFFFF; }
 /* correct answer: the student's own keys turn green */
-.key.sel.good.white { background: var(--ok); border-color: var(--ok); }
+.key.sel.good.white { background: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, var(--ok-deep)); }
 .key.sel.good.black { background: var(--ok-deep); }
 .key { flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px; }
 .key .lbl, .key .kbd-lbl { pointer-events: none; line-height: 1.1; }
 .key .lbl { font-weight: 700; }
 .key .kbd-lbl { font-weight: 400; font-size: 10px; opacity: 0.85; }
-.key.black .kbd-lbl { font-size: 9px; }
+.key.black .kbd-lbl { font-size: 9px; opacity: 1; }
 .keyboard.nolabels .lbl { display: none; }
 .keyboard:not(.kbd-on) .kbd-lbl { display: none; }
 @media (max-width: 520px) { .key .lbl { font-size: 8px; } .key.black .lbl { display: none; } }
@@ -134,7 +146,7 @@ button { cursor: pointer; }
 .actions .next { grid-column: 1 / -1; }
 .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 500; font-size: 14px; }
 .btn:hover { background: var(--sunken); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; box-shadow: inset 0 -2px 0 rgba(0,0,0,.15); }
 .btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
 .btn:disabled, .btn:disabled:hover { opacity: 0.4; cursor: not-allowed; filter: none; }
 .btn:not(.primary):disabled:hover { background: var(--surface); }
@@ -145,7 +157,7 @@ button { cursor: pointer; }
 .small-toggles { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
 
 /* settings sheet */
-.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .sheet h2 { margin: 0; font-size: 16px; font-weight: 700; }
 .sheet h3 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .group { display: flex; flex-direction: column; gap: 8px; }
@@ -259,7 +271,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 <div class="app">
   <header class="top">
     <div class="brand">
-      <h1>Chord Lab</h1>
+      <h1>Chord<em>Oven</em></h1>
       <span data-i18n="tagline">코드 학습 웹어플리케이션</span>
     </div>
     <div class="top-right">
@@ -376,9 +388,16 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+  // storage keys were renamed chordlab.* → chordoven.* with the ChordOven rebrand; copy old values over once
+  for (const k of ["lang", "settings.v2", "rotateTip"]) {
+    try {
+      const old = localStorage.getItem("chordlab." + k);
+      if (old !== null) { if (localStorage.getItem("chordoven." + k) === null) localStorage.setItem("chordoven." + k, old); localStorage.removeItem("chordlab." + k); }
+    } catch (e) {}
+  }
   // ---------- language ----------
   // saved choice > browser languages > English
-  const LANG_KEY = "chordlab.lang";
+  const LANG_KEY = "chordoven.lang";
   function detectLang() {
     try { const saved = localStorage.getItem(LANG_KEY); if (I18N.LANGS.includes(saved)) return saved; } catch (e) {}
     const prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ""];
@@ -416,7 +435,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     labels: false, sound: true, adv: false, kbd: IS_PC, kbdTouched: false,
   };
   let S = structuredClone(DEFAULTS);
-  const STORE_KEY = "chordlab.settings.v2";
+  const STORE_KEY = "chordoven.settings.v2";
   try {
     const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
     if (saved && typeof saved === "object") S = Object.assign(structuredClone(DEFAULTS), saved);
@@ -746,12 +765,12 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   }, true);
 
   // one-time tip for portrait phones (CSS decides where it shows)
-  try { $("rotateTip").hidden = localStorage.getItem("chordlab.rotateTip") === "closed"; } catch (e) { $("rotateTip").hidden = false; }
-  $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; try { localStorage.setItem("chordlab.rotateTip", "closed"); } catch (e) {} };
+  try { $("rotateTip").hidden = localStorage.getItem("chordoven.rotateTip") === "closed"; } catch (e) { $("rotateTip").hidden = false; }
+  $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; try { localStorage.setItem("chordoven.rotateTip", "closed"); } catch (e) {} };
 
   function applyLang() {
     document.documentElement.lang = LANG === "zh" ? "zh-Hans" : LANG;
-    document.title = t("docTitle") + " · Chord Lab";
+    document.title = t("docTitle") + " · ChordOven";
     document.querySelectorAll("[data-i18n]").forEach(el => { el.innerHTML = t(el.dataset.i18n); });
     document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
     document.querySelectorAll("[data-i18n-title]").forEach(el => el.setAttribute("title", t(el.dataset.i18nTitle)));
