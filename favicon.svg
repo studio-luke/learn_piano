@@ -6,6 +6,6 @@
   <rect x="12" y="25" width="40" height="27" rx="6" fill="#F4B860"/>
   <rect x="12" y="25" width="40" height="27" rx="6" fill="none" stroke="#3E2416" stroke-width="2.5"/>
   <ellipse cx="28" cy="44.5" rx="6" ry="4.4" transform="rotate(-20 28 44.5)" fill="#3E2416"/>
-  <rect x="32.2" y="28.5" width="3.2" height="16" rx="1" fill="#3E2416"/>
-  <path d="M35.4 28.5c0 5 7.5 6.2 7 13.5c-1.2-4.4-4-6.2-7-6.8z" fill="#3E2416"/>
+  <rect x="30.5" y="28.5" width="3" height="15.5" fill="#3E2416"/>
+  <path d="M33.5 28.5c0 5 7.5 6.2 7 13.5c-1.2-4.4-4-6.2-7-6.8z" fill="#3E2416"/>
 </svg>

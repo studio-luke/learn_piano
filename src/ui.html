@@ -67,6 +67,8 @@ button { cursor: pointer; }
 .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .brand h1 { font-family: var(--font-display); font-weight: 400; font-size: 28px; margin: 0; letter-spacing: 0.01em; }
 .brand h1 em { font-style: normal; color: var(--accent); }
+/* logo = the favicon, sized with the title so the phone layouts scale it too */
+.brand h1 .logo { width: 1.15em; height: 1.15em; vertical-align: -0.22em; margin-right: 0.28em; }
 .brand span { color: var(--muted); font-size: 13px; }
 .stats { display: flex; gap: 8px; flex-wrap: wrap; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -271,7 +273,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 <div class="app">
   <header class="top">
     <div class="brand">
-      <h1>Chord<em>Oven</em></h1>
+      <h1><img class="logo" src="favicon.svg" alt="">Chord<em>Oven</em></h1>
       <span data-i18n="tagline">코드 학습 웹어플리케이션</span>
     </div>
     <div class="top-right">
