@@ -1,3 +1,9 @@
 node_modules/
 .wrangler/
 tests/audit-output/
+
+# private notes: kept on this computer only, not published (repo and site are public)
+CLAUDE.md
+chordoven-spec.md
+docs/
+.DS_Store

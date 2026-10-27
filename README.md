@@ -3,7 +3,7 @@
 도메인: chordoven.com (구매 완료, 아직 연결 안 함 — 플랫폼이 어느 정도 갖춰지면 연결 후 홍보 예정)
 
 레슨생이 수업에서 배운 코드를 2옥타브 피아노 건반(C3–C5)으로 복습하는 웹앱입니다.
-서버, 빌드 도구, 외부 라이브러리 없이 HTML 파일 하나로 동작합니다.
+서버, 빌드 도구 없이 HTML 파일 하나로 동작합니다. 회원 기능(선택)은 Supabase를 쓰고, `src/config.js`에 키를 넣었을 때만 켜집니다.
 
 ## 파일 구성
 
@@ -11,16 +11,21 @@
 |---|---|
 | `index.html` | 바로 배포할 수 있는 완성본. 이 파일 하나만 올리면 동작함 |
 | `src/engine.js` | 코드 엔진. 코드 정의, 출제 가중치, 텐션 규칙, 음 철자, 채점, 정답 보이싱. DOM 없이 순수 함수라 Node에서도 테스트 가능 (`require("./src/engine.js")`) |
-| `src/ui.html` | 화면(HTML·CSS·UI 스크립트). `/*ENGINE*/`, `/*I18N*/` 자리에 engine.js, i18n.js가 들어감 |
+| `src/ui.html` | 화면(HTML·CSS·UI 스크립트). `/*ENGINE*/`, `/*I18N*/`, `/*CONFIG*/`, `/*ACCOUNT*/` 자리에 아래 파일들이 들어감 |
+| `src/config.js` | Supabase 주소와 공개 키. 비어 있으면 회원 기능 꺼짐 |
+| `src/account.js` | 회원가입·로그인·비밀번호 재설정·탈퇴, 출제 설정을 계정에 저장 |
+| `supabase/schema.sql` | DB 테이블·권한(RLS)·가입 처리·탈퇴 함수. Supabase SQL Editor에서 실행 |
+| `terms.html`, `privacy.html`, `legal.css` | 이용약관·개인정보처리방침 (초안, 한국어만) |
 | `src/i18n.js` | 화면 문구 번역(한국어·영어·일본어·중국어 간체). 문구를 바꾸거나 언어를 추가할 때 이 파일만 고치면 됨 |
-| `build.js` | `node build.js` 로 src 세 파일을 합쳐 `index.html`을 다시 만듦 |
-| `chordoven-spec.md` | 지금까지 정한 출제·채점·표기·UI 규칙 전체 |
-| `CLAUDE.md` | Claude Code용 안내서: 작업 규칙, 명령어, 코드만 봐서는 안 보이는 설계 결정 |
+| `build.js` | `node build.js` 로 src 파일들을 합쳐 `index.html`을 다시 만듦 |
 | `tests/engine.test.js` | 엔진 규칙·번역 키 자동 검사 (`npm test`) |
+| `tests/account.test.js` | 회원 기능 검사: 오류 문구 매핑, 기기별 설정 제외, **config.js에 비밀 키가 들어가면 실패** (`npm test`) |
 | `tests/layout-audit.js` | 16개 폰 화면 크기에서 버튼·건반 잘림 검사 (`npm run audit`) |
 | `package.json` | `npm run build` / `npm test` / `npm run audit` 명령 정의 |
 | `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png` | 파비콘(오븐 창 속 8분음표). svg가 원본, png는 svg를 바탕으로 만든 것 |
 | `wrangler.jsonc`, `.assetsignore` | Cloudflare 배포 설정. 저장소 루트를 사이트로 올리되 `node_modules` 등은 제외 |
+
+운영자 개인 문서(작업 안내서, 사양 메모, 설정 가이드)는 저장소에 올리지 않습니다(`.gitignore`).
 
 수정할 때는 `src/` 파일을 고친 뒤 `npm run build`(= `node build.js`)와 `npm test`를 실행하면 됩니다. `index.html`을 직접 고쳐도 동작은 하지만, 다음 빌드 때 덮어써집니다.
 
@@ -28,7 +33,7 @@
 
 - 소리: Web Audio API로 직접 합성(샘플 파일 없음). 브라우저 정책상 첫 터치 뒤부터 소리가 남
 - 폰트: Google Fonts(DM Serif Display, IBM Plex Sans KR, Noto Music). 불러오지 못하면 시스템 폰트로 대체
-- 저장: 설정은 브라우저 localStorage에만 저장 (`chordoven.settings.v2`, `chordoven.rotateTip`, `chordoven.lang`. 예전 `chordlab.*` 값은 처음 열 때 자동으로 옮겨짐). 서버나 계정 없음, 기기마다 따로 저장됨
+- 저장: 설정은 브라우저 localStorage에만 저장 (`chordoven.settings.v2`, `chordoven.rotateTip`, `chordoven.lang`. 예전 `chordlab.*` 값은 처음 열 때 자동으로 옮겨짐) 기기마다 따로 저장됨. 로그인하면 출제 설정이 계정(Supabase `profiles.settings`)에도 저장돼 다른 기기에서 이어짐 — 단 "키보드로 건반 입력"은 기기별로 유지
 - 학습 기록(정답/시도 = 첫 채점에 맞힌 수 / 푼 문제 수, 연속)은 페이지를 새로 열면 초기화됨
 - 언어: 저장된 선택 → 브라우저 언어(navigator.languages) → 영어 순으로 결정. 오른쪽 위 드롭다운으로 바꾸면 `chordoven.lang`에 저장. 음이름(C D E…)과 코드 기호는 모든 언어에서 동일
 - 번역: ko 원문, en/ja/zh는 AI 번역 — 현지 음악인 검수 권장
@@ -41,14 +46,18 @@
 
 - 언어 전환이 한 주소 안에서 화면만 바뀌는 방식이라, 검색엔진에는 한국어 페이지만 노출됨. 언어별 검색 노출이 필요하면 언어별 주소(/en/, /ja/ 등)와 hreflang 설정이 필요
 - 검색엔진용 메타 정보는 `description` 한 줄만 있음 (Open Graph 이미지, canonical URL, sitemap 없음)
-- 로그인, 구독, 서버 측 학습 기록 없음
+- 구독, 서버 측 학습 기록 없음 (로그인은 출제 설정 저장까지만)
+- 구글·카카오 로그인 없음 (도메인 연결 때 추가 예정)
+- 이용약관·개인정보처리방침 영어 등 번역본 없음
 - 오프라인 동작(PWA) 없음
 
 ## 앞으로 구현할 기능
 
 - [ ] 시간 측정 기능 ('TEST' 기능)
 - [ ] 미디 입력 인식 구현
-- [ ] 로그인 기능 (학생/선생님)
+- [x] 회원가입·로그인 (이메일, 모두 학생으로 가입, 관리자는 운영자 1명) — Supabase 연결됨
+- [ ] 구글·카카오 로그인 (도메인 연결 때)
+- [ ] 선생님으로 가입 (필요해지면)
 - [ ] 개인 학습 통계 기능
 - [ ] 선생님이 학생의 학습 상태를 조회할 수 있는 페이지
 - [ ] '내 음악 실력 테스트' 페이지
