@@ -1,0 +1,14 @@
+{
+  "name": "chord-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "코드 학습 웹어플리케이션 — chord trainer with a 2-octave keyboard",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node --test tests/engine.test.js",
+    "audit": "node build.js && node tests/layout-audit.js"
+  },
+  "devDependencies": {
+    "playwright": "1.47.2"
+  }
+}

@@ -13,8 +13,12 @@
 | `src/i18n.js` | 화면 문구 번역(한국어·영어·일본어·중국어 간체). 문구를 바꾸거나 언어를 추가할 때 이 파일만 고치면 됨 |
 | `build.js` | `node build.js` 로 src 세 파일을 합쳐 `index.html`을 다시 만듦 |
 | `chord-lab-spec.md` | 지금까지 정한 출제·채점·표기·UI 규칙 전체 |
+| `CLAUDE.md` | Claude Code용 안내서: 작업 규칙, 명령어, 코드만 봐서는 안 보이는 설계 결정 |
+| `tests/engine.test.js` | 엔진 규칙·번역 키 자동 검사 (`npm test`) |
+| `tests/layout-audit.js` | 16개 폰 화면 크기에서 버튼·건반 잘림 검사 (`npm run audit`) |
+| `package.json` | `npm run build` / `npm test` / `npm run audit` 명령 정의 |
 
-수정할 때는 `src/` 파일을 고친 뒤 `node build.js`를 실행하면 됩니다. `index.html`을 직접 고쳐도 동작은 하지만, 다음 빌드 때 덮어써집니다.
+수정할 때는 `src/` 파일을 고친 뒤 `npm run build`(= `node build.js`)와 `npm test`를 실행하면 됩니다. `index.html`을 직접 고쳐도 동작은 하지만, 다음 빌드 때 덮어써집니다.
 
 ## 기술 메모
 
