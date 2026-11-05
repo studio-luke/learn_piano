@@ -6,7 +6,7 @@ const path = require("path");
 const E = require("../src/engine.js");
 
 const ALL = Object.fromEntries(E.TYPES.map(t => [t.id, true]));
-const base = { types: ALL, optA: false, optB: false, bases: Array(12).fill(false), optC: true, cMax: 2, optD: true, optE: false };
+const base = { types: ALL, optB: false, bases: Array(12).fill(false), optC: true, cMax: 2, optD: true, optE: false };
 const gen = (over = {}, n = 20000) => Array.from({ length: n }, () => E.generate({ ...base, ...over }));
 
 test("every question is gradable: answer voicing and an inversion are correct", () => {
@@ -75,4 +75,22 @@ test("translations: every language has every key", () => {
     const missing = keys.filter(k => !(k in I18N[l]));
     assert.deepStrictEqual(missing, [], `${l} missing keys`);
   }
+});
+
+test("augM7 is also written M7(♯5)", () => {
+  const labels = new Set(gen({ types: { augM7: true }, optD: false }, 400).map(q => q.label));
+  assert.deepStrictEqual([...labels].sort(), ["M7(♯5)", "augM7"]);
+});
+
+test("rebuild: a saved question comes back the same", () => {
+  for (const optE of [false, true]) for (const q of gen({ optE }, 3000)) {
+    const r = E.rebuild(JSON.parse(JSON.stringify(E.spec(q))), { optE });
+    assert.strictEqual(r.symbol, q.symbol);
+    assert.deepStrictEqual(r.tones.map(t => t.name), q.tones.map(t => t.name), q.symbol);
+    assert.deepStrictEqual([...r.required].sort(), [...q.required].sort(), q.symbol);
+    assert.strictEqual(E.quality(r), q.alt ? "7alt" : q.type);
+  }
+  assert.strictEqual(E.rebuild({ type: "nope", l: 0, a: 0, tens: [], head: "", items: [] }, {}), null);
+  assert.strictEqual(E.rebuild({ type: "dom7", l: 9, a: 0, tens: [], head: "7", items: [] }, {}), null);
+  assert.strictEqual(E.rebuild({ type: "dom7", l: 0, a: 0, tens: ["x"], head: "7", items: [] }, {}), null);
 });

@@ -105,9 +105,8 @@ button { cursor: pointer; }
 .hint:empty { display: none; }
 
 .feedback { border-radius: 10px; padding: 6px 12px; font-size: 13px; line-height: 1.45; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; align-items: baseline; margin-top: 4px; max-width: 100%; }
-/* when feedback is showing it takes the hint's place */
-.prompt:has(.feedback:not(:empty)) .hint,
-.prompt:has(.feedback:not(:empty)) .eyebrow { display: none; }
+/* when feedback is showing it takes the hint's place (the eyebrow stays) */
+.prompt:has(.feedback:not(:empty)) .hint { display: none; }
 .feedback:empty { display: none; }
 .feedback.ok { background: var(--ok-soft); color: var(--ok); }
 .feedback.no { background: var(--warn-soft); color: var(--warn); }
@@ -195,6 +194,9 @@ button { cursor: pointer; }
 .bases { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .bases .chip span { min-width: 0; width: 100%; padding: 5px 2px; font-size: 13px; }
 .radios { display: flex; gap: 6px; }
+/* "흰 건반" toggle, drawn like a white key so it stands apart from the 모두 선택 / 모두 해제 links */
+.white-btn { border: 1px solid var(--key-white-edge); background: var(--key-white); color: var(--ink); border-radius: 0 0 6px 6px; border-top: 3px solid var(--key-black); padding: 2px 10px; font-size: 12px; font-weight: 600; margin-right: 6px; }
+.white-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); border-top-color: var(--key-black); }
 .adv-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 1px dashed var(--line); background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
 .adv-toggle .chev { transition: transform 150ms; }
 .adv-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
@@ -235,6 +237,74 @@ dialog.auth::backdrop { background: rgba(40,25,15,.45); }
 .acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
 .acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
 .linkbtn.danger { color: var(--warn); align-self: flex-start; }
+/* logged in: the same dialog opens as a side panel on the right */
+dialog.auth.side { margin: 0 0 0 auto; width: min(380px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: var(--radius) 0 0 var(--radius); border-right: none; padding-top: max(22px, env(safe-area-inset-top, 0px)); padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+dialog.auth.side[open] { animation: side-in 180ms ease-out; }
+@keyframes side-in { from { transform: translateX(48px); opacity: 0; } }
+@media (max-width: 420px) { dialog.auth.side { border-radius: 0; border-left: none; } }
+.side-menu { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.menu-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; border: none; border-bottom: 1px solid var(--line); background: none; padding: 13px 4px; font-size: 15px; font-weight: 500; }
+.menu-item:hover:not(:disabled) { color: var(--accent); }
+.menu-item:disabled { color: var(--muted); cursor: default; }
+.menu-item .chev { color: var(--muted); }
+.badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-align: center; margin-left: auto; }
+.badge:empty { display: none; }
+
+/* statistics page (마이페이지 / 학생 통계): full-screen dialog */
+dialog.page { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: none; padding: 0; background: var(--bg); color: var(--ink); overflow: auto; }
+.page-inner { max-width: 960px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
+.page-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 3; background: var(--bg); padding-block: 8px; }
+.page-top h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0; }
+.page-top .linkbtn { font-size: 14px; }
+#statsBody { display: flex; flex-direction: column; gap: 16px; }
+.st-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.st-card h3 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.st-card h3.st-sub { margin-top: 8px; }
+.st-head { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.st-who { margin: 0; display: flex; align-items: baseline; gap: 10px; font-size: 18px; }
+.st-who span { color: var(--muted); font-size: 14px; }
+.st-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+.st-stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-stat span { font-size: 12px; color: var(--muted); }
+.st-stat b { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.st-stat small { font-size: 12px; color: var(--muted); }
+.st-tabs { display: flex; gap: 6px; }
+.chip-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 12px; font-size: 13px; }
+.chip-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.st-chart-wrap { position: relative; padding-top: 16px; }
+.st-max { position: absolute; top: 0; left: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st-chart { display: flex; align-items: stretch; gap: 6px; height: 170px; border-bottom: 1px solid var(--line); background: linear-gradient(var(--line) 1px, transparent 1px) top / 100% 50%; }
+.st-chart.r30d { gap: 2px; }
+.st-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.st-bar i { display: block; }
+.st-bar .ok { background: var(--ok); }
+.st-bar .no { background: var(--warn); opacity: 0.75; }
+.st-x { display: flex; gap: 6px; font-size: 11px; color: var(--muted); }
+.st-x.r30d { gap: 2px; }
+.st-x span { flex: 1 1 0; min-width: 0; text-align: center; white-space: nowrap; overflow: visible; display: flex; justify-content: center; }
+.st-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.st-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 6px; border-bottom: 1px solid var(--line); }
+.st-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); }
+.st-table tr:last-child td { border-bottom: none; }
+.st-table .num { text-align: right; white-space: nowrap; }
+.st-type { font-weight: 600; }
+.st-rate { display: inline-block; vertical-align: middle; width: clamp(40px, 12vw, 120px); height: 8px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-right: 6px; }
+.st-rate i { display: block; height: 100%; background: var(--ok); }
+.st-rate-n { font-size: 12px; color: var(--muted); }
+.st-student { border: none; background: none; padding: 0; text-align: left; display: flex; flex-direction: column; color: var(--ink); }
+.st-student b { font-weight: 600; color: var(--accent); }
+.st-student span { font-size: 12px; color: var(--muted); }
+.st-student:hover b { text-decoration: underline; }
+.st-count { display: inline-block; margin-left: 4px; color: var(--ink); }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-chip { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 14px; background: var(--bg); display: inline-flex; gap: 6px; align-items: center; }
+.st-chip i { font-style: normal; font-size: 9px; color: var(--ok); letter-spacing: 1px; }
+.st-empty { margin: 0; color: var(--muted); font-size: 14px; }
+@media (max-width: 520px) { .st-table { font-size: 13px; } .st-table th, .st-table td { padding-inline: 4px; } .st-card { padding: 14px 12px; } }
+
+/* 틀린 문제 다시 풀기 */
+.review-bar { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 4px 3px 12px; margin-bottom: 4px; }
+.review-bar .linkbtn { color: var(--ink); font-size: 12px; }
 
 /* contact footer */
 .contact { border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 28px; font-size: 13px; color: var(--muted); }
@@ -308,6 +378,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   }
   .prompt { grid-area: prompt; padding: 0; gap: 0; }
   .eyebrow { font-size: 10px; }
+  .review-bar { font-size: 11px; padding-block: 1px; }
   .symbol { font-size: clamp(32px, 12vh, 56px); }
   .symbol.empty { font-size: 14px; padding-block: 8px; }
   .hint { font-size: 11px; line-height: 1.35; }
@@ -330,7 +401,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
       <span data-i18n="tagline">코드 학습 웹어플리케이션</span>
     </div>
     <div class="top-right">
-      <div class="stats" aria-label="이번 연습 기록" data-i18n-aria="statsAria">
+      <div class="stats" aria-label="연습 기록" data-i18n-aria="statsAria">
         <span class="stat"><span data-i18n="firstTry">정답/시도</span> <b id="stFirst">0</b> / <b id="stTotal">0</b></span>
         <span class="stat"><span data-i18n="streak">연속</span> <b id="stStreak">0</b></span>
       </div>
@@ -350,6 +421,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   <main class="layout">
     <section class="desk" aria-label="연습" data-i18n-aria="deskAria">
       <div class="prompt">
+        <div class="review-bar" id="reviewBar" hidden><span id="reviewText"></span><button class="linkbtn" id="reviewStop" type="button" data-i18n="reviewStop">그만하기</button></div>
         <div class="eyebrow" data-i18n="eyebrow">이 코드를 건반에서 눌러보세요</div>
         <div class="symbol" id="symbol" aria-live="polite">C</div>
         <div class="hint" id="hint"></div>
@@ -394,11 +466,10 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 
       <div class="opt">
         <h3 data-i18n="rangeH">출제 범위</h3>
-        <label class="check"><input type="checkbox" id="optA"><span><span class="tag">A</span><span data-i18n="optA">흰 건반 베이스의 코드만 출제</span><small data-i18n="optAsub">C D E F G A B 근음만 나와요. 입문자용.</small></span></label>
         <label class="check"><input type="checkbox" id="optB"><span><span class="tag">B</span><span data-i18n="optB">특정 베이스의 코드만 출제</span><small data-i18n="optBsub">원하는 근음만 골라서 연습해요.</small></span></label>
         <div class="sub" id="basesBox" hidden>
           <div class="bases" id="bases"></div>
-          <div><button class="linkbtn" id="basesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="basesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
+          <div><button class="white-btn" id="basesWhite" type="button" aria-pressed="false" data-i18n="whiteKeys">흰 건반</button><button class="linkbtn" id="basesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="basesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
         </div>
         <label class="check"><input type="checkbox" id="optC"><span><span class="tag">C</span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsub">도미넌트 7에는 7alt 문제도 나와요.</small></span></label>
         <div class="sub" id="cBox" hidden>
@@ -503,11 +574,23 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 
   <div class="auth-form" data-view="account" hidden>
     <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
-    <p class="auth-note" data-i18n="syncNote">로그인하는 동안 출제 설정이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.</p>
-    <button class="btn" type="button" id="logoutBtn" data-i18n="logout">로그아웃</button>
-    <button class="linkbtn" type="button" data-go="changepw" data-i18n="changePw">비밀번호 변경</button>
+    <nav class="side-menu">
+      <button class="menu-item" type="button" id="menuMy"><span data-i18n="menuMy">마이페이지</span><span class="chev" aria-hidden="true">›</span></button>
+      <button class="menu-item" type="button" id="menuStudents" hidden><span data-i18n="menuStudents">학생 통계</span><span class="chev" aria-hidden="true">›</span></button>
+      <button class="menu-item" type="button" id="menuReview"><span data-i18n="menuReview">틀린 문제 다시 풀기</span><span class="badge" id="reviewCount"></span></button>
+      <button class="menu-item" type="button" data-go="changepw"><span data-i18n="changePw">비밀번호 변경</span><span class="chev" aria-hidden="true">›</span></button>
+      <button class="menu-item" type="button" id="logoutBtn"><span data-i18n="logout">로그아웃</span></button>
+    </nav>
+    <p class="auth-note" data-i18n="syncNote">로그인하는 동안 출제 설정과 연습 기록이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.</p>
     <hr class="divider">
     <button class="linkbtn danger" type="button" id="deleteAcctBtn" data-i18n="deleteAcct">회원 탈퇴</button>
+  </div>
+</dialog>
+
+<dialog class="page" id="statsDlg" aria-labelledby="statsTitle">
+  <div class="page-inner">
+    <header class="page-top"><button class="linkbtn" id="statsBack" type="button"></button><h2 id="statsTitle"></h2></header>
+    <div id="statsBody"></div>
   </div>
 </dialog>
 
@@ -559,7 +642,7 @@ const Engine = (() => {
     { id: "dim7", group: "seventh", name: "dim7", w: 1.5, tones: [[0, 1], [3, 3], [6, 5], [9, 7]], std: ["dim7"], sym: ["°7"], seventh: true, ten: [] },
     { id: "m7b5", group: "seventh", name: "m7(♭5)", w: 2, tones: [[0, 1], [3, 3], [6, 5], [10, 7]], std: ["m7(♭5)"], sym: ["ø7", "ø", "-7(♭5)"], seventh: true, ten: ["9", "11", "b13"], maxTen: 1 },  // (♭5) already reads like a tension
     { id: "mM7", group: "seventh", name: "mM7", w: 1, tones: [...t3, [11, 7]], std: ["mM7"], sym: ["-△7", "m△7"], seventh: true, ten: ["9", "11"], maxTen: 1 },
-    { id: "augM7", group: "seventh", name: "augM7", w: 1, tones: [[0, 1], [4, 3], [8, 5], [11, 7]], std: ["augM7"], sym: ["+△7"], seventh: true, ten: [] },
+    { id: "augM7", group: "seventh", name: "augM7", w: 1, tones: [[0, 1], [4, 3], [8, 5], [11, 7]], std: ["augM7", "M7(♯5)"], sym: ["+△7"], seventh: true, ten: [] },
 
     { id: "6", group: "sixth", name: "6", w: 1.5, tones: [...T3, [9, 6]], std: ["6"], sym: [] },
     { id: "m6", group: "sixth", name: "m6", w: 1.3, tones: [...t3, [9, 6]], std: ["m6"], sym: ["-6"] },
@@ -606,7 +689,6 @@ const Engine = (() => {
   const pick = (arr, rnd) => arr[Math.floor(rnd() * arr.length)];
 
   function rootPool(s) {
-    if (s.optA) return WHITE.slice();
     if (s.optB) return s.bases.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
     return [...Array(12).keys()];
   }
@@ -639,6 +721,67 @@ const Engine = (() => {
     return { head, items };
   }
 
+  // chord tones for one root/type/tensions; null for spellings no chart would use
+  function buildTones(type, root, tens, alt, s) {
+    const replaces5 = tens.includes("#5") || tens.includes("b5");
+    const tenDegs = new Set(tens.map(t => TEN[t][1]));
+    const tones = [];
+    const required = new Set(), optional = new Set(), anyOf = new Set();
+    if (alt) {
+      for (const [semi, deg] of [[0, 1], [4, 3], [10, 7]]) {
+        const t = spellTone(root, semi, deg); tones.push({ ...t, role: "chord", semi }); required.add(t.pc);
+      }
+      const p5 = spellTone(root, 7, 5); optional.add(p5.pc);
+      for (const id of ALT_SET) {
+        const t = spellTone(root, TEN[id][0], TEN[id][1]); tones.push({ ...t, role: "alt", semi: TEN[id][0], ten: id }); anyOf.add(t.pc);
+      }
+    } else {
+      for (const [semi, deg, flag] of type.tones) {
+        if (replaces5 && semi === 7 && deg === 5) continue;      // #5 / b5 takes the 5th's place: P5 is wrong
+        if (flag === "opt" && tenDegs.has(deg)) continue;         // e.g. C13(b9): the natural 9 is gone
+        const t = spellTone(root, semi, deg);
+        const omittable = flag === "opt" || (tens.length > 0 && semi === 7 && deg === 5);
+        tones.push({ ...t, role: omittable ? "optional" : "chord", semi, deg });
+        (omittable ? optional : required).add(t.pc);
+      }
+      for (const id of tens) {
+        const t = spellTone(root, TEN[id][0], TEN[id][1]);
+        tones.push({ ...t, role: "tension", semi: TEN[id][0], ten: id }); required.add(t.pc);
+      }
+    }
+    // skip spellings no chart would use (triple accidentals, or 2+ double accidentals)
+    if (tones.some(t => Math.abs(t.a) > 2)) return null;
+    if (tones.filter(t => Math.abs(t.a) === 2).length >= 2) return null;
+    // display names: option E keeps strict spelling (C♭ E♯ A𝄫 F𝄪); otherwise use the easy name
+    for (const t of tones) {
+      const odd = (t.l === 0 || t.l === 3) && t.a === -1 || (t.l === 2 || t.l === 6) && t.a === 1;
+      if (!s.optE && (Math.abs(t.a) === 2 || odd)) t.name = simpleName(t.pc, t.a);
+    }
+    return { tones, required, optional, anyOf };
+  }
+
+  function question(type, root, tens, alt, head, items, parts) {
+    const rootName = nameOf(root.l, root.a);
+    const label = head + (items.length ? "(" + items.join(",") + ")" : "");
+    return { symbol: rootName + label, rootName, label, head, items, root: { l: root.l, a: root.a }, rootPc: pcOf(root.l, root.a),
+      type: type.id, group: type.group, tens, alt, ...parts };
+  }
+
+  // stats group of a question: the chord type, with 7alt apart from plain 7
+  const quality = q => (q.alt ? "7alt" : q.type);
+  // what is saved to replay a question later (틀린 문제 다시 풀기)
+  const spec = q => ({ l: q.root.l, a: q.root.a, type: q.type, tens: q.tens, alt: q.alt, head: q.head, items: q.items });
+  // a saved question back; null if the data does not describe a valid chord
+  function rebuild(sp, s) {
+    const type = sp && BY_ID[sp.type];
+    if (!type || !Number.isInteger(sp.l) || sp.l < 0 || sp.l > 6 || !Number.isInteger(sp.a) || Math.abs(sp.a) > 2) return null;
+    const tens = Array.isArray(sp.tens) ? sp.tens : [];
+    if (!tens.every(t => t in TEN) || !Array.isArray(sp.items) || typeof sp.head !== "string") return null;
+    const alt = !!sp.alt && type.id === "dom7";
+    const parts = buildTones(type, { l: sp.l, a: sp.a }, tens, alt, s);
+    return parts && question(type, { l: sp.l, a: sp.a }, tens, alt, sp.head, sp.items.map(String), parts);
+  }
+
   // returns {error} or question
   function generate(s, rnd = Math.random, prevSymbol = null) {
     const types = TYPES.filter(t => s.types[t.id]);
@@ -649,7 +792,7 @@ const Engine = (() => {
     for (let tries = 0; tries < 80; tries++) {
       const type = pickWeighted(types, rnd);
       const pc = pick(pcs, rnd);
-      const spellings = s.optA ? ROOTS_DEFAULT[pc] : (s.optE ? ROOTS_EXT : ROOTS_DEFAULT)[pc];
+      const spellings = (s.optE ? ROOTS_EXT : ROOTS_DEFAULT)[pc];
       const root = pick(spellings, rnd);
 
       let tens = [], alt = false;
@@ -666,48 +809,12 @@ const Engine = (() => {
           tens.sort((a, b) => TEN_ORDER.indexOf(a) - TEN_ORDER.indexOf(b));
         }
       }
-      const replaces5 = tens.includes("#5") || tens.includes("b5");
-      const tenDegs = new Set(tens.map(t => TEN[t][1]));
-
-      const tones = [];
-      const required = new Set(), optional = new Set(), anyOf = new Set();
-      if (alt) {
-        for (const [semi, deg] of [[0, 1], [4, 3], [10, 7]]) {
-          const t = spellTone(root, semi, deg); tones.push({ ...t, role: "chord", semi }); required.add(t.pc);
-        }
-        const p5 = spellTone(root, 7, 5); optional.add(p5.pc);
-        for (const id of ALT_SET) {
-          const t = spellTone(root, TEN[id][0], TEN[id][1]); tones.push({ ...t, role: "alt", semi: TEN[id][0], ten: id }); anyOf.add(t.pc);
-        }
-      } else {
-        for (const [semi, deg, flag] of type.tones) {
-          if (replaces5 && semi === 7 && deg === 5) continue;      // #5 / b5 takes the 5th's place: P5 is wrong
-          if (flag === "opt" && tenDegs.has(deg)) continue;         // e.g. C13(b9): the natural 9 is gone
-          const t = spellTone(root, semi, deg);
-          const omittable = flag === "opt" || (tens.length > 0 && semi === 7 && deg === 5);
-          tones.push({ ...t, role: omittable ? "optional" : "chord", semi, deg });
-          (omittable ? optional : required).add(t.pc);
-        }
-        for (const id of tens) {
-          const t = spellTone(root, TEN[id][0], TEN[id][1]);
-          tones.push({ ...t, role: "tension", semi: TEN[id][0], ten: id }); required.add(t.pc);
-        }
-      }
-      // skip spellings no chart would use (triple accidentals, or 2+ double accidentals)
-      if (tones.some(t => Math.abs(t.a) > 2)) continue;
-      if (tones.filter(t => Math.abs(t.a) === 2).length >= 2) continue;
-      // display names: option E keeps strict spelling (C♭ E♯ A𝄫 F𝄪); otherwise use the easy name
-      for (const t of tones) {
-        const odd = (t.l === 0 || t.l === 3) && t.a === -1 || (t.l === 2 || t.l === 6) && t.a === 1;
-        if (!s.optE && (Math.abs(t.a) === 2 || odd)) t.name = simpleName(t.pc, t.a);
-      }
-
-      const rootName = nameOf(root.l, root.a);
+      const parts = buildTones(type, root, tens, alt, s);
+      if (!parts) continue;
       const { head, items } = makeLabel(type, tens, alt, s.optD, rnd);
-      const label = head + (items.length ? "(" + items.join(",") + ")" : "");
-      const symbol = rootName + label;
-      if (symbol === prevSymbol && tries < 79) continue;
-      return { symbol, rootName, label, head, items, rootPc: pc, type: type.id, group: type.group, tens, alt, tones, required, optional, anyOf };
+      const q = question(type, root, tens, alt, head, items, parts);
+      if (q.symbol === prevSymbol && tries < 79) continue;
+      return q;
     }
     return { error: "noChord" };
   }
@@ -736,7 +843,7 @@ const Engine = (() => {
     return [...new Set(out)].sort((a, b) => a - b);
   }
 
-  return { TYPES, BY_ID, PC_NAMES, TEN, generate, grade, voicing, tenText, spellTone, simpleName };
+  return { TYPES, BY_ID, PC_NAMES, TEN, WHITE, generate, rebuild, spec, quality, grade, voicing, tenText, spellTone, simpleName };
 })();
 if (typeof module !== "undefined") module.exports = Engine;
 
@@ -752,7 +859,6 @@ const I18N = {
   ko: {
     docTitle: "코드 트레이너",
     tagline: "코드 학습 웹어플리케이션",
-    statsAria: "이번 연습 기록",
     firstTry: "정답/시도",
     streak: "연속",
     deskAria: "연습",
@@ -784,8 +890,6 @@ const I18N = {
     g_tension: "텐션 코드",
     g_tensionNote: "5음과 중간 텐션은 생략해도 정답이에요. (예: C13 = C E B♭ A)",
     rangeH: "출제 범위",
-    optA: "흰 건반 베이스의 코드만 출제",
-    optAsub: "C D E F G A B 근음만 나와요. 입문자용.",
     optB: "특정 베이스의 코드만 출제",
     optBsub: "원하는 근음만 골라서 연습해요.",
     selectAll: "모두 선택",
@@ -802,7 +906,6 @@ const I18N = {
     optE: "복잡한 음 표현 허용",
     optEsub: "E♯, C♭, A𝄫, F𝄪 등의 표현 허용",
     warnC: "옵션 C는 7화음을 하나 이상 고르면 적용돼요.",
-    warnAE: "옵션 A가 켜져 있으면 흰 건반 이름(C–B)만 나와요.",
     hintAlt: "R·3·♭7 + altered 텐션 1개 이상(♭9 ♯9 ♯11 ♭13)",
     hintSharp5: "자리바꿈 허용 · ♯5/♭5가 5음을 대신해요 (완전5도를 누르면 오답)",
     hintOptional: "자리바꿈 허용 · 완전5도와 중간 텐션은 생략 가능",
@@ -830,8 +933,6 @@ const I18N = {
     viewReset: "비밀번호 재설정",
     viewNewpw: "새 비밀번호 설정",
     viewAccount: "내 계정",
-    loginNote: "로그인하지 않아도 연습할 수 있어요. 로그인하면 출제 설정이 계정에 저장돼요.",
-    syncNote: "로그인하는 동안 출제 설정이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.",
     email: "이메일",
     password: "비밀번호",
     newPassword: "새 비밀번호",
@@ -890,11 +991,48 @@ const I18N = {
     errRate: "요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
     errNetwork: "서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.",
     errGeneric: "문제가 생겼어요. 잠시 후 다시 시도해 주세요.",
+    statsAria: "연습 기록",
+    loginNote: "로그인하지 않아도 연습할 수 있어요. 로그인하면 출제 설정과 연습 기록이 계정에 저장돼요.",
+    syncNote: "로그인하는 동안 출제 설정과 연습 기록이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.",
+    whiteKeys: "흰 건반",
+    menuMy: "마이페이지",
+    menuStudents: "학생 통계",
+    menuReview: "틀린 문제 다시 풀기",
+    backPractice: "← 연습으로",
+    backStudents: "← 학생 목록",
+    sAllTime: "전체 기간",
+    sTotal: "연습한 코드",
+    sCorrect: "정답",
+    sWrong: "오답",
+    sRate: "정답률",
+    sBest: "최고 연속",
+    sStreak: "지금 연속 {n}",
+    sCorrectNote: "정답은 처음 채점에서 맞힌 문제, 오답은 그 밖의 문제(다시 채점해서 맞혔거나 정답을 확인한 문제)예요.",
+    range7d: "7일",
+    range30d: "30일",
+    range1y: "1년",
+    byDayH: "연습량",
+    byTypeH: "코드 종류별",
+    colType: "코드",
+    colCount: "연습",
+    reviewH: "틀린 문제",
+    reviewNote: "다시 풀기에서 처음 채점에 두 번 맞히면 목록에서 빠져요. ●는 지금까지 맞힌 횟수예요.",
+    reviewEmpty: "틀린 문제가 없어요.",
+    reviewStart: "다시 풀기",
+    reviewBar: "틀린 문제 다시 풀기 · {n}문제 남음",
+    reviewStop: "그만하기",
+    reviewDone: "틀린 문제를 모두 풀었어요!",
+    noData: "이 기간에는 연습 기록이 없어요.",
+    loading: "불러오는 중…",
+    studentsEmpty: "아직 학생이 없어요.",
+    colStudent: "학생",
+    colLast: "최근 연습",
+    chartTip: "{date} · 정답 {ok} · 오답 {no}",
+    errLoad: "불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
   },
   en: {
     docTitle: "Chord Trainer",
     tagline: "Chord learning web app",
-    statsAria: "This session",
     firstTry: "Correct/Tries",
     streak: "Streak",
     deskAria: "Practice",
@@ -926,8 +1064,6 @@ const I18N = {
     g_tension: "Extended chords",
     g_tensionNote: "The 5th and inner tensions can be left out. (e.g. C13 = C E B♭ A)",
     rangeH: "Roots",
-    optA: "White-key roots only",
-    optAsub: "Only C D E F G A B roots. Good for beginners.",
     optB: "Selected roots only",
     optBsub: "Pick the roots you want to practice.",
     selectAll: "Select all",
@@ -944,7 +1080,6 @@ const I18N = {
     optE: "Allow complex spellings",
     optEsub: "Spellings such as E♯, C♭, A𝄫, F𝄪",
     warnC: "Option C applies once you pick at least one seventh chord.",
-    warnAE: "With option A on, roots use white-key names (C–B) only.",
     hintAlt: "R·3·♭7 + at least one altered tension (♭9 ♯9 ♯11 ♭13)",
     hintSharp5: "Inversions OK · ♯5/♭5 replaces the 5th (the perfect 5th is wrong)",
     hintOptional: "Inversions OK · the perfect 5th and inner tensions may be left out",
@@ -972,8 +1107,6 @@ const I18N = {
     viewReset: "Reset password",
     viewNewpw: "Set a new password",
     viewAccount: "My account",
-    loginNote: "You can practice without an account. Log in to save your practice settings to your account.",
-    syncNote: "While you're logged in, your practice settings are saved to your account and follow you to other devices.",
     email: "Email",
     password: "Password",
     newPassword: "New password",
@@ -1032,11 +1165,48 @@ const I18N = {
     errRate: "Too many attempts. Please try again in a moment.",
     errNetwork: "Couldn't reach the server. Please check your internet connection.",
     errGeneric: "Something went wrong. Please try again later.",
+    statsAria: "Practice record",
+    loginNote: "You can practice without an account. Log in to save your practice settings and records to your account.",
+    syncNote: "While you're logged in, your practice settings and records are saved to your account and follow you to other devices.",
+    whiteKeys: "White keys",
+    menuMy: "My page",
+    menuStudents: "Student stats",
+    menuReview: "Retry missed chords",
+    backPractice: "← Back to practice",
+    backStudents: "← All students",
+    sAllTime: "All time",
+    sTotal: "Chords practiced",
+    sCorrect: "Right",
+    sWrong: "Missed",
+    sRate: "Accuracy",
+    sBest: "Best streak",
+    sStreak: "Current streak {n}",
+    sCorrectNote: "Right = correct on the first check. Missed = everything else (correct only on a later check, or answer shown).",
+    range7d: "7 days",
+    range30d: "30 days",
+    range1y: "1 year",
+    byDayH: "Practice",
+    byTypeH: "By chord type",
+    colType: "Chord",
+    colCount: "Practiced",
+    reviewH: "Missed chords",
+    reviewNote: "A chord leaves this list once you get it right on the first check twice while retrying. ● shows how many times so far.",
+    reviewEmpty: "No missed chords.",
+    reviewStart: "Retry",
+    reviewBar: "Retrying missed chords · {n} left",
+    reviewStop: "Stop",
+    reviewDone: "You've cleared all your missed chords!",
+    noData: "No practice in this period.",
+    loading: "Loading…",
+    studentsEmpty: "No students yet.",
+    colStudent: "Student",
+    colLast: "Last practice",
+    chartTip: "{date} · right {ok} · missed {no}",
+    errLoad: "Couldn't load. Please try again later.",
   },
   ja: {
     docTitle: "コードトレーナー",
     tagline: "コード学習ウェブアプリ",
-    statsAria: "今回の練習記録",
     firstTry: "正解/挑戦",
     streak: "連続",
     deskAria: "練習",
@@ -1068,8 +1238,6 @@ const I18N = {
     g_tension: "テンションコード",
     g_tensionNote: "5度と中間のテンションは省略しても正解です。（例：C13 = C E B♭ A）",
     rangeH: "出題範囲",
-    optA: "白鍵がルートのコードのみ出題",
-    optAsub: "ルートは C D E F G A B のみ。入門向け。",
     optB: "指定したルートのコードのみ出題",
     optBsub: "練習したいルートだけを選べます。",
     selectAll: "すべて選択",
@@ -1086,7 +1254,6 @@ const I18N = {
     optE: "複雑な音名表記を許可",
     optEsub: "E♯、C♭、A𝄫、F𝄪 などの表記",
     warnC: "オプションCはセブンスコードを1つ以上選ぶと適用されます。",
-    warnAE: "オプションAがオンのときは、ルートは白鍵の音名（C–B）だけになります。",
     hintAlt: "R・3・♭7 + オルタードテンション1つ以上（♭9 ♯9 ♯11 ♭13）",
     hintSharp5: "転回形OK・♯5/♭5 が5度の代わり（完全5度を押すと不正解）",
     hintOptional: "転回形OK・完全5度と中間のテンションは省略可",
@@ -1114,8 +1281,6 @@ const I18N = {
     viewReset: "パスワード再設定",
     viewNewpw: "新しいパスワードの設定",
     viewAccount: "マイアカウント",
-    loginNote: "ログインしなくても練習できます。ログインすると出題設定がアカウントに保存されます。",
-    syncNote: "ログイン中は出題設定がアカウントに保存され、他の端末でも続けて使えます。",
     email: "メールアドレス",
     password: "パスワード",
     newPassword: "新しいパスワード",
@@ -1174,11 +1339,48 @@ const I18N = {
     errRate: "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
     errNetwork: "サーバーに接続できませんでした。インターネット接続をご確認ください。",
     errGeneric: "問題が発生しました。しばらくしてからもう一度お試しください。",
+    statsAria: "練習記録",
+    loginNote: "ログインしなくても練習できます。ログインすると出題設定と練習記録がアカウントに保存されます。",
+    syncNote: "ログイン中は出題設定と練習記録がアカウントに保存され、他の端末でも続けて使えます。",
+    whiteKeys: "白鍵",
+    menuMy: "マイページ",
+    menuStudents: "生徒の統計",
+    menuReview: "間違えた問題を解き直す",
+    backPractice: "← 練習に戻る",
+    backStudents: "← 生徒一覧",
+    sAllTime: "全期間",
+    sTotal: "練習したコード",
+    sCorrect: "正解",
+    sWrong: "不正解",
+    sRate: "正答率",
+    sBest: "最高連続",
+    sStreak: "現在の連続 {n}",
+    sCorrectNote: "正解は最初の採点で正解した問題、不正解はそれ以外（採点し直して正解した、または答えを見た問題）です。",
+    range7d: "7日",
+    range30d: "30日",
+    range1y: "1年",
+    byDayH: "練習量",
+    byTypeH: "コードの種類別",
+    colType: "コード",
+    colCount: "練習",
+    reviewH: "間違えた問題",
+    reviewNote: "解き直しで最初の採点に2回正解するとリストから消えます。●はこれまでに正解した回数です。",
+    reviewEmpty: "間違えた問題はありません。",
+    reviewStart: "解き直す",
+    reviewBar: "間違えた問題の解き直し · 残り{n}問",
+    reviewStop: "やめる",
+    reviewDone: "間違えた問題をすべて解きました！",
+    noData: "この期間の練習記録はありません。",
+    loading: "読み込み中…",
+    studentsEmpty: "まだ生徒がいません。",
+    colStudent: "生徒",
+    colLast: "最近の練習",
+    chartTip: "{date} · 正解 {ok} · 不正解 {no}",
+    errLoad: "読み込めませんでした。しばらくしてからもう一度お試しください。",
   },
   zh: {
     docTitle: "和弦练习",
     tagline: "和弦学习网页应用",
-    statsAria: "本次练习记录",
     firstTry: "答对/尝试",
     streak: "连对",
     deskAria: "练习",
@@ -1210,8 +1412,6 @@ const I18N = {
     g_tension: "延伸和弦",
     g_tensionNote: "五度和中间的张力音可以省略。（例：C13 = C E B♭ A）",
     rangeH: "出题范围",
-    optA: "只出白键根音的和弦",
-    optAsub: "根音只有 C D E F G A B，适合入门。",
     optB: "只出指定根音的和弦",
     optBsub: "选择想练习的根音。",
     selectAll: "全选",
@@ -1228,7 +1428,6 @@ const I18N = {
     optE: "允许复杂音名",
     optEsub: "如 E♯、C♭、A𝄫、F𝄪 等写法",
     warnC: "至少选择一个七和弦后，选项 C 才会生效。",
-    warnAE: "开启选项 A 时，根音只使用白键音名（C–B）。",
     hintAlt: "R·3·♭7 + 至少一个变化张力音（♭9 ♯9 ♯11 ♭13）",
     hintSharp5: "允许转位 · ♯5/♭5 代替五度（弹纯五度判错）",
     hintOptional: "允许转位 · 可省略纯五度和中间的张力音",
@@ -1256,8 +1455,6 @@ const I18N = {
     viewReset: "重置密码",
     viewNewpw: "设置新密码",
     viewAccount: "我的账户",
-    loginNote: "不登录也可以练习。登录后，出题设置会保存到账户。",
-    syncNote: "登录期间，出题设置会保存到账户，可在其他设备上继续使用。",
     email: "邮箱",
     password: "密码",
     newPassword: "新密码",
@@ -1316,6 +1513,44 @@ const I18N = {
     errRate: "请求过于频繁，请稍后再试。",
     errNetwork: "无法连接服务器，请检查网络连接。",
     errGeneric: "出现问题，请稍后再试。",
+    statsAria: "练习记录",
+    loginNote: "不登录也可以练习。登录后，出题设置和练习记录会保存到账户。",
+    syncNote: "登录期间，出题设置和练习记录会保存到账户，可在其他设备上继续使用。",
+    whiteKeys: "白键",
+    menuMy: "我的页面",
+    menuStudents: "学生统计",
+    menuReview: "重做错题",
+    backPractice: "← 返回练习",
+    backStudents: "← 学生列表",
+    sAllTime: "全部时间",
+    sTotal: "练习的和弦",
+    sCorrect: "答对",
+    sWrong: "答错",
+    sRate: "正确率",
+    sBest: "最高连对",
+    sStreak: "当前连对 {n}",
+    sCorrectNote: "答对：第一次判定就正确的题；答错：其他题（再次判定才正确，或查看了答案）。",
+    range7d: "7天",
+    range30d: "30天",
+    range1y: "1年",
+    byDayH: "练习量",
+    byTypeH: "按和弦类型",
+    colType: "和弦",
+    colCount: "练习",
+    reviewH: "错题",
+    reviewNote: "重做时两次在第一次判定就答对，该题会从列表中移除。● 表示目前答对的次数。",
+    reviewEmpty: "没有错题。",
+    reviewStart: "重做",
+    reviewBar: "重做错题 · 还剩 {n} 题",
+    reviewStop: "停止",
+    reviewDone: "错题全部完成！",
+    noData: "这段时间没有练习记录。",
+    loading: "加载中…",
+    studentsEmpty: "还没有学生。",
+    colStudent: "学生",
+    colLast: "最近练习",
+    chartTip: "{date} · 答对 {ok} · 答错 {no}",
+    errLoad: "加载失败，请稍后再试。",
   },
 };
 
@@ -1334,9 +1569,175 @@ if (typeof module !== "undefined") module.exports = CONFIG;
 
 </script>
 <script>
+// ===== Practice statistics page (마이페이지 / 학생 통계) =====
+// A full-screen dialog: a student's own stats, or for the admin the student list and any student's stats.
+// Data comes from Account (practice_summary / student_list in supabase/schema.sql).
+// The pure helpers (localDay, buckets, qualityRows) are exported for tests/account.test.js.
+const StatsPage = (() => {
+  const RANGES = ["7d", "30d", "1y"];
+  const pad = n => String(n).padStart(2, "0");
+  // the device's local date as YYYY-MM-DD (records are kept by date only)
+  const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = s => { const [y, m, d] = s.slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+  const fmt = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+
+  // one slot per day (7d / 30d) or per month (1y), oldest first, empty slots included
+  function buckets(range, today, rows) {
+    const by = new Map((rows || []).map(r => [String(r.d).slice(0, 10), r]));
+    const out = [];
+    const end = parse(today);
+    if (range === "1y") {
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1));
+        const r = by.get(fmt(d));
+        out.push({ key: fmt(d), n: r ? r.n : 0, ok: r ? r.ok : 0 });
+      }
+    } else {
+      const days = range === "7d" ? 7 : 30;
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(end.getTime() - i * 864e5);
+        const r = by.get(fmt(d));
+        out.push({ key: fmt(d), n: r ? r.n : 0, ok: r ? r.ok : 0 });
+      }
+    }
+    return out;
+  }
+  // chord-type rows in the order of the settings list; 7alt right after 7
+  function qualityRows(rows, types) {
+    const order = [];
+    for (const t of types) { order.push(t.id); if (t.id === "dom7") order.push("7alt"); }
+    return (rows || []).slice().sort((a, b) => order.indexOf(a.q) - order.indexOf(b.q));
+  }
+
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const $ = id => document.getElementById(id);
+  let ctx, view = null, range = "7d", data = null, list = null, seq = 0;
+
+  // ctx: { t, lang, api: Account, startReview }
+  function init(c) {
+    ctx = c;
+    $("statsBack").onclick = () => (view && view.uid && view.fromList ? showList() : $("statsDlg").close());
+    $("statsBody").addEventListener("click", e => {
+      const r = e.target.closest("[data-range]");
+      if (r) { range = r.dataset.range; return load(); }
+      const s = e.target.closest("[data-student]");
+      if (s) return showStudent(list.find(x => x.id === s.dataset.student), true);
+      if (e.target.closest("#statsReview")) ctx.startReview();
+    });
+  }
+  const tag = () => ({ ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" })[ctx.lang()] || "en-US";
+  const typeName = q => (q === "7alt" ? "7alt" : Engine.BY_ID[q] ? Engine.BY_ID[q].name : q);
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+
+  function openDlg() { if (!$("statsDlg").open) $("statsDlg").showModal(); $("statsDlg").scrollTop = 0; }
+  // own page
+  function openMine(me) { view = { uid: me.id, name: me.nickname, self: true }; openDlg(); load(); }
+  // admin: student list
+  function openStudents() { openDlg(); showList(); }
+  async function showList() {
+    view = { list: true }; data = null;
+    render();
+    const n = ++seq;
+    const res = await ctx.api.students();
+    if (n !== seq) return;
+    list = res.error ? null : res.data;
+    view.error = !!res.error;
+    render();
+  }
+  function showStudent(s, fromList) {
+    if (!s) return;
+    view = { uid: s.id, name: s.nickname, fullName: s.full_name, fromList };
+    $("statsDlg").scrollTop = 0;
+    load();
+  }
+  async function load() {
+    data = null; view.error = false;
+    render();
+    const n = ++seq;
+    const res = await ctx.api.summary(view.uid, range, localDay());
+    if (n !== seq) return;   // a newer request (range or student changed) is on its way
+    if (res.error) view.error = true; else data = res.data;
+    render();
+  }
+
+  function render() {
+    if (!view || !ctx) return;
+    const t = ctx.t;
+    $("statsTitle").textContent = view.list || view.fromList ? t("menuStudents") : t("menuMy");
+    $("statsBack").textContent = view.fromList ? t("backStudents") : t("backPractice");
+    const body = $("statsBody");
+    if (view.error) { body.innerHTML = `<p class="st-empty">${esc(t("errLoad"))}</p>`; return; }
+    if (view.list) { body.innerHTML = list ? studentsHTML() : `<p class="st-empty">${esc(t("loading"))}</p>`; return; }
+    body.innerHTML = summaryHTML();
+  }
+
+  function studentsHTML() {
+    const t = ctx.t;
+    if (!list.length) return `<p class="st-empty">${esc(t("studentsEmpty"))}</p>`;
+    const rows = list.map(s => `<tr>
+      <td><button class="st-student" type="button" data-student="${esc(s.id)}"><b>${esc(s.nickname)}</b><span>${esc(s.full_name)}</span></button></td>
+      <td class="num">${s.total}</td><td class="num">${pct(s.first_correct, s.total)}%</td>
+      <td class="num">${s.last_day ? esc(new Date(parse(String(s.last_day))).toLocaleDateString(tag(), { timeZone: "UTC", month: "short", day: "numeric" })) : "–"}</td></tr>`).join("");
+    return `<div class="st-card"><table class="st-table">
+      <thead><tr><th>${esc(t("colStudent"))}</th><th class="num">${esc(t("sTotal"))}</th><th class="num">${esc(t("sRate"))}</th><th class="num">${esc(t("colLast"))}</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }
+
+  function summaryHTML() {
+    const t = ctx.t;
+    const who = view.self ? "" : `<p class="st-who"><b>${esc(view.name)}</b>${view.fullName ? `<span>${esc(view.fullName)}</span>` : ""}</p>`;
+    if (!data) return who + `<p class="st-empty">${esc(t("loading"))}</p>`;
+    const tot = data.totals || { total: 0, first: 0, streak: 0, best: 0 };
+    const card = (label, value, sub = "") => `<div class="st-stat"><span>${esc(label)}</span><b>${value}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`;
+    const cards = `<section class="st-card"><h3>${esc(t("sAllTime"))}</h3><div class="st-stats">
+      ${card(t("sTotal"), tot.total)}${card(t("sCorrect"), tot.first)}${card(t("sWrong"), tot.total - tot.first)}
+      ${card(t("sRate"), pct(tot.first, tot.total) + "%")}${card(t("sBest"), tot.best, t("sStreak", { n: tot.streak }))}
+      </div><p class="note">${esc(t("sCorrectNote"))}</p></section>`;
+
+    const tabs = `<div class="st-tabs" role="group">${RANGES.map(r => `<button type="button" class="chip-btn" data-range="${r}" aria-pressed="${r === range}">${esc(t("range" + r))}</button>`).join("")}</div>`;
+    const b = buckets(range, localDay(), data.byDay);
+    const max = Math.max(1, ...b.map(x => x.n));
+    const label = (x, i) => {
+      const d = parse(x.key);
+      if (range === "1y") return d.toLocaleDateString(tag(), { timeZone: "UTC", month: "short" });
+      if (range === "30d" && (b.length - 1 - i) % 5) return "";
+      return d.toLocaleDateString(tag(), { timeZone: "UTC", month: "numeric", day: "numeric" });
+    };
+    const tipDate = x => parse(x.key).toLocaleDateString(tag(), range === "1y" ? { timeZone: "UTC", year: "numeric", month: "long" } : { timeZone: "UTC", month: "long", day: "numeric" });
+    const bars = b.map(x => `<div class="st-bar" title="${esc(t("chartTip", { date: tipDate(x), ok: x.ok, no: x.n - x.ok }))}">
+      <i class="no" style="height:${((x.n - x.ok) / max) * 100}%"></i><i class="ok" style="height:${(x.ok / max) * 100}%"></i></div>`).join("");
+    const xs = b.map((x, i) => `<span>${esc(label(x, i))}</span>`).join("");
+    const legend = `<div class="legend"><span><i class="dot" style="background: var(--ok)"></i>${esc(t("sCorrect"))}</span><span><i class="dot" style="background: var(--warn)"></i>${esc(t("sWrong"))}</span></div>`;
+    const chart = b.some(x => x.n)
+      ? `<div class="st-chart-wrap"><span class="st-max">${max}</span><div class="st-chart r${range}">${bars}</div><div class="st-x r${range}">${xs}</div></div>${legend}`
+      : `<p class="st-empty">${esc(t("noData"))}</p>`;
+
+    const qs = qualityRows(data.byQuality, Engine.TYPES);
+    const qtable = qs.length ? `<table class="st-table">
+      <thead><tr><th>${esc(t("colType"))}</th><th class="num">${esc(t("colCount"))}</th><th class="num">${esc(t("sCorrect"))}</th><th class="num">${esc(t("sWrong"))}</th><th>${esc(t("sRate"))}</th></tr></thead>
+      <tbody>${qs.map(r => `<tr><td class="st-type">${esc(typeName(r.q))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${r.n - r.ok}</td>
+        <td><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span><span class="st-rate-n">${pct(r.ok, r.n)}%</span></td></tr>`).join("")}</tbody></table>` : "";
+    const period = `<section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabs}</div>${chart}
+      ${qtable ? `<h3 class="st-sub">${esc(t("byTypeH"))}</h3>${qtable}` : ""}</section>`;
+
+    const rv = data.review || [];
+    const chips = rv.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${esc(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");
+    const review = `<section class="st-card"><div class="st-head"><h3>${esc(t("reviewH"))} <span class="st-count">${rv.length}</span></h3>
+      ${view.self && rv.length ? `<button class="btn primary" type="button" id="statsReview">${esc(t("reviewStart"))}</button>` : ""}</div>
+      ${rv.length ? `<p class="note">${esc(t("reviewNote"))}</p><div class="st-chips">${chips}</div>` : `<p class="st-empty">${esc(t("reviewEmpty"))}</p>`}</section>`;
+    return who + cards + period + review;
+  }
+
+  return { init, openMine, openStudents, refresh: render, close: () => $("statsDlg") && $("statsDlg").close(), localDay, buckets, qualityRows };
+})();
+if (typeof module !== "undefined") module.exports = StatsPage;
+
+</script>
+<script>
 // ===== Accounts (Supabase Auth) =====
 // Sign-up / log-in / password reset and change / account deletion with a 7-day grace period,
-// and syncing practice settings to the account.
+// syncing practice settings to the account, and practice records (record_attempt in supabase/schema.sql).
+// Logged in, the account menu opens as a side panel (views in SIDE); log-in and sign-up stay a centred dialog.
 // Everyone signs up as a student; the admin role is set by hand in the database (supabase/schema.sql).
 // Does nothing unless CONFIG has a Supabase URL and public key — then the trainer runs without accounts.
 // The pure helpers (errorKey, syncable, isPublicKey, missingFields, langForTimeZone) are exported for tests/account.test.js.
@@ -1345,7 +1746,7 @@ const Account = (() => {
   const SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
   const SDK_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
   // date of the terms/privacy policy the user agrees to at sign-up; bump it when either page changes
-  const TERMS_VERSION = "2026-10-27";
+  const TERMS_VERSION = "2026-11-05";
   // settings that belong to the device, not the account (a phone has no computer keyboard)
   const LOCAL_ONLY = ["kbd", "kbdTouched"];
   const PW_MIN = 8, NICK_MAX = 20, NAME_MAX = 50;
@@ -1354,6 +1755,7 @@ const Account = (() => {
   const REQUIRED = ["full_name"];
   const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at";
   const GRACE_DAYS = 7;   // must match the interval in supabase/schema.sql
+  const SIDE = new Set(["account", "changepw"]);
 
   // Supabase error → i18n key
   function errorKey(err) {
@@ -1413,7 +1815,7 @@ const Account = (() => {
     });
   }
 
-  // ctx: { t, getSettings, applySettings } from the trainer
+  // ctx from the trainer: { t, setLang, lang, getSettings, applySettings, setStats, startReview, signedOut }
   function init(c) {
     ctx = c;
     if (!configured()) return;
@@ -1430,7 +1832,7 @@ const Account = (() => {
     sb.auth.onAuthStateChange((event, session) => {
       const prev = user && user.id;
       user = session ? session.user : null;
-      if (!user) profile = null;
+      if (!user && prev) { profile = null; ctx.signedOut(); }
       // Supabase calls inside this callback can deadlock, so they run on the next tick
       if (user && user.id !== prev) setTimeout(loadProfile, 0);
       if (event === "PASSWORD_RECOVERY") setTimeout(() => open("newpw"), 0);
@@ -1448,6 +1850,7 @@ const Account = (() => {
     useProfile();
   }
   function useProfile() {
+    loadStats();
     if (profile.settings) ctx.applySettings(profile.settings);
     else pushSettings();   // first log-in: this device's settings become the account's
     // the account's language wins on every device
@@ -1468,6 +1871,37 @@ const Account = (() => {
     if (error) console.warn("settings sync", error);
   }
   const active = () => user && profile && !profile.deleted_at;
+
+  // ---------- practice records ----------
+  // The header counters take the account's totals when the profile loads (log-in or page refresh);
+  // after that the trainer adds 1 locally and the database adds 1 on its side, so devices never overwrite each other.
+  async function loadStats() {
+    const { data, error } = await sb.from("practice_stats").select("total, first_correct, streak").eq("user_id", user.id).maybeSingle();
+    if (error) return console.warn("practice stats", error);
+    ctx.setStats({ total: data ? data.total : 0, first: data ? data.first_correct : 0, streak: data ? data.streak : 0 });
+  }
+  // one finished question; a lost connection just loses that record
+  function record(q, first, review) {
+    if (!active()) return;
+    sb.rpc("record_attempt", {
+      p_quality: Engine.quality(q), p_symbol: q.symbol, p_first: first, p_day: StatsPage.localDay(),
+      p_review: !!review, p_spec: first || review ? null : Engine.spec(q),
+    }).then(({ error }) => { if (error) console.warn("record", error); });
+  }
+  async function reviewItems() {
+    const { data, error } = await sb.from("review_queue").select("symbol, spec, hits").eq("user_id", user.id).order("added_at");
+    if (error) { console.warn("review", error); return null; }
+    return data;
+  }
+  async function startReview() {
+    const items = active() && await reviewItems();
+    if (!items || !items.length) return;
+    $("authDlg").close(); StatsPage.close();
+    ctx.startReview(items);
+  }
+  // for StatsPage
+  const summary = (uid, range, today) => sb.rpc("practice_summary", { p_user: uid, p_range: range, p_today: today });
+  const students = () => sb.rpc("student_list");
   // called by the trainer when the user picks another language
   function langChanged(lang) { if (active() && profile.preferred_lang !== lang) updateProfile({ preferred_lang: lang }); }
   // called by the trainer after every settings save
@@ -1487,8 +1921,11 @@ const Account = (() => {
   const purgeDate = since => new Date(new Date(since).getTime() + GRACE_DAYS * 864e5);
   function open(v, msg) {
     const dlg = $("authDlg");
+    // the side panel and the centred dialog are the same element: reopen when switching between them
+    if (dlg.open && dlg.classList.contains("side") !== SIDE.has(v)) dlg.close();
     show(v, msg);
     if (!dlg.open) dlg.showModal();
+    if (v === "account") countReview();
     const first = dlg.querySelector(`[data-view="${v}"] input`);
     if (first) first.focus();
   }
@@ -1504,6 +1941,7 @@ const Account = (() => {
     document.querySelectorAll("#authDlg .pw-wrap input").forEach(i => { i.type = "password"; });
     document.querySelectorAll("#authDlg .pw-eye").forEach(b => b.classList.remove("on"));
     document.querySelectorAll("#authDlg [data-view]").forEach(el => { el.hidden = el.dataset.view !== v; });
+    $("authDlg").classList.toggle("side", SIDE.has(v));
     $("authTitle").textContent = ctx.t(TITLES[v]);
     setMsg(msg ? msg.kind : "", msg ? msg.key : "", msg && msg.vars);
   }
@@ -1524,6 +1962,7 @@ const Account = (() => {
     $("acctName").textContent = name;
     $("acctFullName").textContent = profile && profile.full_name ? profile.full_name : "";
     $("acctEmail").textContent = user ? user.email : "";
+    $("menuStudents").hidden = !(profile && profile.role === "admin");
     $("restoreText").textContent = profile && profile.deleted_at ? ctx.t("restoreNote", { date: fmtDate(purgeDate(profile.deleted_at)) }) : "";
     // the account view makes no sense once logged out (and vice versa)
     if ($("authDlg").open && view === "account" && !user) show("login");
@@ -1552,6 +1991,14 @@ const Account = (() => {
       btn.addEventListener("keyup", () => set(false));
       btn.addEventListener("blur", () => set(false));
     });
+  }
+
+  async function countReview() {
+    $("reviewCount").textContent = "";
+    if (!active()) return;
+    const { count } = await sb.from("review_queue").select("symbol", { count: "exact", head: true }).eq("user_id", user.id);
+    $("reviewCount").textContent = count ? count : "";
+    $("menuReview").disabled = !count;
   }
 
   async function busy(form, fn) {
@@ -1653,6 +2100,9 @@ const Account = (() => {
     });
 
     $("logoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
+    $("menuMy").onclick = () => { $("authDlg").close(); StatsPage.openMine({ id: user.id, nickname: profile ? profile.nickname : "" }); };
+    $("menuStudents").onclick = () => { $("authDlg").close(); StatsPage.openStudents(); };
+    $("menuReview").onclick = startReview;
     $("deleteAcctBtn").onclick = async () => {
       if (!confirm(ctx.t("deleteConfirm"))) return;
       const { data, error } = await sb.rpc("request_account_deletion");
@@ -1671,7 +2121,7 @@ const Account = (() => {
     $("restoreLogoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
   }
 
-  return { init, settingsChanged, langChanged, refresh, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
+  return { init, settingsChanged, langChanged, refresh, record, startReview, summary, students, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
 })();
 if (typeof module !== "undefined") module.exports = Account;
 
@@ -1722,13 +2172,19 @@ if (typeof module !== "undefined") module.exports = Account;
   const IS_PC = window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches;
   const DEFAULTS = {
     types: { maj: true, min: true, dim: true, aug: true },
-    optA: false, optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
+    optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
     labels: false, sound: true, adv: false, kbd: IS_PC, kbdTouched: false,
   };
   let S = structuredClone(DEFAULTS);
   const STORE_KEY = "chordoven.settings.v2";
+  // option A (white-key roots only) became the "흰 건반" button of option B (2026-11-05): carry old settings over
+  function migrate(o) {
+    if (o && o.optA) { o.optB = true; o.bases = Array.from({ length: 12 }, (_, i) => Engine.WHITE.includes(i)); }
+    if (o) delete o.optA;
+    return o;
+  }
   try {
-    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    const saved = migrate(JSON.parse(localStorage.getItem(STORE_KEY) || "null"));
     if (saved && typeof saved === "object") S = Object.assign(structuredClone(DEFAULTS), saved);
     if (!S.kbdTouched) S.kbd = IS_PC;   // keyboard input is on by default on computers until the user changes it
   } catch (e) {}
@@ -1763,9 +2219,11 @@ if (typeof module !== "undefined") module.exports = Account;
   basesEl.addEventListener("change", e => { const i = e.target.dataset.base; if (i == null) return; S.bases[+i] = e.target.checked; onSettings(); });
   $("basesAll").onclick = () => { S.bases = Array(12).fill(true); syncSettingsUI(); onSettings(); };
   $("basesNone").onclick = () => { S.bases = Array(12).fill(false); syncSettingsUI(); onSettings(); };
+  // all seven white keys on, or (when they all are) off; black keys are left as they are
+  const allWhite = () => Engine.WHITE.every(i => S.bases[i]);
+  $("basesWhite").onclick = () => { const on = !allWhite(); Engine.WHITE.forEach(i => { S.bases[i] = on; }); syncSettingsUI(); onSettings(); };
 
-  $("optA").onchange = e => { S.optA = e.target.checked; if (S.optA) S.optB = false; syncSettingsUI(); onSettings(); };
-  $("optB").onchange = e => { S.optB = e.target.checked; if (S.optB) S.optA = false; syncSettingsUI(); onSettings(); };
+  $("optB").onchange = e => { S.optB = e.target.checked; syncSettingsUI(); onSettings(); };
   $("optC").onchange = e => { S.optC = e.target.checked; syncSettingsUI(); onSettings(); };
   $("cMax1").onchange = () => { S.cMax = 1; onSettings(); };
   $("cMax2").onchange = () => { S.cMax = 2; onSettings(); };
@@ -1779,7 +2237,8 @@ if (typeof module !== "undefined") module.exports = Account;
   function syncSettingsUI() {
     Engine.TYPES.forEach(t => { $("type-" + t.id).checked = !!S.types[t.id]; });
     S.bases.forEach((v, i) => { $("base-" + i).checked = v; });
-    $("optA").checked = S.optA; $("optB").checked = S.optB; $("basesBox").hidden = !S.optB;
+    $("optB").checked = S.optB; $("basesBox").hidden = !S.optB;
+    $("basesWhite").setAttribute("aria-pressed", String(allWhite()));
     $("optC").checked = S.optC; $("cBox").hidden = !S.optC;
     $("cMax1").checked = S.cMax !== 2; $("cMax2").checked = S.cMax === 2;
     $("optD").checked = S.optD; $("optE").checked = S.optE;
@@ -1790,7 +2249,6 @@ if (typeof module !== "undefined") module.exports = Account;
     const warn = [];
     const has7 = Engine.TYPES.some(t => t.seventh && S.types[t.id]);
     if (S.optC && !has7) warn.push(t("warnC"));
-    if (S.optE && S.optA) warn.push(t("warnAE"));
     $("settingsWarn").textContent = warn.join(" ");
   }
 
@@ -1924,6 +2382,41 @@ if (typeof module !== "undefined") module.exports = Account;
   const state = { q: null, err: null, fb: null, answer: new Set(), good: new Set(), locked: false };
   const stats = { first: 0, total: 0, streak: 0 };
   function renderStats() { $("stFirst").textContent = stats.first; $("stTotal").textContent = stats.total; $("stStreak").textContent = stats.streak; }
+  // the question's first result (first 채점, or 정답 보기 before any 채점) is the one that counts — locally and in the account
+  function finish(q, first) {
+    stats.total++;
+    if (first) { stats.first++; stats.streak++; } else stats.streak = 0;
+    renderStats();
+    Account.record(q, first, !!review);
+    if (review && review.cur && first) review.cur.hits++;
+  }
+
+  // ---------- 틀린 문제 다시 풀기 ----------
+  // The missed questions come round in turn until each is answered right on the first try twice
+  // (the database keeps the same count, see record_attempt in supabase/schema.sql).
+  let review = null;   // { queue: [{ symbol, spec, hits }], cur }
+  function startReview(items) {
+    const queue = items.filter(it => Engine.rebuild(it.spec, S));
+    if (!queue.length) return;
+    review = { queue, cur: null };
+    newQuestion();
+  }
+  function stopReview(done) {
+    review = null;
+    renderReview();
+    newQuestion();
+    if (done) setFeedback("ok", () => t("reviewDone"));
+  }
+  function nextReview() {
+    if (review.cur && review.cur.hits < 2) review.queue.push(review.cur);
+    review.cur = review.queue.shift() || null;
+    return review.cur && Engine.rebuild(review.cur.spec, S);
+  }
+  function renderReview() {
+    $("reviewBar").hidden = !review;
+    if (review) $("reviewText").textContent = t("reviewBar", { n: review.queue.length + (review.cur && review.cur.hits < 2 ? 1 : 0) });
+  }
+  $("reviewStop").onclick = () => stopReview(false);
 
   function hintFor(q) {
     if (q.alt) return t("hintAlt");
@@ -1942,12 +2435,15 @@ if (typeof module !== "undefined") module.exports = Account;
   }
 
   function newQuestion() {
-    const q = Engine.generate(S, Math.random, state.q && state.q.symbol);
+    let q = review && nextReview();
+    if (review && !q) return stopReview(true);
+    if (!q) q = Engine.generate(S, Math.random, state.q && state.q.symbol);
     selected.clear(); state.answer = new Set(); state.good = new Set(); state.locked = false; state.attempted = false;
     $("btnCheck").disabled = !!q.error; $("btnReveal").disabled = !!q.error;
     state.fb = null; renderFeedback();
     state.q = q.error ? null : q; state.err = q.error || null;
     renderPrompt();
+    renderReview();
     relabelKeys();
     renderKeys();
   }
@@ -1990,17 +2486,14 @@ if (typeof module !== "undefined") module.exports = Account;
     const q = state.q; if (!q || state.locked) return;
     if (!selected.size) { setFeedback("info", () => t("pickFirst")); return; }
     const g = Engine.grade(selected, q);
-    const first = !state.attempted;
-    if (first) { state.attempted = true; stats.total++; }
+    if (!state.attempted) { state.attempted = true; finish(q, g.correct); }
     if (g.correct) {
-      if (first) { stats.first++; stats.streak++; }
       setFeedback("ok", () => `<strong>${t("correct")}</strong><span class="tones">${q.symbol} = ${toneList(q)}</span>`);
       state.good = new Set(selected); renderKeys();
       Audio.chord(selected, false);
       lock();
     } else {
       // wrong: hint only, the student can keep trying or press 정답 보기
-      stats.streak = 0;
       setFeedback("no", () => {
         const parts = [];
         if (g.missing) parts.push(t("missing", { n: g.missing }));
@@ -2009,18 +2502,17 @@ if (typeof module !== "undefined") module.exports = Account;
         return `<strong>${t("notYet")}</strong><span>${parts.join(" · ")}</span>`;
       });
     }
-    renderStats();
+    renderReview();
   }
 
   function reveal() {
     const q = state.q; if (!q || state.locked) return;
-    if (!state.attempted) { state.attempted = true; stats.total++; }
-    stats.streak = 0;
+    if (!state.attempted) { state.attempted = true; finish(q, false); }
     const v = Engine.voicing(q);
     // green dots on the answer voicing, plus on any key the student already pressed that is a chord tone
     const chordPcs = new Set([...q.required, ...q.optional, ...q.anyOf]);
     state.answer = new Set([...v, ...[...selected].filter(m => chordPcs.has(m % 12))]);
-    renderKeys(); renderStats();
+    renderKeys();
     setFeedback("info", () => `<strong>${t("answer")}</strong><span class="tones">${q.symbol} = ${toneList(q)}</span>`);
     Audio.chord(v, true);
     lock();
@@ -2036,7 +2528,7 @@ if (typeof module !== "undefined") module.exports = Account;
   // except in the language dropdown. Keys are matched by e.code so the Korean IME doesn't break them.
   document.addEventListener("keydown", e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if ($("authDlg").open) return;   // typing in the log-in dialog must not play the piano
+    if ($("authDlg").open || $("statsDlg").open) return;   // typing in the log-in dialog must not play the piano
     const el = e.target, tag = (el.tagName || "").toLowerCase();
     if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
     const onPianoKey = el.classList && el.classList.contains("key");
@@ -2068,8 +2560,8 @@ if (typeof module !== "undefined") module.exports = Account;
     document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
     document.querySelectorAll("[data-i18n-title]").forEach(el => el.setAttribute("title", t(el.dataset.i18nTitle)));
     $("langSel").value = LANG;
-    syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys();
-    Account.refresh();
+    syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys(); renderReview();
+    Account.refresh(); StatsPage.refresh();
   }
   // copy works only inside a click; if the clipboard is refused, select the address instead
   $("copyMail").onclick = () => {
@@ -2091,14 +2583,23 @@ if (typeof module !== "undefined") module.exports = Account;
   renderStats();
   newQuestion();
   applyLang();
+  StatsPage.init({ t, lang: () => LANG, api: Account, startReview: () => Account.startReview() });
   // accounts: settings follow the account; computer-keyboard input stays per device
   Account.init({
     t, setLang,
     lang: () => LANG,
     getSettings: () => S,
     applySettings: remote => {
-      S = Object.assign(structuredClone(DEFAULTS), remote, { kbd: S.kbd, kbdTouched: S.kbdTouched });
+      S = Object.assign(structuredClone(DEFAULTS), migrate({ ...remote }), { kbd: S.kbd, kbdTouched: S.kbdTouched });
       saveLocal(); syncSettingsUI(); newQuestion();
+    },
+    // the account's totals replace the counters (on log-in and page load only)
+    setStats: v => { Object.assign(stats, v); renderStats(); },
+    startReview,
+    signedOut: () => {
+      Object.assign(stats, { first: 0, total: 0, streak: 0 }); renderStats();
+      StatsPage.close();
+      if (review) stopReview(false);
     },
   });
 })();

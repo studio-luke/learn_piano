@@ -155,6 +155,160 @@ create extension if not exists pg_cron with schema pg_catalog;
 select cron.unschedule(jobid) from cron.job where jobname = 'purge-deleted-accounts';
 select cron.schedule('purge-deleted-accounts', '17 * * * *', 'select public.purge_deleted_accounts()');
 
+-- ---------- practice records (연습 기록, 2026-11-05) ----------
+-- practice_log: one row per question (date only, no time). practice_stats: running totals per account.
+-- review_queue: questions missed on the first try, for 틀린 문제 다시 풀기 — a question leaves the queue after
+-- it is answered right on the first try twice in review mode.
+-- The browser only reads these (own rows; the admin reads all). Every write goes through record_attempt(),
+-- which adds 1 to the totals in the database, so two devices practising at once never overwrite each other.
+-- All three tables hang off profiles with on delete cascade, so the account purge removes them too.
+create table if not exists public.practice_log (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  day date not null,                     -- the student's local date
+  quality text not null,                 -- chord type id from src/engine.js (M7, dom7, m7b5 …) or 7alt
+  symbol text not null,                  -- the chord as asked, e.g. C7(♭9)
+  first_try boolean not null,            -- right on the first 채점 (정답); false = 오답 or 정답 확인
+  review boolean not null default false  -- asked in 틀린 문제 다시 풀기
+);
+create index if not exists practice_log_user_day on public.practice_log (user_id, day);
+
+create table if not exists public.practice_stats (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  total integer not null default 0,
+  first_correct integer not null default 0,
+  streak integer not null default 0,
+  best_streak integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.review_queue (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  symbol text not null,
+  quality text not null,
+  spec jsonb not null,                   -- what the trainer needs to ask the same question again
+  hits smallint not null default 0,      -- first-try right answers in review mode
+  added_at timestamptz not null default now(),
+  primary key (user_id, symbol)
+);
+
+alter table public.practice_log enable row level security;
+alter table public.practice_stats enable row level security;
+alter table public.review_queue enable row level security;
+
+drop policy if exists "practice_log: read own, admin reads all" on public.practice_log;
+create policy "practice_log: read own, admin reads all" on public.practice_log
+  for select to authenticated using (user_id = (select auth.uid()) or (select public.is_admin()));
+drop policy if exists "practice_stats: read own, admin reads all" on public.practice_stats;
+create policy "practice_stats: read own, admin reads all" on public.practice_stats
+  for select to authenticated using (user_id = (select auth.uid()) or (select public.is_admin()));
+drop policy if exists "review_queue: read own, admin reads all" on public.review_queue;
+create policy "review_queue: read own, admin reads all" on public.review_queue
+  for select to authenticated using (user_id = (select auth.uid()) or (select public.is_admin()));
+
+-- Supabase grants new tables to anon/authenticated by default: take that back, then allow reading only
+revoke all on public.practice_log, public.practice_stats, public.review_queue from anon, authenticated;
+grant select on public.practice_log, public.practice_stats, public.review_queue to authenticated;
+
+-- one finished question. p_day is the student's local date (accepted within a day of the server's).
+-- More than 1,000 questions a day are ignored, so a script cannot pile up records.
+create or replace function public.record_attempt(p_quality text, p_symbol text, p_first boolean, p_day date,
+  p_review boolean default false, p_spec jsonb default null)
+returns void language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'not signed in';
+  end if;
+  if not exists (select 1 from public.profiles where id = uid and deleted_at is null) then
+    return;   -- leaving (7-day grace period): nothing is recorded
+  end if;
+  if p_day is null or p_day not between current_date - 1 and current_date + 1 then
+    raise exception 'bad day';
+  end if;
+  if p_first is null or coalesce(p_quality, '') !~ '^[A-Za-z0-9]{1,8}$' or char_length(coalesce(p_symbol, '')) not between 1 and 40
+     or (p_spec is not null and pg_column_size(p_spec) > 600) then
+    raise exception 'bad record';
+  end if;
+  if (select count(*) from public.practice_log where user_id = uid and day = p_day) >= 1000 then
+    return;
+  end if;
+
+  insert into public.practice_log (user_id, day, quality, symbol, first_try, review)
+    values (uid, p_day, p_quality, p_symbol, p_first, coalesce(p_review, false));
+
+  insert into public.practice_stats as s (user_id, total, first_correct, streak, best_streak)
+    values (uid, 1, p_first::int, p_first::int, p_first::int)
+  on conflict (user_id) do update set
+    total = s.total + 1,
+    first_correct = s.first_correct + p_first::int,
+    streak = case when p_first then s.streak + 1 else 0 end,
+    best_streak = greatest(s.best_streak, case when p_first then s.streak + 1 else 0 end),
+    updated_at = now();
+
+  if coalesce(p_review, false) then
+    if p_first then
+      update public.review_queue set hits = hits + 1 where user_id = uid and symbol = p_symbol;
+      delete from public.review_queue where user_id = uid and symbol = p_symbol and hits >= 2;
+    end if;
+  elsif not p_first and p_spec is not null then
+    insert into public.review_queue (user_id, symbol, quality, spec) values (uid, p_symbol, p_quality, p_spec)
+    on conflict (user_id, symbol) do update set spec = excluded.spec, hits = 0, added_at = now();
+  end if;
+end;
+$$;
+revoke execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb) from public, anon;
+grant execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb) to authenticated;
+
+-- statistics for the 마이페이지 / 학생 통계 page: totals (all time), and per chord type and per day
+-- (per month for '1y') over the chosen range. A student may ask only for their own; the admin for anyone.
+create or replace function public.practice_summary(p_user uuid, p_range text, p_today date)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  today date := p_today;
+  since date;
+begin
+  if auth.uid() is null or (p_user <> auth.uid() and not public.is_admin()) then
+    raise exception 'not allowed';
+  end if;
+  if today is null or today not between current_date - 1 and current_date + 1 then
+    today := current_date;
+  end if;
+  since := case p_range when '7d' then today - 6 when '30d' then today - 29
+    else (date_trunc('month', today) - interval '11 months')::date end;
+  return jsonb_build_object(
+    'since', since,
+    'totals', (select jsonb_build_object('total', total, 'first', first_correct, 'streak', streak, 'best', best_streak)
+      from public.practice_stats where user_id = p_user),
+    'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok)) from (
+      select quality, count(*) as n, count(*) filter (where first_try) as ok from public.practice_log
+      where user_id = p_user and day between since and today group by quality) x), '[]'::jsonb),
+    'byDay', coalesce((select jsonb_agg(jsonb_build_object('d', d, 'n', n, 'ok', ok) order by d) from (
+      select case when p_range = '1y' then date_trunc('month', day)::date else day end as d,
+        count(*) as n, count(*) filter (where first_try) as ok
+      from public.practice_log where user_id = p_user and day between since and today group by 1) y), '[]'::jsonb),
+    'review', coalesce((select jsonb_agg(jsonb_build_object('symbol', symbol, 'q', quality, 'hits', hits) order by added_at)
+      from public.review_queue where user_id = p_user), '[]'::jsonb)
+  );
+end;
+$$;
+revoke execute on function public.practice_summary(uuid, text, date) from public, anon;
+grant execute on function public.practice_summary(uuid, text, date) to authenticated;
+
+-- the admin's student list (empty for everyone else)
+create or replace function public.student_list()
+returns table (id uuid, nickname text, full_name text, total integer, first_correct integer, last_day date)
+language sql stable security definer set search_path = '' as $$
+  select p.id, p.nickname, p.full_name, coalesce(s.total, 0), coalesce(s.first_correct, 0),
+    (select max(l.day) from public.practice_log l where l.user_id = p.id)
+  from public.profiles p left join public.practice_stats s on s.user_id = p.id
+  where public.is_admin() and p.role = 'student' and p.deleted_at is null
+  order by p.nickname;
+$$;
+revoke execute on function public.student_list() from public, anon;
+grant execute on function public.student_list() to authenticated;
+
 -- ---------- make the site owner admin (run separately, after signing up with your own e-mail) ----------
 -- update public.profiles set role = 'admin'
 --   where id = (select id from auth.users where email = 'YOUR-EMAIL@example.com');

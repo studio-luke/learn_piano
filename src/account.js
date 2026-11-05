@@ -1,6 +1,7 @@
 // ===== Accounts (Supabase Auth) =====
 // Sign-up / log-in / password reset and change / account deletion with a 7-day grace period,
-// and syncing practice settings to the account.
+// syncing practice settings to the account, and practice records (record_attempt in supabase/schema.sql).
+// Logged in, the account menu opens as a side panel (views in SIDE); log-in and sign-up stay a centred dialog.
 // Everyone signs up as a student; the admin role is set by hand in the database (supabase/schema.sql).
 // Does nothing unless CONFIG has a Supabase URL and public key — then the trainer runs without accounts.
 // The pure helpers (errorKey, syncable, isPublicKey, missingFields, langForTimeZone) are exported for tests/account.test.js.
@@ -9,7 +10,7 @@ const Account = (() => {
   const SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
   const SDK_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
   // date of the terms/privacy policy the user agrees to at sign-up; bump it when either page changes
-  const TERMS_VERSION = "2026-10-27";
+  const TERMS_VERSION = "2026-11-05";
   // settings that belong to the device, not the account (a phone has no computer keyboard)
   const LOCAL_ONLY = ["kbd", "kbdTouched"];
   const PW_MIN = 8, NICK_MAX = 20, NAME_MAX = 50;
@@ -18,6 +19,7 @@ const Account = (() => {
   const REQUIRED = ["full_name"];
   const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at";
   const GRACE_DAYS = 7;   // must match the interval in supabase/schema.sql
+  const SIDE = new Set(["account", "changepw"]);
 
   // Supabase error → i18n key
   function errorKey(err) {
@@ -77,7 +79,7 @@ const Account = (() => {
     });
   }
 
-  // ctx: { t, getSettings, applySettings } from the trainer
+  // ctx from the trainer: { t, setLang, lang, getSettings, applySettings, setStats, startReview, signedOut }
   function init(c) {
     ctx = c;
     if (!configured()) return;
@@ -94,7 +96,7 @@ const Account = (() => {
     sb.auth.onAuthStateChange((event, session) => {
       const prev = user && user.id;
       user = session ? session.user : null;
-      if (!user) profile = null;
+      if (!user && prev) { profile = null; ctx.signedOut(); }
       // Supabase calls inside this callback can deadlock, so they run on the next tick
       if (user && user.id !== prev) setTimeout(loadProfile, 0);
       if (event === "PASSWORD_RECOVERY") setTimeout(() => open("newpw"), 0);
@@ -112,6 +114,7 @@ const Account = (() => {
     useProfile();
   }
   function useProfile() {
+    loadStats();
     if (profile.settings) ctx.applySettings(profile.settings);
     else pushSettings();   // first log-in: this device's settings become the account's
     // the account's language wins on every device
@@ -132,6 +135,37 @@ const Account = (() => {
     if (error) console.warn("settings sync", error);
   }
   const active = () => user && profile && !profile.deleted_at;
+
+  // ---------- practice records ----------
+  // The header counters take the account's totals when the profile loads (log-in or page refresh);
+  // after that the trainer adds 1 locally and the database adds 1 on its side, so devices never overwrite each other.
+  async function loadStats() {
+    const { data, error } = await sb.from("practice_stats").select("total, first_correct, streak").eq("user_id", user.id).maybeSingle();
+    if (error) return console.warn("practice stats", error);
+    ctx.setStats({ total: data ? data.total : 0, first: data ? data.first_correct : 0, streak: data ? data.streak : 0 });
+  }
+  // one finished question; a lost connection just loses that record
+  function record(q, first, review) {
+    if (!active()) return;
+    sb.rpc("record_attempt", {
+      p_quality: Engine.quality(q), p_symbol: q.symbol, p_first: first, p_day: StatsPage.localDay(),
+      p_review: !!review, p_spec: first || review ? null : Engine.spec(q),
+    }).then(({ error }) => { if (error) console.warn("record", error); });
+  }
+  async function reviewItems() {
+    const { data, error } = await sb.from("review_queue").select("symbol, spec, hits").eq("user_id", user.id).order("added_at");
+    if (error) { console.warn("review", error); return null; }
+    return data;
+  }
+  async function startReview() {
+    const items = active() && await reviewItems();
+    if (!items || !items.length) return;
+    $("authDlg").close(); StatsPage.close();
+    ctx.startReview(items);
+  }
+  // for StatsPage
+  const summary = (uid, range, today) => sb.rpc("practice_summary", { p_user: uid, p_range: range, p_today: today });
+  const students = () => sb.rpc("student_list");
   // called by the trainer when the user picks another language
   function langChanged(lang) { if (active() && profile.preferred_lang !== lang) updateProfile({ preferred_lang: lang }); }
   // called by the trainer after every settings save
@@ -151,8 +185,11 @@ const Account = (() => {
   const purgeDate = since => new Date(new Date(since).getTime() + GRACE_DAYS * 864e5);
   function open(v, msg) {
     const dlg = $("authDlg");
+    // the side panel and the centred dialog are the same element: reopen when switching between them
+    if (dlg.open && dlg.classList.contains("side") !== SIDE.has(v)) dlg.close();
     show(v, msg);
     if (!dlg.open) dlg.showModal();
+    if (v === "account") countReview();
     const first = dlg.querySelector(`[data-view="${v}"] input`);
     if (first) first.focus();
   }
@@ -168,6 +205,7 @@ const Account = (() => {
     document.querySelectorAll("#authDlg .pw-wrap input").forEach(i => { i.type = "password"; });
     document.querySelectorAll("#authDlg .pw-eye").forEach(b => b.classList.remove("on"));
     document.querySelectorAll("#authDlg [data-view]").forEach(el => { el.hidden = el.dataset.view !== v; });
+    $("authDlg").classList.toggle("side", SIDE.has(v));
     $("authTitle").textContent = ctx.t(TITLES[v]);
     setMsg(msg ? msg.kind : "", msg ? msg.key : "", msg && msg.vars);
   }
@@ -188,6 +226,7 @@ const Account = (() => {
     $("acctName").textContent = name;
     $("acctFullName").textContent = profile && profile.full_name ? profile.full_name : "";
     $("acctEmail").textContent = user ? user.email : "";
+    $("menuStudents").hidden = !(profile && profile.role === "admin");
     $("restoreText").textContent = profile && profile.deleted_at ? ctx.t("restoreNote", { date: fmtDate(purgeDate(profile.deleted_at)) }) : "";
     // the account view makes no sense once logged out (and vice versa)
     if ($("authDlg").open && view === "account" && !user) show("login");
@@ -216,6 +255,14 @@ const Account = (() => {
       btn.addEventListener("keyup", () => set(false));
       btn.addEventListener("blur", () => set(false));
     });
+  }
+
+  async function countReview() {
+    $("reviewCount").textContent = "";
+    if (!active()) return;
+    const { count } = await sb.from("review_queue").select("symbol", { count: "exact", head: true }).eq("user_id", user.id);
+    $("reviewCount").textContent = count ? count : "";
+    $("menuReview").disabled = !count;
   }
 
   async function busy(form, fn) {
@@ -317,6 +364,9 @@ const Account = (() => {
     });
 
     $("logoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
+    $("menuMy").onclick = () => { $("authDlg").close(); StatsPage.openMine({ id: user.id, nickname: profile ? profile.nickname : "" }); };
+    $("menuStudents").onclick = () => { $("authDlg").close(); StatsPage.openStudents(); };
+    $("menuReview").onclick = startReview;
     $("deleteAcctBtn").onclick = async () => {
       if (!confirm(ctx.t("deleteConfirm"))) return;
       const { data, error } = await sb.rpc("request_account_deletion");
@@ -335,6 +385,6 @@ const Account = (() => {
     $("restoreLogoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
   }
 
-  return { init, settingsChanged, langChanged, refresh, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
+  return { init, settingsChanged, langChanged, refresh, record, startReview, summary, students, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
 })();
 if (typeof module !== "undefined") module.exports = Account;

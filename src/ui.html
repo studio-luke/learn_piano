@@ -93,9 +93,8 @@ button { cursor: pointer; }
 .hint:empty { display: none; }
 
 .feedback { border-radius: 10px; padding: 6px 12px; font-size: 13px; line-height: 1.45; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; align-items: baseline; margin-top: 4px; max-width: 100%; }
-/* when feedback is showing it takes the hint's place */
-.prompt:has(.feedback:not(:empty)) .hint,
-.prompt:has(.feedback:not(:empty)) .eyebrow { display: none; }
+/* when feedback is showing it takes the hint's place (the eyebrow stays) */
+.prompt:has(.feedback:not(:empty)) .hint { display: none; }
 .feedback:empty { display: none; }
 .feedback.ok { background: var(--ok-soft); color: var(--ok); }
 .feedback.no { background: var(--warn-soft); color: var(--warn); }
@@ -183,6 +182,9 @@ button { cursor: pointer; }
 .bases { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .bases .chip span { min-width: 0; width: 100%; padding: 5px 2px; font-size: 13px; }
 .radios { display: flex; gap: 6px; }
+/* "흰 건반" toggle, drawn like a white key so it stands apart from the 모두 선택 / 모두 해제 links */
+.white-btn { border: 1px solid var(--key-white-edge); background: var(--key-white); color: var(--ink); border-radius: 0 0 6px 6px; border-top: 3px solid var(--key-black); padding: 2px 10px; font-size: 12px; font-weight: 600; margin-right: 6px; }
+.white-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); border-top-color: var(--key-black); }
 .adv-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 1px dashed var(--line); background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
 .adv-toggle .chev { transition: transform 150ms; }
 .adv-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
@@ -223,6 +225,74 @@ dialog.auth::backdrop { background: rgba(40,25,15,.45); }
 .acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
 .acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
 .linkbtn.danger { color: var(--warn); align-self: flex-start; }
+/* logged in: the same dialog opens as a side panel on the right */
+dialog.auth.side { margin: 0 0 0 auto; width: min(380px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: var(--radius) 0 0 var(--radius); border-right: none; padding-top: max(22px, env(safe-area-inset-top, 0px)); padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+dialog.auth.side[open] { animation: side-in 180ms ease-out; }
+@keyframes side-in { from { transform: translateX(48px); opacity: 0; } }
+@media (max-width: 420px) { dialog.auth.side { border-radius: 0; border-left: none; } }
+.side-menu { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.menu-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; border: none; border-bottom: 1px solid var(--line); background: none; padding: 13px 4px; font-size: 15px; font-weight: 500; }
+.menu-item:hover:not(:disabled) { color: var(--accent); }
+.menu-item:disabled { color: var(--muted); cursor: default; }
+.menu-item .chev { color: var(--muted); }
+.badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-align: center; margin-left: auto; }
+.badge:empty { display: none; }
+
+/* statistics page (마이페이지 / 학생 통계): full-screen dialog */
+dialog.page { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: none; padding: 0; background: var(--bg); color: var(--ink); overflow: auto; }
+.page-inner { max-width: 960px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
+.page-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 3; background: var(--bg); padding-block: 8px; }
+.page-top h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0; }
+.page-top .linkbtn { font-size: 14px; }
+#statsBody { display: flex; flex-direction: column; gap: 16px; }
+.st-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.st-card h3 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.st-card h3.st-sub { margin-top: 8px; }
+.st-head { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.st-who { margin: 0; display: flex; align-items: baseline; gap: 10px; font-size: 18px; }
+.st-who span { color: var(--muted); font-size: 14px; }
+.st-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+.st-stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-stat span { font-size: 12px; color: var(--muted); }
+.st-stat b { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.st-stat small { font-size: 12px; color: var(--muted); }
+.st-tabs { display: flex; gap: 6px; }
+.chip-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 12px; font-size: 13px; }
+.chip-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.st-chart-wrap { position: relative; padding-top: 16px; }
+.st-max { position: absolute; top: 0; left: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st-chart { display: flex; align-items: stretch; gap: 6px; height: 170px; border-bottom: 1px solid var(--line); background: linear-gradient(var(--line) 1px, transparent 1px) top / 100% 50%; }
+.st-chart.r30d { gap: 2px; }
+.st-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.st-bar i { display: block; }
+.st-bar .ok { background: var(--ok); }
+.st-bar .no { background: var(--warn); opacity: 0.75; }
+.st-x { display: flex; gap: 6px; font-size: 11px; color: var(--muted); }
+.st-x.r30d { gap: 2px; }
+.st-x span { flex: 1 1 0; min-width: 0; text-align: center; white-space: nowrap; overflow: visible; display: flex; justify-content: center; }
+.st-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.st-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 6px; border-bottom: 1px solid var(--line); }
+.st-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); }
+.st-table tr:last-child td { border-bottom: none; }
+.st-table .num { text-align: right; white-space: nowrap; }
+.st-type { font-weight: 600; }
+.st-rate { display: inline-block; vertical-align: middle; width: clamp(40px, 12vw, 120px); height: 8px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-right: 6px; }
+.st-rate i { display: block; height: 100%; background: var(--ok); }
+.st-rate-n { font-size: 12px; color: var(--muted); }
+.st-student { border: none; background: none; padding: 0; text-align: left; display: flex; flex-direction: column; color: var(--ink); }
+.st-student b { font-weight: 600; color: var(--accent); }
+.st-student span { font-size: 12px; color: var(--muted); }
+.st-student:hover b { text-decoration: underline; }
+.st-count { display: inline-block; margin-left: 4px; color: var(--ink); }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-chip { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 14px; background: var(--bg); display: inline-flex; gap: 6px; align-items: center; }
+.st-chip i { font-style: normal; font-size: 9px; color: var(--ok); letter-spacing: 1px; }
+.st-empty { margin: 0; color: var(--muted); font-size: 14px; }
+@media (max-width: 520px) { .st-table { font-size: 13px; } .st-table th, .st-table td { padding-inline: 4px; } .st-card { padding: 14px 12px; } }
+
+/* 틀린 문제 다시 풀기 */
+.review-bar { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 4px 3px 12px; margin-bottom: 4px; }
+.review-bar .linkbtn { color: var(--ink); font-size: 12px; }
 
 /* contact footer */
 .contact { border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 28px; font-size: 13px; color: var(--muted); }
@@ -296,6 +366,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   }
   .prompt { grid-area: prompt; padding: 0; gap: 0; }
   .eyebrow { font-size: 10px; }
+  .review-bar { font-size: 11px; padding-block: 1px; }
   .symbol { font-size: clamp(32px, 12vh, 56px); }
   .symbol.empty { font-size: 14px; padding-block: 8px; }
   .hint { font-size: 11px; line-height: 1.35; }
@@ -316,7 +387,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
       <span data-i18n="tagline">코드 학습 웹어플리케이션</span>
     </div>
     <div class="top-right">
-      <div class="stats" aria-label="이번 연습 기록" data-i18n-aria="statsAria">
+      <div class="stats" aria-label="연습 기록" data-i18n-aria="statsAria">
         <span class="stat"><span data-i18n="firstTry">정답/시도</span> <b id="stFirst">0</b> / <b id="stTotal">0</b></span>
         <span class="stat"><span data-i18n="streak">연속</span> <b id="stStreak">0</b></span>
       </div>
@@ -336,6 +407,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   <main class="layout">
     <section class="desk" aria-label="연습" data-i18n-aria="deskAria">
       <div class="prompt">
+        <div class="review-bar" id="reviewBar" hidden><span id="reviewText"></span><button class="linkbtn" id="reviewStop" type="button" data-i18n="reviewStop">그만하기</button></div>
         <div class="eyebrow" data-i18n="eyebrow">이 코드를 건반에서 눌러보세요</div>
         <div class="symbol" id="symbol" aria-live="polite">C</div>
         <div class="hint" id="hint"></div>
@@ -380,11 +452,10 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 
       <div class="opt">
         <h3 data-i18n="rangeH">출제 범위</h3>
-        <label class="check"><input type="checkbox" id="optA"><span><span class="tag">A</span><span data-i18n="optA">흰 건반 베이스의 코드만 출제</span><small data-i18n="optAsub">C D E F G A B 근음만 나와요. 입문자용.</small></span></label>
         <label class="check"><input type="checkbox" id="optB"><span><span class="tag">B</span><span data-i18n="optB">특정 베이스의 코드만 출제</span><small data-i18n="optBsub">원하는 근음만 골라서 연습해요.</small></span></label>
         <div class="sub" id="basesBox" hidden>
           <div class="bases" id="bases"></div>
-          <div><button class="linkbtn" id="basesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="basesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
+          <div><button class="white-btn" id="basesWhite" type="button" aria-pressed="false" data-i18n="whiteKeys">흰 건반</button><button class="linkbtn" id="basesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="basesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
         </div>
         <label class="check"><input type="checkbox" id="optC"><span><span class="tag">C</span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsub">도미넌트 7에는 7alt 문제도 나와요.</small></span></label>
         <div class="sub" id="cBox" hidden>
@@ -489,11 +560,23 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 
   <div class="auth-form" data-view="account" hidden>
     <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
-    <p class="auth-note" data-i18n="syncNote">로그인하는 동안 출제 설정이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.</p>
-    <button class="btn" type="button" id="logoutBtn" data-i18n="logout">로그아웃</button>
-    <button class="linkbtn" type="button" data-go="changepw" data-i18n="changePw">비밀번호 변경</button>
+    <nav class="side-menu">
+      <button class="menu-item" type="button" id="menuMy"><span data-i18n="menuMy">마이페이지</span><span class="chev" aria-hidden="true">›</span></button>
+      <button class="menu-item" type="button" id="menuStudents" hidden><span data-i18n="menuStudents">학생 통계</span><span class="chev" aria-hidden="true">›</span></button>
+      <button class="menu-item" type="button" id="menuReview"><span data-i18n="menuReview">틀린 문제 다시 풀기</span><span class="badge" id="reviewCount"></span></button>
+      <button class="menu-item" type="button" data-go="changepw"><span data-i18n="changePw">비밀번호 변경</span><span class="chev" aria-hidden="true">›</span></button>
+      <button class="menu-item" type="button" id="logoutBtn"><span data-i18n="logout">로그아웃</span></button>
+    </nav>
+    <p class="auth-note" data-i18n="syncNote">로그인하는 동안 출제 설정과 연습 기록이 계정에 저장돼 다른 기기에서도 이어서 쓸 수 있어요.</p>
     <hr class="divider">
     <button class="linkbtn danger" type="button" id="deleteAcctBtn" data-i18n="deleteAcct">회원 탈퇴</button>
+  </div>
+</dialog>
+
+<dialog class="page" id="statsDlg" aria-labelledby="statsTitle">
+  <div class="page-inner">
+    <header class="page-top"><button class="linkbtn" id="statsBack" type="button"></button><h2 id="statsTitle"></h2></header>
+    <div id="statsBody"></div>
   </div>
 </dialog>
 
@@ -505,6 +588,9 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 </script>
 <script>
 /*CONFIG*/
+</script>
+<script>
+/*STATS*/
 </script>
 <script>
 /*ACCOUNT*/
@@ -555,13 +641,19 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   const IS_PC = window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches;
   const DEFAULTS = {
     types: { maj: true, min: true, dim: true, aug: true },
-    optA: false, optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
+    optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
     labels: false, sound: true, adv: false, kbd: IS_PC, kbdTouched: false,
   };
   let S = structuredClone(DEFAULTS);
   const STORE_KEY = "chordoven.settings.v2";
+  // option A (white-key roots only) became the "흰 건반" button of option B (2026-11-05): carry old settings over
+  function migrate(o) {
+    if (o && o.optA) { o.optB = true; o.bases = Array.from({ length: 12 }, (_, i) => Engine.WHITE.includes(i)); }
+    if (o) delete o.optA;
+    return o;
+  }
   try {
-    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    const saved = migrate(JSON.parse(localStorage.getItem(STORE_KEY) || "null"));
     if (saved && typeof saved === "object") S = Object.assign(structuredClone(DEFAULTS), saved);
     if (!S.kbdTouched) S.kbd = IS_PC;   // keyboard input is on by default on computers until the user changes it
   } catch (e) {}
@@ -596,9 +688,11 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   basesEl.addEventListener("change", e => { const i = e.target.dataset.base; if (i == null) return; S.bases[+i] = e.target.checked; onSettings(); });
   $("basesAll").onclick = () => { S.bases = Array(12).fill(true); syncSettingsUI(); onSettings(); };
   $("basesNone").onclick = () => { S.bases = Array(12).fill(false); syncSettingsUI(); onSettings(); };
+  // all seven white keys on, or (when they all are) off; black keys are left as they are
+  const allWhite = () => Engine.WHITE.every(i => S.bases[i]);
+  $("basesWhite").onclick = () => { const on = !allWhite(); Engine.WHITE.forEach(i => { S.bases[i] = on; }); syncSettingsUI(); onSettings(); };
 
-  $("optA").onchange = e => { S.optA = e.target.checked; if (S.optA) S.optB = false; syncSettingsUI(); onSettings(); };
-  $("optB").onchange = e => { S.optB = e.target.checked; if (S.optB) S.optA = false; syncSettingsUI(); onSettings(); };
+  $("optB").onchange = e => { S.optB = e.target.checked; syncSettingsUI(); onSettings(); };
   $("optC").onchange = e => { S.optC = e.target.checked; syncSettingsUI(); onSettings(); };
   $("cMax1").onchange = () => { S.cMax = 1; onSettings(); };
   $("cMax2").onchange = () => { S.cMax = 2; onSettings(); };
@@ -612,7 +706,8 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   function syncSettingsUI() {
     Engine.TYPES.forEach(t => { $("type-" + t.id).checked = !!S.types[t.id]; });
     S.bases.forEach((v, i) => { $("base-" + i).checked = v; });
-    $("optA").checked = S.optA; $("optB").checked = S.optB; $("basesBox").hidden = !S.optB;
+    $("optB").checked = S.optB; $("basesBox").hidden = !S.optB;
+    $("basesWhite").setAttribute("aria-pressed", String(allWhite()));
     $("optC").checked = S.optC; $("cBox").hidden = !S.optC;
     $("cMax1").checked = S.cMax !== 2; $("cMax2").checked = S.cMax === 2;
     $("optD").checked = S.optD; $("optE").checked = S.optE;
@@ -623,7 +718,6 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     const warn = [];
     const has7 = Engine.TYPES.some(t => t.seventh && S.types[t.id]);
     if (S.optC && !has7) warn.push(t("warnC"));
-    if (S.optE && S.optA) warn.push(t("warnAE"));
     $("settingsWarn").textContent = warn.join(" ");
   }
 
@@ -757,6 +851,41 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   const state = { q: null, err: null, fb: null, answer: new Set(), good: new Set(), locked: false };
   const stats = { first: 0, total: 0, streak: 0 };
   function renderStats() { $("stFirst").textContent = stats.first; $("stTotal").textContent = stats.total; $("stStreak").textContent = stats.streak; }
+  // the question's first result (first 채점, or 정답 보기 before any 채점) is the one that counts — locally and in the account
+  function finish(q, first) {
+    stats.total++;
+    if (first) { stats.first++; stats.streak++; } else stats.streak = 0;
+    renderStats();
+    Account.record(q, first, !!review);
+    if (review && review.cur && first) review.cur.hits++;
+  }
+
+  // ---------- 틀린 문제 다시 풀기 ----------
+  // The missed questions come round in turn until each is answered right on the first try twice
+  // (the database keeps the same count, see record_attempt in supabase/schema.sql).
+  let review = null;   // { queue: [{ symbol, spec, hits }], cur }
+  function startReview(items) {
+    const queue = items.filter(it => Engine.rebuild(it.spec, S));
+    if (!queue.length) return;
+    review = { queue, cur: null };
+    newQuestion();
+  }
+  function stopReview(done) {
+    review = null;
+    renderReview();
+    newQuestion();
+    if (done) setFeedback("ok", () => t("reviewDone"));
+  }
+  function nextReview() {
+    if (review.cur && review.cur.hits < 2) review.queue.push(review.cur);
+    review.cur = review.queue.shift() || null;
+    return review.cur && Engine.rebuild(review.cur.spec, S);
+  }
+  function renderReview() {
+    $("reviewBar").hidden = !review;
+    if (review) $("reviewText").textContent = t("reviewBar", { n: review.queue.length + (review.cur && review.cur.hits < 2 ? 1 : 0) });
+  }
+  $("reviewStop").onclick = () => stopReview(false);
 
   function hintFor(q) {
     if (q.alt) return t("hintAlt");
@@ -775,12 +904,15 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   }
 
   function newQuestion() {
-    const q = Engine.generate(S, Math.random, state.q && state.q.symbol);
+    let q = review && nextReview();
+    if (review && !q) return stopReview(true);
+    if (!q) q = Engine.generate(S, Math.random, state.q && state.q.symbol);
     selected.clear(); state.answer = new Set(); state.good = new Set(); state.locked = false; state.attempted = false;
     $("btnCheck").disabled = !!q.error; $("btnReveal").disabled = !!q.error;
     state.fb = null; renderFeedback();
     state.q = q.error ? null : q; state.err = q.error || null;
     renderPrompt();
+    renderReview();
     relabelKeys();
     renderKeys();
   }
@@ -823,17 +955,14 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     const q = state.q; if (!q || state.locked) return;
     if (!selected.size) { setFeedback("info", () => t("pickFirst")); return; }
     const g = Engine.grade(selected, q);
-    const first = !state.attempted;
-    if (first) { state.attempted = true; stats.total++; }
+    if (!state.attempted) { state.attempted = true; finish(q, g.correct); }
     if (g.correct) {
-      if (first) { stats.first++; stats.streak++; }
       setFeedback("ok", () => `<strong>${t("correct")}</strong><span class="tones">${q.symbol} = ${toneList(q)}</span>`);
       state.good = new Set(selected); renderKeys();
       Audio.chord(selected, false);
       lock();
     } else {
       // wrong: hint only, the student can keep trying or press 정답 보기
-      stats.streak = 0;
       setFeedback("no", () => {
         const parts = [];
         if (g.missing) parts.push(t("missing", { n: g.missing }));
@@ -842,18 +971,17 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
         return `<strong>${t("notYet")}</strong><span>${parts.join(" · ")}</span>`;
       });
     }
-    renderStats();
+    renderReview();
   }
 
   function reveal() {
     const q = state.q; if (!q || state.locked) return;
-    if (!state.attempted) { state.attempted = true; stats.total++; }
-    stats.streak = 0;
+    if (!state.attempted) { state.attempted = true; finish(q, false); }
     const v = Engine.voicing(q);
     // green dots on the answer voicing, plus on any key the student already pressed that is a chord tone
     const chordPcs = new Set([...q.required, ...q.optional, ...q.anyOf]);
     state.answer = new Set([...v, ...[...selected].filter(m => chordPcs.has(m % 12))]);
-    renderKeys(); renderStats();
+    renderKeys();
     setFeedback("info", () => `<strong>${t("answer")}</strong><span class="tones">${q.symbol} = ${toneList(q)}</span>`);
     Audio.chord(v, true);
     lock();
@@ -869,7 +997,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   // except in the language dropdown. Keys are matched by e.code so the Korean IME doesn't break them.
   document.addEventListener("keydown", e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if ($("authDlg").open) return;   // typing in the log-in dialog must not play the piano
+    if ($("authDlg").open || $("statsDlg").open) return;   // typing in the log-in dialog must not play the piano
     const el = e.target, tag = (el.tagName || "").toLowerCase();
     if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
     const onPianoKey = el.classList && el.classList.contains("key");
@@ -901,8 +1029,8 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
     document.querySelectorAll("[data-i18n-title]").forEach(el => el.setAttribute("title", t(el.dataset.i18nTitle)));
     $("langSel").value = LANG;
-    syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys();
-    Account.refresh();
+    syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys(); renderReview();
+    Account.refresh(); StatsPage.refresh();
   }
   // copy works only inside a click; if the clipboard is refused, select the address instead
   $("copyMail").onclick = () => {
@@ -924,14 +1052,23 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   renderStats();
   newQuestion();
   applyLang();
+  StatsPage.init({ t, lang: () => LANG, api: Account, startReview: () => Account.startReview() });
   // accounts: settings follow the account; computer-keyboard input stays per device
   Account.init({
     t, setLang,
     lang: () => LANG,
     getSettings: () => S,
     applySettings: remote => {
-      S = Object.assign(structuredClone(DEFAULTS), remote, { kbd: S.kbd, kbdTouched: S.kbdTouched });
+      S = Object.assign(structuredClone(DEFAULTS), migrate({ ...remote }), { kbd: S.kbd, kbdTouched: S.kbdTouched });
       saveLocal(); syncSettingsUI(); newQuestion();
+    },
+    // the account's totals replace the counters (on log-in and page load only)
+    setStats: v => { Object.assign(stats, v); renderStats(); },
+    startReview,
+    signedOut: () => {
+      Object.assign(stats, { first: 0, total: 0, streak: 0 }); renderStats();
+      StatsPage.close();
+      if (review) stopReview(false);
     },
   });
 })();

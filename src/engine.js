@@ -45,7 +45,7 @@ const Engine = (() => {
     { id: "dim7", group: "seventh", name: "dim7", w: 1.5, tones: [[0, 1], [3, 3], [6, 5], [9, 7]], std: ["dim7"], sym: ["°7"], seventh: true, ten: [] },
     { id: "m7b5", group: "seventh", name: "m7(♭5)", w: 2, tones: [[0, 1], [3, 3], [6, 5], [10, 7]], std: ["m7(♭5)"], sym: ["ø7", "ø", "-7(♭5)"], seventh: true, ten: ["9", "11", "b13"], maxTen: 1 },  // (♭5) already reads like a tension
     { id: "mM7", group: "seventh", name: "mM7", w: 1, tones: [...t3, [11, 7]], std: ["mM7"], sym: ["-△7", "m△7"], seventh: true, ten: ["9", "11"], maxTen: 1 },
-    { id: "augM7", group: "seventh", name: "augM7", w: 1, tones: [[0, 1], [4, 3], [8, 5], [11, 7]], std: ["augM7"], sym: ["+△7"], seventh: true, ten: [] },
+    { id: "augM7", group: "seventh", name: "augM7", w: 1, tones: [[0, 1], [4, 3], [8, 5], [11, 7]], std: ["augM7", "M7(♯5)"], sym: ["+△7"], seventh: true, ten: [] },
 
     { id: "6", group: "sixth", name: "6", w: 1.5, tones: [...T3, [9, 6]], std: ["6"], sym: [] },
     { id: "m6", group: "sixth", name: "m6", w: 1.3, tones: [...t3, [9, 6]], std: ["m6"], sym: ["-6"] },
@@ -92,7 +92,6 @@ const Engine = (() => {
   const pick = (arr, rnd) => arr[Math.floor(rnd() * arr.length)];
 
   function rootPool(s) {
-    if (s.optA) return WHITE.slice();
     if (s.optB) return s.bases.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
     return [...Array(12).keys()];
   }
@@ -125,6 +124,67 @@ const Engine = (() => {
     return { head, items };
   }
 
+  // chord tones for one root/type/tensions; null for spellings no chart would use
+  function buildTones(type, root, tens, alt, s) {
+    const replaces5 = tens.includes("#5") || tens.includes("b5");
+    const tenDegs = new Set(tens.map(t => TEN[t][1]));
+    const tones = [];
+    const required = new Set(), optional = new Set(), anyOf = new Set();
+    if (alt) {
+      for (const [semi, deg] of [[0, 1], [4, 3], [10, 7]]) {
+        const t = spellTone(root, semi, deg); tones.push({ ...t, role: "chord", semi }); required.add(t.pc);
+      }
+      const p5 = spellTone(root, 7, 5); optional.add(p5.pc);
+      for (const id of ALT_SET) {
+        const t = spellTone(root, TEN[id][0], TEN[id][1]); tones.push({ ...t, role: "alt", semi: TEN[id][0], ten: id }); anyOf.add(t.pc);
+      }
+    } else {
+      for (const [semi, deg, flag] of type.tones) {
+        if (replaces5 && semi === 7 && deg === 5) continue;      // #5 / b5 takes the 5th's place: P5 is wrong
+        if (flag === "opt" && tenDegs.has(deg)) continue;         // e.g. C13(b9): the natural 9 is gone
+        const t = spellTone(root, semi, deg);
+        const omittable = flag === "opt" || (tens.length > 0 && semi === 7 && deg === 5);
+        tones.push({ ...t, role: omittable ? "optional" : "chord", semi, deg });
+        (omittable ? optional : required).add(t.pc);
+      }
+      for (const id of tens) {
+        const t = spellTone(root, TEN[id][0], TEN[id][1]);
+        tones.push({ ...t, role: "tension", semi: TEN[id][0], ten: id }); required.add(t.pc);
+      }
+    }
+    // skip spellings no chart would use (triple accidentals, or 2+ double accidentals)
+    if (tones.some(t => Math.abs(t.a) > 2)) return null;
+    if (tones.filter(t => Math.abs(t.a) === 2).length >= 2) return null;
+    // display names: option E keeps strict spelling (C♭ E♯ A𝄫 F𝄪); otherwise use the easy name
+    for (const t of tones) {
+      const odd = (t.l === 0 || t.l === 3) && t.a === -1 || (t.l === 2 || t.l === 6) && t.a === 1;
+      if (!s.optE && (Math.abs(t.a) === 2 || odd)) t.name = simpleName(t.pc, t.a);
+    }
+    return { tones, required, optional, anyOf };
+  }
+
+  function question(type, root, tens, alt, head, items, parts) {
+    const rootName = nameOf(root.l, root.a);
+    const label = head + (items.length ? "(" + items.join(",") + ")" : "");
+    return { symbol: rootName + label, rootName, label, head, items, root: { l: root.l, a: root.a }, rootPc: pcOf(root.l, root.a),
+      type: type.id, group: type.group, tens, alt, ...parts };
+  }
+
+  // stats group of a question: the chord type, with 7alt apart from plain 7
+  const quality = q => (q.alt ? "7alt" : q.type);
+  // what is saved to replay a question later (틀린 문제 다시 풀기)
+  const spec = q => ({ l: q.root.l, a: q.root.a, type: q.type, tens: q.tens, alt: q.alt, head: q.head, items: q.items });
+  // a saved question back; null if the data does not describe a valid chord
+  function rebuild(sp, s) {
+    const type = sp && BY_ID[sp.type];
+    if (!type || !Number.isInteger(sp.l) || sp.l < 0 || sp.l > 6 || !Number.isInteger(sp.a) || Math.abs(sp.a) > 2) return null;
+    const tens = Array.isArray(sp.tens) ? sp.tens : [];
+    if (!tens.every(t => t in TEN) || !Array.isArray(sp.items) || typeof sp.head !== "string") return null;
+    const alt = !!sp.alt && type.id === "dom7";
+    const parts = buildTones(type, { l: sp.l, a: sp.a }, tens, alt, s);
+    return parts && question(type, { l: sp.l, a: sp.a }, tens, alt, sp.head, sp.items.map(String), parts);
+  }
+
   // returns {error} or question
   function generate(s, rnd = Math.random, prevSymbol = null) {
     const types = TYPES.filter(t => s.types[t.id]);
@@ -135,7 +195,7 @@ const Engine = (() => {
     for (let tries = 0; tries < 80; tries++) {
       const type = pickWeighted(types, rnd);
       const pc = pick(pcs, rnd);
-      const spellings = s.optA ? ROOTS_DEFAULT[pc] : (s.optE ? ROOTS_EXT : ROOTS_DEFAULT)[pc];
+      const spellings = (s.optE ? ROOTS_EXT : ROOTS_DEFAULT)[pc];
       const root = pick(spellings, rnd);
 
       let tens = [], alt = false;
@@ -152,48 +212,12 @@ const Engine = (() => {
           tens.sort((a, b) => TEN_ORDER.indexOf(a) - TEN_ORDER.indexOf(b));
         }
       }
-      const replaces5 = tens.includes("#5") || tens.includes("b5");
-      const tenDegs = new Set(tens.map(t => TEN[t][1]));
-
-      const tones = [];
-      const required = new Set(), optional = new Set(), anyOf = new Set();
-      if (alt) {
-        for (const [semi, deg] of [[0, 1], [4, 3], [10, 7]]) {
-          const t = spellTone(root, semi, deg); tones.push({ ...t, role: "chord", semi }); required.add(t.pc);
-        }
-        const p5 = spellTone(root, 7, 5); optional.add(p5.pc);
-        for (const id of ALT_SET) {
-          const t = spellTone(root, TEN[id][0], TEN[id][1]); tones.push({ ...t, role: "alt", semi: TEN[id][0], ten: id }); anyOf.add(t.pc);
-        }
-      } else {
-        for (const [semi, deg, flag] of type.tones) {
-          if (replaces5 && semi === 7 && deg === 5) continue;      // #5 / b5 takes the 5th's place: P5 is wrong
-          if (flag === "opt" && tenDegs.has(deg)) continue;         // e.g. C13(b9): the natural 9 is gone
-          const t = spellTone(root, semi, deg);
-          const omittable = flag === "opt" || (tens.length > 0 && semi === 7 && deg === 5);
-          tones.push({ ...t, role: omittable ? "optional" : "chord", semi, deg });
-          (omittable ? optional : required).add(t.pc);
-        }
-        for (const id of tens) {
-          const t = spellTone(root, TEN[id][0], TEN[id][1]);
-          tones.push({ ...t, role: "tension", semi: TEN[id][0], ten: id }); required.add(t.pc);
-        }
-      }
-      // skip spellings no chart would use (triple accidentals, or 2+ double accidentals)
-      if (tones.some(t => Math.abs(t.a) > 2)) continue;
-      if (tones.filter(t => Math.abs(t.a) === 2).length >= 2) continue;
-      // display names: option E keeps strict spelling (C♭ E♯ A𝄫 F𝄪); otherwise use the easy name
-      for (const t of tones) {
-        const odd = (t.l === 0 || t.l === 3) && t.a === -1 || (t.l === 2 || t.l === 6) && t.a === 1;
-        if (!s.optE && (Math.abs(t.a) === 2 || odd)) t.name = simpleName(t.pc, t.a);
-      }
-
-      const rootName = nameOf(root.l, root.a);
+      const parts = buildTones(type, root, tens, alt, s);
+      if (!parts) continue;
       const { head, items } = makeLabel(type, tens, alt, s.optD, rnd);
-      const label = head + (items.length ? "(" + items.join(",") + ")" : "");
-      const symbol = rootName + label;
-      if (symbol === prevSymbol && tries < 79) continue;
-      return { symbol, rootName, label, head, items, rootPc: pc, type: type.id, group: type.group, tens, alt, tones, required, optional, anyOf };
+      const q = question(type, root, tens, alt, head, items, parts);
+      if (q.symbol === prevSymbol && tries < 79) continue;
+      return q;
     }
     return { error: "noChord" };
   }
@@ -222,6 +246,6 @@ const Engine = (() => {
     return [...new Set(out)].sort((a, b) => a - b);
   }
 
-  return { TYPES, BY_ID, PC_NAMES, TEN, generate, grade, voicing, tenText, spellTone, simpleName };
+  return { TYPES, BY_ID, PC_NAMES, TEN, WHITE, generate, rebuild, spec, quality, grade, voicing, tenText, spellTone, simpleName };
 })();
 if (typeof module !== "undefined") module.exports = Engine;
