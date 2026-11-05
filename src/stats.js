@@ -68,33 +68,46 @@ const StatsPage = (() => {
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const $ = id => document.getElementById(id);
   let ctx, view = null, range = "7d", custom = null, data = null, list = null, seq = 0;
+  // 기간 설정 calendar popover: null when closed; month = first day of the month shown, from = start picked, waiting for the end
+  let cal = null;
 
   // ctx: { t, lang, api: Account, startReview }
   function init(c) {
     ctx = c;
     $("statsBack").onclick = () => (view && view.teacher ? showList() : $("statsDlg").close());
-    $("statsBody").addEventListener("click", e => {
+    $("statsDlg").addEventListener("click", e => {
+      const inCal = e.target.closest(".st-cal");
       const r = e.target.closest("[data-range]");
+      // a click anywhere else closes the calendar
+      if (cal && !inCal && !(r && r.dataset.range === "custom")) { cal = null; render(); }
       if (r) {
-        range = r.dataset.range;
-        if (range === "custom" && !custom) custom = { from: addDays(localDay(), -29), to: localDay() };
+        if (r.dataset.range !== "custom") { range = r.dataset.range; custom = null; cal = null; return load(); }
+        // 기간 설정 opens (or closes) the calendar; the range changes only once both dates are picked
+        if (cal) cal = null;
+        else {
+          const shown = range === "custom" && custom ? custom.to : localDay();
+          cal = { month: shown.slice(0, 8) + "01", from: null };
+        }
+        return render();
+      }
+      const nav = e.target.closest("[data-cal-nav]");
+      if (nav) { cal.month = monthAdd(cal.month, +nav.dataset.calNav); return render(); }
+      const day = e.target.closest("[data-cal-day]");
+      if (day) {
+        const k = day.dataset.calDay;
+        if (!cal.from) { cal.from = k; return render(); }
+        custom = cal.from <= k ? { from: cal.from, to: k } : { from: k, to: cal.from };
+        range = "custom"; cal = null;
         return load();
       }
       const s = e.target.closest("[data-student]");
       if (s) return showStudent(list.find(x => x.id === s.dataset.student));
       if (e.target.closest("#statsReview")) ctx.startReview();
     });
-    // 기간 설정: the two calendar fields. Dates before the first practice day or after today are pulled back in.
-    $("statsBody").addEventListener("change", e => {
-      if (e.target.id !== "stFrom" && e.target.id !== "stTo") return;
-      const min = (data && data.firstDay) ? String(data.firstDay).slice(0, 10) : localDay(), max = localDay();
-      const clamp = v => (!v ? null : v < min ? min : v > max ? max : v);
-      let from = clamp($("stFrom").value) || custom.from, to = clamp($("stTo").value) || custom.to;
-      if (from > to) [from, to] = e.target.id === "stFrom" ? [from, from] : [to, to];
-      custom = { from, to };
-      load();
-    });
+    // Esc closes the calendar first, not the whole page
+    $("statsDlg").addEventListener("cancel", e => { if (cal) { e.preventDefault(); cal = null; render(); } });
   }
+  const monthAdd = (m, n) => { const d = parse(m); return fmt(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1))); };
   const t = (k, v) => ctx.t(k, v);
   const tag = () => ({ ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" })[ctx.lang()] || "en-US";
   const typeName = q => (q === "7alt" ? "7alt" : Engine.BY_ID[q] ? Engine.BY_ID[q].name : q);
@@ -106,6 +119,7 @@ const StatsPage = (() => {
   // own page
   function openMine(me) {
     view = { uid: me.id, name: me.nickname, self: true };
+    data = null; cal = null;
     if (range === "custom") { range = "7d"; custom = null; }
     openDlg(); load();
   }
@@ -124,14 +138,15 @@ const StatsPage = (() => {
   function showStudent(s) {
     if (!s) return;
     view = { uid: s.id, name: s.nickname, fullName: s.full_name, teacher: true };
-    data = null; custom = null;
+    data = null; custom = null; cal = null;
     if (range === "custom") range = "7d";
     $("statsDlg").scrollTop = 0;
     load();
   }
   async function load() {
     const keepOv = data && data.ov;   // the teacher's extra numbers do not depend on the range
-    data = null; view.error = false;
+    // the current numbers stay on screen (dimmed) until the new ones arrive, so the page does not jump
+    view.error = false; view.loading = true;
     render();
     const n = ++seq;
     const [res, ov] = await Promise.all([
@@ -139,13 +154,9 @@ const StatsPage = (() => {
       view.teacher && !keepOv ? ctx.api.overview(view.uid, localDay()) : { data: keepOv },
     ]);
     if (n !== seq) return;   // a newer request (range or student changed) is on its way
+    view.loading = false;
     if (res.error || ov.error) view.error = true;
-    else {
-      data = { ...res.data, ov: ov.data };
-      // the calendar cannot go before the first practice day
-      const first = data.firstDay && String(data.firstDay).slice(0, 10);
-      if (range === "custom" && first && custom.from < first) custom = { ...custom, from: first < custom.to ? first : custom.to };
-    }
+    else data = { ...res.data, ov: ov.data, range, custom };
     render();
   }
 
@@ -160,6 +171,7 @@ const StatsPage = (() => {
     else if (view.list) body.innerHTML = list ? studentsHTML() : empty("loading");
     else if (!data) body.innerHTML = (view.teacher ? whoHTML() : "") + empty("loading");
     else body.innerHTML = view.teacher ? teacherHTML() : mineHTML();
+    body.classList.toggle("loading", !!view.loading && !!data);
   }
 
   // ---------- pieces ----------
@@ -169,17 +181,41 @@ const StatsPage = (() => {
     return `${card(t("sTotal"), tot.total)}${card(t("sCorrect"), tot.first)}${card(t("sWrong"), tot.total - tot.first)}
       ${card(t("sRate"), pct(tot.first, tot.total) + "%")}${card(t("sBest"), tot.best, t("sStreak", { n: tot.streak }))}`;
   }
-  const tabsHTML = () => `<div class="st-tabs" role="group">${RANGES.map(r => `<button type="button" class="chip-btn" data-range="${r}" aria-pressed="${r === range}">${esc(t("range" + r))}</button>`).join("")}</div>`;
-  function periodHTML() {
-    if (range !== "custom") return "";
-    const min = data.firstDay ? String(data.firstDay).slice(0, 10) : localDay(), max = localDay();
-    const field = (id, label, value) => `<label class="st-date"><span class="visually-hidden">${esc(label)}</span><input type="date" id="${id}" min="${min}" max="${max}" value="${value}" required></label>`;
-    return `<div class="st-period">${field("stFrom", t("periodFrom"), custom.from)}<span aria-hidden="true">~</span>${field("stTo", t("periodTo"), custom.to)}
-      <span class="note">${esc(t("periodNote", { date: dateText(min, { year: "numeric", month: "long", day: "numeric" }) }))}</span></div>`;
+  // the 기간 설정 button shows the picked range once there is one
+  function periodLabel() {
+    if (range !== "custom" || !custom) return t("rangecustom");
+    const thisYear = localDay().slice(0, 4);
+    const opts = custom.from.slice(0, 4) !== thisYear || custom.to.slice(0, 4) !== thisYear ? { year: "2-digit", month: "numeric", day: "numeric" } : { month: "numeric", day: "numeric" };
+    return custom.from === custom.to ? dateText(custom.from, opts) : `${dateText(custom.from, opts)} ~ ${dateText(custom.to, opts)}`;
+  }
+  const tabsHTML = () => `<div class="st-tabs" role="group">${RANGES.map(r => `<button type="button" class="chip-btn${r === "custom" ? " st-custom" : ""}" data-range="${r}" aria-pressed="${r === range}"${r === "custom" ? ` aria-expanded="${!!cal}" aria-haspopup="dialog"` : ""}>${esc(r === "custom" ? periodLabel() : t("range" + r))}</button>`).join("")}${calHTML()}</div>`;
+  // small month calendar: first tap = start, second tap = end. Days before the first practice day or after today are off.
+  function calHTML() {
+    if (!cal) return "";
+    const min = data && data.firstDay ? String(data.firstDay).slice(0, 10) : localDay(), max = localDay();
+    const m = parse(cal.month);
+    const days = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 0)).getUTCDate();
+    const sel = cal.from ? { from: cal.from, to: cal.from } : range === "custom" && custom ? custom : null;
+    // weekday initials, Sunday first (2023-01-01 was a Sunday)
+    const heads = Array.from({ length: 7 }, (_, i) => `<span>${esc(dateText(addDays("2023-01-01", i), { weekday: "narrow" }))}</span>`).join("");
+    let cells = "<span></span>".repeat(m.getUTCDay());
+    for (let d = 1; d <= days; d++) {
+      const k = cal.month.slice(0, 8) + pad(d);
+      const cls = [sel && k >= sel.from && k <= sel.to ? "in" : "", sel && (k === sel.from || k === sel.to) ? "end" : "", k === max ? "today" : ""].filter(Boolean).join(" ");
+      cells += `<button type="button" data-cal-day="${k}" class="${cls}"${k < min || k > max ? " disabled" : ""}>${d}</button>`;
+    }
+    const canPrev = cal.month > min.slice(0, 8) + "01", canNext = cal.month < max.slice(0, 8) + "01";
+    return `<div class="st-cal" role="dialog" aria-label="${esc(t("rangecustom"))}">
+      <div class="st-cal-head"><button type="button" class="icon-btn" data-cal-nav="-1" aria-label="${esc(t("calPrev"))}"${canPrev ? "" : " disabled"}>‹</button>
+        <b>${esc(dateText(cal.month, { year: "numeric", month: "long" }))}</b>
+        <button type="button" class="icon-btn" data-cal-nav="1" aria-label="${esc(t("calNext"))}"${canNext ? "" : " disabled"}>›</button></div>
+      <div class="st-cal-grid st-cal-week">${heads}</div><div class="st-cal-grid">${cells}</div>
+      <p class="st-cal-hint">${esc(t(cal.from ? "calPickEnd" : "calPickStart"))}</p>
+      <p class="note">${esc(t("periodNote", { date: dateText(min, { year: "numeric", month: "long", day: "numeric" }) }))}</p></div>`;
   }
   function chartHTML() {
-    const p = period(range, localDay(), custom);
-    const b = buckets(range, localDay(), data.byDay, custom);
+    const p = period(data.range, localDay(), data.custom);
+    const b = buckets(data.range, localDay(), data.byDay, data.custom);
     if (!b.some(x => x.n)) return `<p class="st-empty">${esc(t("noData"))}</p>`;
     const max = Math.max(1, ...b.map(x => x.n));
     // about 7 (days) or 12 (months) labels, counted back from the newest so the last bar is always labelled
@@ -220,7 +256,7 @@ const StatsPage = (() => {
   function mineHTML() {
     const type = typeTable(), root = rootTable();
     return `<section class="st-card"><h3>${esc(t("sAllTime"))}</h3><div class="st-stats">${totalsHTML()}</div><p class="note">${esc(t("sCorrectNote"))}</p></section>
-      <section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabsHTML()}</div>${periodHTML()}${chartHTML()}
+      <section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabsHTML()}</div>${chartHTML()}
         ${type ? `<h3 class="st-sub">${esc(t("byTypeH"))}</h3>${type}` : ""}
         ${root ? `<h3 class="st-sub">${esc(t("byRootH"))}</h3>${root}` : ""}</section>
       ${reviewHTML(true)}`;
@@ -270,7 +306,7 @@ const StatsPage = (() => {
       <thead><tr><th class="num">${esc(t("colDate"))}</th><th>${esc(t("colChord"))}</th><th>${esc(t("colKind"))}</th><th>${esc(t("colResult"))}</th></tr></thead>
       <tbody>${recent}</tbody></table></div>` : `<p class="st-empty">${esc(t("noData"))}</p>`}</section>`;
     const type = typeTable(), root = rootTable();
-    const detail = `<section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabsHTML()}</div>${periodHTML()}${chartHTML()}
+    const detail = `<section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabsHTML()}</div>${chartHTML()}
       ${type || root ? `<div class="st-two">${type ? `<div><h4>${esc(t("byTypeH"))}</h4>${type}</div>` : ""}${root ? `<div><h4>${esc(t("byRootH"))}</h4>${root}</div>` : ""}</div>` : ""}</section>`;
     return `${whoHTML()}<div class="st-two st-top">${weak}${habit}</div>
       <section class="st-card st-line"><div class="st-stats">${totalsHTML()}</div></section>
