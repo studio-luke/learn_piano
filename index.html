@@ -194,9 +194,12 @@ button { cursor: pointer; }
 .bases { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .bases .chip span { min-width: 0; width: 100%; padding: 5px 2px; font-size: 13px; }
 .radios { display: flex; gap: 6px; }
-/* "흰 건반" toggle, drawn like a white key so it stands apart from the 모두 선택 / 모두 해제 links */
-.white-btn { border: 1px solid var(--key-white-edge); background: var(--key-white); color: var(--ink); border-radius: 0 0 6px 6px; border-top: 3px solid var(--key-black); padding: 2px 10px; font-size: 12px; font-weight: 600; margin-right: 6px; }
-.white-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); border-top-color: var(--key-black); }
+/* "흰 건반" toggle: plain text like 모두 선택, in the ink colour so it reads apart from the accent links; underlined while on */
+.white-btn { border: none; background: none; color: var(--ink); font-size: 12px; font-weight: 700; padding: 2px 4px; margin-right: 4px; text-underline-offset: 3px; }
+.white-btn[aria-pressed="true"] { text-decoration: underline; text-decoration-thickness: 2px; }
+/* 틀린 문제 다시 풀기: settings are greyed out and cannot be changed */
+.lock-note { margin: 0; font-size: 13px; color: var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; }
+.sheet.locked > :not(h2):not(.lock-note) { filter: grayscale(1); opacity: 0.45; pointer-events: none; }
 .adv-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 1px dashed var(--line); background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
 .adv-toggle .chev { transition: transform 150ms; }
 .adv-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
@@ -237,6 +240,9 @@ dialog.auth::backdrop { background: rgba(40,25,15,.45); }
 .acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
 .acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
 .linkbtn.danger { color: var(--warn); align-self: flex-start; }
+.btn.danger { background: var(--warn); border-color: var(--warn); color: var(--accent-ink); font-weight: 600; }
+.btn.danger:hover:not(:disabled) { filter: brightness(1.06); background: var(--warn); }
+.auth-warn { margin: 0; font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
 /* logged in: the same dialog opens as a side panel on the right */
 dialog.auth.side { margin: 0 0 0 auto; width: min(380px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: var(--radius) 0 0 var(--radius); border-right: none; padding-top: max(22px, env(safe-area-inset-top, 0px)); padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
 dialog.auth.side[open] { animation: side-in 180ms ease-out; }
@@ -254,7 +260,7 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 dialog.page { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: none; padding: 0; background: var(--bg); color: var(--ink); overflow: auto; }
 .page-inner { max-width: 960px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
 .page-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 3; background: var(--bg); padding-block: 8px; }
-.page-top h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0; }
+.page-top h2 { font-family: var(--font-body); font-weight: 700; font-size: 22px; margin: 0; }
 .page-top .linkbtn { font-size: 14px; }
 #statsBody { display: flex; flex-direction: column; gap: 16px; }
 .st-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -268,19 +274,23 @@ dialog.page { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh
 .st-stat span { font-size: 12px; color: var(--muted); }
 .st-stat b { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .st-stat small { font-size: 12px; color: var(--muted); }
-.st-tabs { display: flex; gap: 6px; }
+.st-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.st-period { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.st-period .note { flex-basis: 100%; }
+.st-date input { font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.st-date input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
 .chip-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 12px; font-size: 13px; }
 .chip-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
 .st-chart-wrap { position: relative; padding-top: 16px; }
 .st-max { position: absolute; top: 0; left: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .st-chart { display: flex; align-items: stretch; gap: 6px; height: 170px; border-bottom: 1px solid var(--line); background: linear-gradient(var(--line) 1px, transparent 1px) top / 100% 50%; }
-.st-chart.r30d { gap: 2px; }
+.st-chart.dense { gap: 2px; }
 .st-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
 .st-bar i { display: block; }
 .st-bar .ok { background: var(--ok); }
 .st-bar .no { background: var(--warn); opacity: 0.75; }
 .st-x { display: flex; gap: 6px; font-size: 11px; color: var(--muted); }
-.st-x.r30d { gap: 2px; }
+.st-x.dense { gap: 2px; }
 .st-x span { flex: 1 1 0; min-width: 0; text-align: center; white-space: nowrap; overflow: visible; display: flex; justify-content: center; }
 .st-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .st-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 6px; border-bottom: 1px solid var(--line); }
@@ -300,6 +310,32 @@ dialog.page { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh
 .st-chip { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 14px; background: var(--bg); display: inline-flex; gap: 6px; align-items: center; }
 .st-chip i { font-style: normal; font-size: 9px; color: var(--ok); letter-spacing: 1px; }
 .st-empty { margin: 0; color: var(--muted); font-size: 14px; }
+.st-card h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+/* two columns side by side on wide screens (teacher's view) */
+.st-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 760px) { .st-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.st-top { align-items: stretch; }
+.st-line { padding-block: 12px; }
+.st-weak { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; counter-reset: weak; }
+.st-weak li { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.st-weak-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.st-weak li b { font-weight: 700; }
+.st-weak .st-rate { width: 100%; margin: 0; }
+/* 약점: chord types and roots side by side when the card is wide enough */
+.st-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+.st-small .st-stat b { font-size: 18px; }
+.st-week { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.st-week > span:first-child { margin-right: 4px; }
+.st-day { width: 26px; height: 26px; border-radius: 6px; background: var(--sunken); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+.st-day.on { background: var(--ok); color: var(--accent-ink); font-weight: 700; }
+.st-scroll { max-height: 440px; overflow: auto; }
+.st-scroll thead th { position: sticky; top: 0; background: var(--surface); }
+.st-scroll th:first-child, .st-scroll td:first-child { width: 4.5em; text-align: left; }
+.st-dim { color: var(--muted); font-size: 13px; }
+.st-res { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
+.st-res.ok { background: var(--ok-soft); color: var(--ok); }
+.st-res.no { background: var(--warn-soft); color: var(--warn); }
+.st-tag { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 0 6px; }
 @media (max-width: 520px) { .st-table { font-size: 13px; } .st-table th, .st-table td { padding-inline: 4px; } .st-card { padding: 14px 12px; } }
 
 /* 틀린 문제 다시 풀기 */
@@ -459,6 +495,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
 
     <aside class="sheet" aria-label="출제 설정" data-i18n-aria="settings">
       <h2 data-i18n="settings">출제 설정</h2>
+      <p class="lock-note" id="lockNote" hidden data-i18n="lockNote">틀린 문제 다시 풀기 중에는 출제 설정을 바꿀 수 없어요.</p>
 
       <div id="typeGroups" class="group" style="gap: 16px"></div>
 
@@ -557,6 +594,14 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
     <label class="field"><span data-i18n="newPassword">새 비밀번호</span><span class="pw-wrap"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span><small data-i18n="pwHint">8자 이상</small></label>
     <label class="field"><span data-i18n="newPasswordConfirm">새 비밀번호 확인</span><span class="pw-wrap"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
     <button class="btn primary" type="submit" data-i18n="doNewpw">비밀번호 변경</button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount">← 내 계정으로</button></div>
+  </form>
+
+  <form class="auth-form" data-view="delete" novalidate hidden>
+    <p class="auth-warn" data-i18n="deleteConfirm">탈퇴를 신청하면 7일 동안은 다시 로그인해서 계정을 복구할 수 있어요. 7일이 지나면 계정과 출제 설정, 연습 기록이 모두 삭제되고 되돌릴 수 없어요.</p>
+    <label class="field"><span data-i18n="currentPassword">현재 비밀번호</span><span class="pw-wrap"><input type="password" name="current" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button></span></label>
+    <label class="field"><span data-i18n="deleteTypeHTML"></span><input type="text" name="phrase" id="deletePhrase" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>
+    <button class="btn danger" type="submit" id="deleteSubmit" disabled data-i18n="deleteAcct">회원 탈퇴</button>
     <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount">← 내 계정으로</button></div>
   </form>
 
@@ -972,7 +1017,9 @@ const I18N = {
     goReset: "비밀번호를 잊으셨나요?",
     backLogin: "← 로그인으로",
     deleteAcct: "회원 탈퇴",
-    deleteConfirm: "탈퇴를 신청할까요? 7일 동안은 다시 로그인해서 계정을 복구할 수 있고, 7일이 지나면 계정과 저장된 설정이 완전히 삭제돼요.",
+    deleteConfirm: "탈퇴를 신청하면 7일 동안은 다시 로그인해서 계정을 복구할 수 있어요. 7일이 지나면 계정과 출제 설정, 연습 기록이 모두 삭제되고 되돌릴 수 없어요.",
+    deletePhrase: "회원 탈퇴에 동의합니다",
+    deleteTypeHTML: "확인을 위해 <b>회원 탈퇴에 동의합니다</b>를 똑같이 입력해 주세요.",
     termsLink: "이용약관",
     privacyLink: "개인정보처리방침",
     msgSignupSent: "인증 메일을 보냈어요. 메일의 링크를 누른 뒤 로그인하세요. 메일이 안 보이면 스팸함도 확인해 주세요.",
@@ -1011,6 +1058,10 @@ const I18N = {
     range7d: "7일",
     range30d: "30일",
     range1y: "1년",
+    rangecustom: "기간 설정",
+    periodFrom: "시작일",
+    periodTo: "종료일",
+    periodNote: "{date}(첫 연습일)부터 선택할 수 있어요. 62일이 넘으면 월별로 보여요.",
     byDayH: "연습량",
     byTypeH: "코드 종류별",
     colType: "코드",
@@ -1029,6 +1080,28 @@ const I18N = {
     colLast: "최근 연습",
     chartTip: "{date} · 정답 {ok} · 오답 {no}",
     errLoad: "불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+    byRootH: "베이스별",
+    colRoot: "베이스",
+    weakH: "약점",
+    weakTypes: "정답률이 낮은 코드 종류",
+    weakRoots: "정답률이 낮은 베이스",
+    weakNote: "전체 기간 동안 {n}문제 이상 푼 것 중에서 골랐어요.",
+    weakNone: "아직 데이터가 부족해요.",
+    habitH: "연습 습관",
+    habitDays: "연습한 날",
+    habitAvg: "하루 평균",
+    habitLast: "최근 연습",
+    habitJoined: "가입일",
+    habitWeek: "최근 7일",
+    recentH: "최근 푼 문제",
+    colDate: "날짜",
+    colChord: "코드",
+    colKind: "종류",
+    colResult: "결과",
+    reviewTag: "다시 풀기",
+    unitQ: "{n}문제",
+    unitDays: "{n}일",
+    lockNote: "틀린 문제 다시 풀기 중에는 출제 설정을 바꿀 수 없어요.",
   },
   en: {
     docTitle: "Chord Trainer",
@@ -1146,7 +1219,9 @@ const I18N = {
     goReset: "Forgot your password?",
     backLogin: "← Back to log in",
     deleteAcct: "Delete account",
-    deleteConfirm: "Delete your account? For 7 days you can log in again to restore it; after that, your account and saved settings are deleted permanently.",
+    deleteConfirm: "After you ask to delete your account, you can log in again within 7 days to restore it. After 7 days your account, practice settings and practice records are deleted for good and cannot be recovered.",
+    deletePhrase: "delete my account",
+    deleteTypeHTML: "To confirm, type <b>delete my account</b> exactly.",
     termsLink: "Terms of Service",
     privacyLink: "Privacy Policy",
     msgSignupSent: "We sent you a confirmation email. Open the link in it, then log in. If you don't see it, check your spam folder.",
@@ -1185,6 +1260,10 @@ const I18N = {
     range7d: "7 days",
     range30d: "30 days",
     range1y: "1 year",
+    rangecustom: "Custom",
+    periodFrom: "From",
+    periodTo: "To",
+    periodNote: "You can pick dates from {date} (first practice). Ranges over 62 days are shown by month.",
     byDayH: "Practice",
     byTypeH: "By chord type",
     colType: "Chord",
@@ -1203,6 +1282,28 @@ const I18N = {
     colLast: "Last practice",
     chartTip: "{date} · right {ok} · missed {no}",
     errLoad: "Couldn't load. Please try again later.",
+    byRootH: "By root",
+    colRoot: "Root",
+    weakH: "Weak spots",
+    weakTypes: "Lowest-scoring chord types",
+    weakRoots: "Lowest-scoring roots",
+    weakNote: "Picked from those with at least {n} questions, over all time.",
+    weakNone: "Not enough data yet.",
+    habitH: "Practice habits",
+    habitDays: "Days practiced",
+    habitAvg: "Daily average",
+    habitLast: "Last practice",
+    habitJoined: "Joined",
+    habitWeek: "Last 7 days",
+    recentH: "Recent questions",
+    colDate: "Date",
+    colChord: "Chord",
+    colKind: "Type",
+    colResult: "Result",
+    reviewTag: "Retry",
+    unitQ: "{n} q.",
+    unitDays: "{n} days",
+    lockNote: "Practice settings can't be changed while retrying missed chords.",
   },
   ja: {
     docTitle: "コードトレーナー",
@@ -1320,7 +1421,9 @@ const I18N = {
     goReset: "パスワードをお忘れですか？",
     backLogin: "← ログインに戻る",
     deleteAcct: "退会する",
-    deleteConfirm: "退会を申請しますか？7日間は再ログインしてアカウントを復元できます。7日を過ぎるとアカウントと保存した設定は完全に削除されます。",
+    deleteConfirm: "退会を申請しても、7日以内に再ログインすればアカウントを復元できます。7日を過ぎるとアカウント・出題設定・練習記録がすべて削除され、元に戻せません。",
+    deletePhrase: "退会に同意します",
+    deleteTypeHTML: "確認のため、<b>退会に同意します</b> と正確に入力してください。",
     termsLink: "利用規約",
     privacyLink: "プライバシーポリシー",
     msgSignupSent: "確認メールを送信しました。メール内のリンクを開いてからログインしてください。届かない場合は迷惑メールフォルダもご確認ください。",
@@ -1359,6 +1462,10 @@ const I18N = {
     range7d: "7日",
     range30d: "30日",
     range1y: "1年",
+    rangecustom: "期間を指定",
+    periodFrom: "開始日",
+    periodTo: "終了日",
+    periodNote: "{date}（最初の練習日）から選べます。62日を超えると月別で表示します。",
     byDayH: "練習量",
     byTypeH: "コードの種類別",
     colType: "コード",
@@ -1377,6 +1484,28 @@ const I18N = {
     colLast: "最近の練習",
     chartTip: "{date} · 正解 {ok} · 不正解 {no}",
     errLoad: "読み込めませんでした。しばらくしてからもう一度お試しください。",
+    byRootH: "ルート別",
+    colRoot: "ルート",
+    weakH: "苦手",
+    weakTypes: "正答率が低いコードの種類",
+    weakRoots: "正答率が低いルート",
+    weakNote: "全期間で{n}問以上解いたものから選んでいます。",
+    weakNone: "まだデータが足りません。",
+    habitH: "練習の習慣",
+    habitDays: "練習した日",
+    habitAvg: "1日平均",
+    habitLast: "最近の練習",
+    habitJoined: "登録日",
+    habitWeek: "最近7日",
+    recentH: "最近解いた問題",
+    colDate: "日付",
+    colChord: "コード",
+    colKind: "種類",
+    colResult: "結果",
+    reviewTag: "解き直し",
+    unitQ: "{n}問",
+    unitDays: "{n}日",
+    lockNote: "間違えた問題の解き直し中は出題設定を変更できません。",
   },
   zh: {
     docTitle: "和弦练习",
@@ -1494,7 +1623,9 @@ const I18N = {
     goReset: "忘记密码？",
     backLogin: "← 返回登录",
     deleteAcct: "注销账户",
-    deleteConfirm: "确定要申请注销吗？7 天内重新登录即可恢复账户；7 天后账户和已保存的设置将被永久删除。",
+    deleteConfirm: "申请注销后，7 天内重新登录即可恢复账户。7 天后，账户、出题设置和练习记录将全部删除，无法恢复。",
+    deletePhrase: "我同意注销账户",
+    deleteTypeHTML: "为确认，请准确输入<b>我同意注销账户</b>。",
     termsLink: "服务条款",
     privacyLink: "隐私政策",
     msgSignupSent: "验证邮件已发送。请点击邮件中的链接后再登录。如未收到，请检查垃圾邮件箱。",
@@ -1533,6 +1664,10 @@ const I18N = {
     range7d: "7天",
     range30d: "30天",
     range1y: "1年",
+    rangecustom: "自定义",
+    periodFrom: "开始日期",
+    periodTo: "结束日期",
+    periodNote: "可从 {date}（第一次练习）开始选择。超过 62 天按月显示。",
     byDayH: "练习量",
     byTypeH: "按和弦类型",
     colType: "和弦",
@@ -1551,6 +1686,28 @@ const I18N = {
     colLast: "最近练习",
     chartTip: "{date} · 答对 {ok} · 答错 {no}",
     errLoad: "加载失败，请稍后再试。",
+    byRootH: "按根音",
+    colRoot: "根音",
+    weakH: "薄弱点",
+    weakTypes: "正确率最低的和弦类型",
+    weakRoots: "正确率最低的根音",
+    weakNote: "从全部时间内做过至少 {n} 题的项目中选出。",
+    weakNone: "数据还不够。",
+    habitH: "练习习惯",
+    habitDays: "练习天数",
+    habitAvg: "每天平均",
+    habitLast: "最近练习",
+    habitJoined: "注册日期",
+    habitWeek: "最近 7 天",
+    recentH: "最近做的题",
+    colDate: "日期",
+    colChord: "和弦",
+    colKind: "类型",
+    colResult: "结果",
+    reviewTag: "重做",
+    unitQ: "{n} 题",
+    unitDays: "{n} 天",
+    lockNote: "重做错题时不能更改出题设置。",
   },
 };
 
@@ -1569,37 +1726,44 @@ if (typeof module !== "undefined") module.exports = CONFIG;
 
 </script>
 <script>
-// ===== Practice statistics page (마이페이지 / 학생 통계) =====
-// A full-screen dialog: a student's own stats, or for the admin the student list and any student's stats.
-// Data comes from Account (practice_summary / student_list in supabase/schema.sql).
-// The pure helpers (localDay, buckets, qualityRows) are exported for tests/account.test.js.
+// ===== Practice statistics pages =====
+// One full-screen dialog with three screens:
+//   마이페이지 — a student's own stats (and the retry button)
+//   학생 목록 — the admin's student list
+//   학생 기록 — the admin's view of one student: a teacher's layout (약점, 연습 습관, recent questions), not the 마이페이지
+// Data comes from Account (practice_summary / student_overview / student_list in supabase/schema.sql).
+// The pure helpers (localDay, period, buckets, qualityRows, rootPc, rootRows, weakest) are exported for tests/account.test.js.
 const StatsPage = (() => {
-  const RANGES = ["7d", "30d", "1y"];
+  const RANGES = ["7d", "30d", "1y", "custom"];
+  const MONTHLY_AFTER = 62;   // a custom range longer than this many days is shown per month (same rule in practice_summary)
+  const WEAK_MIN = 5;   // a chord type / root needs this many questions before it can be called a weak spot
   const pad = n => String(n).padStart(2, "0");
   // the device's local date as YYYY-MM-DD (records are kept by date only)
   const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const parse = s => { const [y, m, d] = s.slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+  const parse = s => { const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
   const fmt = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 
-  // one slot per day (7d / 30d) or per month (1y), oldest first, empty slots included
-  function buckets(range, today, rows) {
+  const addDays = (s, n) => fmt(new Date(parse(s).getTime() + n * 864e5));
+  // the dates a range covers: { from, to, monthly }. custom = { from, to } picked on the calendar
+  function period(range, today, custom) {
+    if (range === "custom" && custom) {
+      const [a, b] = custom.from <= custom.to ? [custom.from, custom.to] : [custom.to, custom.from];
+      const to = b < today ? b : today;
+      return { from: a, to, monthly: (parse(to) - parse(a)) / 864e5 > MONTHLY_AFTER };
+    }
+    if (range === "1y") { const e = parse(today); return { from: fmt(new Date(Date.UTC(e.getUTCFullYear(), e.getUTCMonth() - 11, 1))), to: today, monthly: true }; }
+    return { from: addDays(today, range === "7d" ? -6 : -29), to: today, monthly: false };
+  }
+  // one slot per day, or per month for long ranges, oldest first, empty slots included
+  function buckets(range, today, rows, custom) {
     const by = new Map((rows || []).map(r => [String(r.d).slice(0, 10), r]));
     const out = [];
-    const end = parse(today);
-    if (range === "1y") {
-      for (let i = 11; i >= 0; i--) {
-        const d = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1));
-        const r = by.get(fmt(d));
-        out.push({ key: fmt(d), n: r ? r.n : 0, ok: r ? r.ok : 0 });
-      }
-    } else {
-      const days = range === "7d" ? 7 : 30;
-      for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(end.getTime() - i * 864e5);
-        const r = by.get(fmt(d));
-        out.push({ key: fmt(d), n: r ? r.n : 0, ok: r ? r.ok : 0 });
-      }
-    }
+    const p = period(range, today, custom);
+    const slot = key => { const r = by.get(key); out.push({ key, n: r ? r.n : 0, ok: r ? r.ok || 0 : 0 }); };
+    if (p.monthly) {
+      const a = parse(p.from), b = parse(p.to);
+      for (let d = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1)); d <= b; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) slot(fmt(d));
+    } else for (let k = p.from; k <= p.to; k = addDays(k, 1)) slot(k);
     return out;
   }
   // chord-type rows in the order of the settings list; 7alt right after 7
@@ -1608,30 +1772,71 @@ const StatsPage = (() => {
     for (const t of types) { order.push(t.id); if (t.id === "dom7") order.push("7alt"); }
     return (rows || []).slice().sort((a, b) => order.indexOf(a.q) - order.indexOf(b.q));
   }
+  // root name as written (C♯, D♭, E♯, F𝄪 …) → pitch class; roots are grouped by key, as in the 출제 설정
+  const NAT = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const ACC = { "♯": 1, "♭": -1, "𝄪": 2, "𝄫": -2 };
+  function rootPc(name) {
+    const m = /^([A-G])(𝄫|𝄪|♭|♯)?/u.exec(name || "");
+    return m ? (((NAT[m[1]] + (ACC[m[2]] || 0)) % 12) + 12) % 12 : null;
+  }
+  function rootRows(rows) {
+    const by = new Map();
+    for (const r of rows || []) {
+      const pc = rootPc(r.r);
+      if (pc == null) continue;
+      const g = by.get(pc) || { pc, n: 0, ok: 0 };
+      g.n += r.n; g.ok += r.ok; by.set(pc, g);
+    }
+    return [...by.values()].sort((a, b) => a.pc - b.pc);
+  }
+  // lowest first-try rate first (ties: the more practised one), only rows with enough questions
+  const weakest = (rows, n = 3) => rows.filter(r => r.n >= WEAK_MIN && r.ok < r.n)
+    .sort((a, b) => a.ok / a.n - b.ok / b.n || b.n - a.n).slice(0, n);
 
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const $ = id => document.getElementById(id);
-  let ctx, view = null, range = "7d", data = null, list = null, seq = 0;
+  let ctx, view = null, range = "7d", custom = null, data = null, list = null, seq = 0;
 
   // ctx: { t, lang, api: Account, startReview }
   function init(c) {
     ctx = c;
-    $("statsBack").onclick = () => (view && view.uid && view.fromList ? showList() : $("statsDlg").close());
+    $("statsBack").onclick = () => (view && view.teacher ? showList() : $("statsDlg").close());
     $("statsBody").addEventListener("click", e => {
       const r = e.target.closest("[data-range]");
-      if (r) { range = r.dataset.range; return load(); }
+      if (r) {
+        range = r.dataset.range;
+        if (range === "custom" && !custom) custom = { from: addDays(localDay(), -29), to: localDay() };
+        return load();
+      }
       const s = e.target.closest("[data-student]");
-      if (s) return showStudent(list.find(x => x.id === s.dataset.student), true);
+      if (s) return showStudent(list.find(x => x.id === s.dataset.student));
       if (e.target.closest("#statsReview")) ctx.startReview();
     });
+    // 기간 설정: the two calendar fields. Dates before the first practice day or after today are pulled back in.
+    $("statsBody").addEventListener("change", e => {
+      if (e.target.id !== "stFrom" && e.target.id !== "stTo") return;
+      const min = (data && data.firstDay) ? String(data.firstDay).slice(0, 10) : localDay(), max = localDay();
+      const clamp = v => (!v ? null : v < min ? min : v > max ? max : v);
+      let from = clamp($("stFrom").value) || custom.from, to = clamp($("stTo").value) || custom.to;
+      if (from > to) [from, to] = e.target.id === "stFrom" ? [from, from] : [to, to];
+      custom = { from, to };
+      load();
+    });
   }
+  const t = (k, v) => ctx.t(k, v);
   const tag = () => ({ ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" })[ctx.lang()] || "en-US";
   const typeName = q => (q === "7alt" ? "7alt" : Engine.BY_ID[q] ? Engine.BY_ID[q].name : q);
+  const rootName = pc => Engine.PC_NAMES[pc];
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+  const dateText = (d, opts) => parse(d).toLocaleDateString(tag(), { timeZone: "UTC", ...opts });
 
   function openDlg() { if (!$("statsDlg").open) $("statsDlg").showModal(); $("statsDlg").scrollTop = 0; }
   // own page
-  function openMine(me) { view = { uid: me.id, name: me.nickname, self: true }; openDlg(); load(); }
+  function openMine(me) {
+    view = { uid: me.id, name: me.nickname, self: true };
+    if (range === "custom") { range = "7d"; custom = null; }
+    openDlg(); load();
+  }
   // admin: student list
   function openStudents() { openDlg(); showList(); }
   async function showList() {
@@ -1644,91 +1849,164 @@ const StatsPage = (() => {
     view.error = !!res.error;
     render();
   }
-  function showStudent(s, fromList) {
+  function showStudent(s) {
     if (!s) return;
-    view = { uid: s.id, name: s.nickname, fullName: s.full_name, fromList };
+    view = { uid: s.id, name: s.nickname, fullName: s.full_name, teacher: true };
+    data = null; custom = null;
+    if (range === "custom") range = "7d";
     $("statsDlg").scrollTop = 0;
     load();
   }
   async function load() {
+    const keepOv = data && data.ov;   // the teacher's extra numbers do not depend on the range
     data = null; view.error = false;
     render();
     const n = ++seq;
-    const res = await ctx.api.summary(view.uid, range, localDay());
+    const [res, ov] = await Promise.all([
+      ctx.api.summary(view.uid, range, localDay(), range === "custom" ? custom : null),
+      view.teacher && !keepOv ? ctx.api.overview(view.uid, localDay()) : { data: keepOv },
+    ]);
     if (n !== seq) return;   // a newer request (range or student changed) is on its way
-    if (res.error) view.error = true; else data = res.data;
+    if (res.error || ov.error) view.error = true;
+    else {
+      data = { ...res.data, ov: ov.data };
+      // the calendar cannot go before the first practice day
+      const first = data.firstDay && String(data.firstDay).slice(0, 10);
+      if (range === "custom" && first && custom.from < first) custom = { ...custom, from: first < custom.to ? first : custom.to };
+    }
     render();
   }
 
   function render() {
     if (!view || !ctx) return;
-    const t = ctx.t;
-    $("statsTitle").textContent = view.list || view.fromList ? t("menuStudents") : t("menuMy");
-    $("statsBack").textContent = view.fromList ? t("backStudents") : t("backPractice");
+    $("statsTitle").textContent = view.self ? t("menuMy") : t("menuStudents");
+    $("statsBack").textContent = view.teacher ? t("backStudents") : t("backPractice");
+    $("statsDlg").classList.toggle("teacher", !!view.teacher);
     const body = $("statsBody");
-    if (view.error) { body.innerHTML = `<p class="st-empty">${esc(t("errLoad"))}</p>`; return; }
-    if (view.list) { body.innerHTML = list ? studentsHTML() : `<p class="st-empty">${esc(t("loading"))}</p>`; return; }
-    body.innerHTML = summaryHTML();
+    const empty = key => `<p class="st-empty">${esc(t(key))}</p>`;
+    if (view.error) body.innerHTML = empty("errLoad");
+    else if (view.list) body.innerHTML = list ? studentsHTML() : empty("loading");
+    else if (!data) body.innerHTML = (view.teacher ? whoHTML() : "") + empty("loading");
+    else body.innerHTML = view.teacher ? teacherHTML() : mineHTML();
   }
 
+  // ---------- pieces ----------
+  const card = (label, value, sub = "") => `<div class="st-stat"><span>${esc(label)}</span><b>${value}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`;
+  function totalsHTML() {
+    const tot = data.totals || { total: 0, first: 0, streak: 0, best: 0 };
+    return `${card(t("sTotal"), tot.total)}${card(t("sCorrect"), tot.first)}${card(t("sWrong"), tot.total - tot.first)}
+      ${card(t("sRate"), pct(tot.first, tot.total) + "%")}${card(t("sBest"), tot.best, t("sStreak", { n: tot.streak }))}`;
+  }
+  const tabsHTML = () => `<div class="st-tabs" role="group">${RANGES.map(r => `<button type="button" class="chip-btn" data-range="${r}" aria-pressed="${r === range}">${esc(t("range" + r))}</button>`).join("")}</div>`;
+  function periodHTML() {
+    if (range !== "custom") return "";
+    const min = data.firstDay ? String(data.firstDay).slice(0, 10) : localDay(), max = localDay();
+    const field = (id, label, value) => `<label class="st-date"><span class="visually-hidden">${esc(label)}</span><input type="date" id="${id}" min="${min}" max="${max}" value="${value}" required></label>`;
+    return `<div class="st-period">${field("stFrom", t("periodFrom"), custom.from)}<span aria-hidden="true">~</span>${field("stTo", t("periodTo"), custom.to)}
+      <span class="note">${esc(t("periodNote", { date: dateText(min, { year: "numeric", month: "long", day: "numeric" }) }))}</span></div>`;
+  }
+  function chartHTML() {
+    const p = period(range, localDay(), custom);
+    const b = buckets(range, localDay(), data.byDay, custom);
+    if (!b.some(x => x.n)) return `<p class="st-empty">${esc(t("noData"))}</p>`;
+    const max = Math.max(1, ...b.map(x => x.n));
+    // about 7 (days) or 12 (months) labels, counted back from the newest so the last bar is always labelled
+    const every = Math.max(1, Math.ceil(b.length / (p.monthly ? 12 : 7)));
+    const years = p.from.slice(0, 4) !== p.to.slice(0, 4);
+    const label = (x, i) => {
+      if ((b.length - 1 - i) % every) return "";
+      if (p.monthly) return dateText(x.key, years && (i === 0 || x.key.slice(5, 7) === "01") ? { year: "2-digit", month: "short" } : { month: "short" });
+      return dateText(x.key, { month: "numeric", day: "numeric" });
+    };
+    const tipDate = x => dateText(x.key, p.monthly ? { year: "numeric", month: "long" } : { year: years ? "numeric" : undefined, month: "long", day: "numeric" });
+    const bars = b.map(x => `<div class="st-bar" title="${esc(t("chartTip", { date: tipDate(x), ok: x.ok, no: x.n - x.ok }))}">
+      <i class="no" style="height:${((x.n - x.ok) / max) * 100}%"></i><i class="ok" style="height:${(x.ok / max) * 100}%"></i></div>`).join("");
+    const xs = b.map((x, i) => `<span>${esc(label(x, i))}</span>`).join("");
+    const legend = `<div class="legend"><span><i class="dot" style="background: var(--ok)"></i>${esc(t("sCorrect"))}</span><span><i class="dot" style="background: var(--warn)"></i>${esc(t("sWrong"))}</span></div>`;
+    const dense = b.length > 14 ? " dense" : "";
+    return `<div class="st-chart-wrap"><span class="st-max">${max}</span><div class="st-chart${dense}">${bars}</div><div class="st-x${dense}">${xs}</div></div>${legend}`;
+  }
+  // results table: one row per chord type or root
+  function tableHTML(head, rows, name) {
+    if (!rows.length) return "";
+    return `<table class="st-table">
+      <thead><tr><th>${esc(head)}</th><th class="num">${esc(t("colCount"))}</th><th class="num">${esc(t("sCorrect"))}</th><th class="num">${esc(t("sWrong"))}</th><th>${esc(t("sRate"))}</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td class="st-type">${esc(name(r))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${r.n - r.ok}</td>
+        <td><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span><span class="st-rate-n">${pct(r.ok, r.n)}%</span></td></tr>`).join("")}</tbody></table>`;
+  }
+  const typeTable = () => tableHTML(t("colType"), qualityRows(data.byQuality, Engine.TYPES), r => typeName(r.q));
+  const rootTable = () => tableHTML(t("colRoot"), rootRows(data.byRoot), r => rootName(r.pc));
+  function reviewHTML(withButton) {
+    const rv = data.review || [];
+    const chips = rv.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${esc(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");
+    return `<section class="st-card"><div class="st-head"><h3>${esc(t("reviewH"))} <span class="st-count">${rv.length}</span></h3>
+      ${withButton && rv.length ? `<button class="btn primary" type="button" id="statsReview">${esc(t("reviewStart"))}</button>` : ""}</div>
+      ${rv.length ? `<p class="note">${esc(t("reviewNote"))}</p><div class="st-chips">${chips}</div>` : `<p class="st-empty">${esc(t("reviewEmpty"))}</p>`}</section>`;
+  }
+
+  // ---------- 마이페이지 ----------
+  function mineHTML() {
+    const type = typeTable(), root = rootTable();
+    return `<section class="st-card"><h3>${esc(t("sAllTime"))}</h3><div class="st-stats">${totalsHTML()}</div><p class="note">${esc(t("sCorrectNote"))}</p></section>
+      <section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabsHTML()}</div>${periodHTML()}${chartHTML()}
+        ${type ? `<h3 class="st-sub">${esc(t("byTypeH"))}</h3>${type}` : ""}
+        ${root ? `<h3 class="st-sub">${esc(t("byRootH"))}</h3>${root}` : ""}</section>
+      ${reviewHTML(true)}`;
+  }
+
+  // ---------- 학생 목록 ----------
   function studentsHTML() {
-    const t = ctx.t;
     if (!list.length) return `<p class="st-empty">${esc(t("studentsEmpty"))}</p>`;
     const rows = list.map(s => `<tr>
       <td><button class="st-student" type="button" data-student="${esc(s.id)}"><b>${esc(s.nickname)}</b><span>${esc(s.full_name)}</span></button></td>
       <td class="num">${s.total}</td><td class="num">${pct(s.first_correct, s.total)}%</td>
-      <td class="num">${s.last_day ? esc(new Date(parse(String(s.last_day))).toLocaleDateString(tag(), { timeZone: "UTC", month: "short", day: "numeric" })) : "–"}</td></tr>`).join("");
+      <td class="num">${s.last_day ? esc(dateText(s.last_day, { month: "short", day: "numeric" })) : "–"}</td></tr>`).join("");
     return `<div class="st-card"><table class="st-table">
       <thead><tr><th>${esc(t("colStudent"))}</th><th class="num">${esc(t("sTotal"))}</th><th class="num">${esc(t("sRate"))}</th><th class="num">${esc(t("colLast"))}</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   }
 
-  function summaryHTML() {
-    const t = ctx.t;
-    const who = view.self ? "" : `<p class="st-who"><b>${esc(view.name)}</b>${view.fullName ? `<span>${esc(view.fullName)}</span>` : ""}</p>`;
-    if (!data) return who + `<p class="st-empty">${esc(t("loading"))}</p>`;
-    const tot = data.totals || { total: 0, first: 0, streak: 0, best: 0 };
-    const card = (label, value, sub = "") => `<div class="st-stat"><span>${esc(label)}</span><b>${value}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`;
-    const cards = `<section class="st-card"><h3>${esc(t("sAllTime"))}</h3><div class="st-stats">
-      ${card(t("sTotal"), tot.total)}${card(t("sCorrect"), tot.first)}${card(t("sWrong"), tot.total - tot.first)}
-      ${card(t("sRate"), pct(tot.first, tot.total) + "%")}${card(t("sBest"), tot.best, t("sStreak", { n: tot.streak }))}
-      </div><p class="note">${esc(t("sCorrectNote"))}</p></section>`;
-
-    const tabs = `<div class="st-tabs" role="group">${RANGES.map(r => `<button type="button" class="chip-btn" data-range="${r}" aria-pressed="${r === range}">${esc(t("range" + r))}</button>`).join("")}</div>`;
-    const b = buckets(range, localDay(), data.byDay);
-    const max = Math.max(1, ...b.map(x => x.n));
-    const label = (x, i) => {
-      const d = parse(x.key);
-      if (range === "1y") return d.toLocaleDateString(tag(), { timeZone: "UTC", month: "short" });
-      if (range === "30d" && (b.length - 1 - i) % 5) return "";
-      return d.toLocaleDateString(tag(), { timeZone: "UTC", month: "numeric", day: "numeric" });
+  // ---------- 학생 기록 (teacher's view) ----------
+  const whoHTML = () => `<p class="st-who"><b>${esc(view.name)}</b>${view.fullName ? `<span>${esc(view.fullName)}</span>` : ""}</p>`;
+  function teacherHTML() {
+    const ov = data.ov || {};
+    const tot = data.totals || { total: 0 };
+    // 약점: all-time results, lowest first-try rate
+    const weakList = (rows, name) => {
+      const w = weakest(rows);
+      if (!w.length) return `<p class="st-empty">${esc(t("weakNone"))}</p>`;
+      return `<ol class="st-weak">${w.map(r => `<li><span class="st-weak-row"><b>${esc(name(r))}</b><span class="st-rate-n">${pct(r.ok, r.n)}% · ${esc(t("unitQ", { n: r.n }))}</span></span><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span></li>`).join("")}</ol>`;
     };
-    const tipDate = x => parse(x.key).toLocaleDateString(tag(), range === "1y" ? { timeZone: "UTC", year: "numeric", month: "long" } : { timeZone: "UTC", month: "long", day: "numeric" });
-    const bars = b.map(x => `<div class="st-bar" title="${esc(t("chartTip", { date: tipDate(x), ok: x.ok, no: x.n - x.ok }))}">
-      <i class="no" style="height:${((x.n - x.ok) / max) * 100}%"></i><i class="ok" style="height:${(x.ok / max) * 100}%"></i></div>`).join("");
-    const xs = b.map((x, i) => `<span>${esc(label(x, i))}</span>`).join("");
-    const legend = `<div class="legend"><span><i class="dot" style="background: var(--ok)"></i>${esc(t("sCorrect"))}</span><span><i class="dot" style="background: var(--warn)"></i>${esc(t("sWrong"))}</span></div>`;
-    const chart = b.some(x => x.n)
-      ? `<div class="st-chart-wrap"><span class="st-max">${max}</span><div class="st-chart r${range}">${bars}</div><div class="st-x r${range}">${xs}</div></div>${legend}`
-      : `<p class="st-empty">${esc(t("noData"))}</p>`;
-
-    const qs = qualityRows(data.byQuality, Engine.TYPES);
-    const qtable = qs.length ? `<table class="st-table">
-      <thead><tr><th>${esc(t("colType"))}</th><th class="num">${esc(t("colCount"))}</th><th class="num">${esc(t("sCorrect"))}</th><th class="num">${esc(t("sWrong"))}</th><th>${esc(t("sRate"))}</th></tr></thead>
-      <tbody>${qs.map(r => `<tr><td class="st-type">${esc(typeName(r.q))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${r.n - r.ok}</td>
-        <td><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span><span class="st-rate-n">${pct(r.ok, r.n)}%</span></td></tr>`).join("")}</tbody></table>` : "";
-    const period = `<section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabs}</div>${chart}
-      ${qtable ? `<h3 class="st-sub">${esc(t("byTypeH"))}</h3>${qtable}` : ""}</section>`;
-
-    const rv = data.review || [];
-    const chips = rv.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${esc(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");
-    const review = `<section class="st-card"><div class="st-head"><h3>${esc(t("reviewH"))} <span class="st-count">${rv.length}</span></h3>
-      ${view.self && rv.length ? `<button class="btn primary" type="button" id="statsReview">${esc(t("reviewStart"))}</button>` : ""}</div>
-      ${rv.length ? `<p class="note">${esc(t("reviewNote"))}</p><div class="st-chips">${chips}</div>` : `<p class="st-empty">${esc(t("reviewEmpty"))}</p>`}</section>`;
-    return who + cards + period + review;
+    const weak = `<section class="st-card"><h3>${esc(t("weakH"))}</h3>
+      <div class="st-pair"><div><h4>${esc(t("weakTypes"))}</h4>${weakList(ov.byQuality || [], r => typeName(r.q))}</div>
+      <div><h4>${esc(t("weakRoots"))}</h4>${weakList(rootRows(ov.byRoot), r => rootName(r.pc))}</div></div>
+      <p class="note">${esc(t("weakNote", { n: WEAK_MIN }))}</p></section>`;
+    // 연습 습관
+    const week = buckets("7d", localDay(), ov.week);
+    const dots = week.map(x => `<span class="st-day${x.n ? " on" : ""}" title="${esc(dateText(x.key, { month: "long", day: "numeric" }))} · ${esc(t("unitQ", { n: x.n }))}">${esc(dateText(x.key, { weekday: "narrow" }))}</span>`).join("");
+    const habit = `<section class="st-card"><h3>${esc(t("habitH"))}</h3><div class="st-stats st-small">
+      ${card(t("habitDays"), esc(t("unitDays", { n: ov.days || 0 })))}
+      ${card(t("habitAvg"), esc(t("unitQ", { n: ov.days ? Math.round(tot.total / ov.days) : 0 })))}
+      ${card(t("habitLast"), ov.lastDay ? esc(dateText(ov.lastDay, { month: "short", day: "numeric" })) : "–")}
+      ${card(t("habitJoined"), ov.joined ? esc(new Date(ov.joined).toLocaleDateString(tag(), { year: "numeric", month: "numeric", day: "numeric" })) : "–")}
+      </div><div class="st-week"><span>${esc(t("habitWeek"))}</span>${dots}</div></section>`;
+    // 최근 푼 문제
+    const recent = (ov.recent || []).map(r => `<tr><td class="num st-dim">${esc(dateText(r.d, { month: "numeric", day: "numeric" }))}</td>
+      <td class="st-type">${esc(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}</td><td class="st-dim">${esc(typeName(r.q))}</td>
+      <td><span class="st-res ${r.first ? "ok" : "no"}">${esc(t(r.first ? "sCorrect" : "sWrong"))}</span></td></tr>`).join("");
+    const recentCard = `<section class="st-card"><h3>${esc(t("recentH"))}</h3>${recent ? `<div class="st-scroll"><table class="st-table">
+      <thead><tr><th class="num">${esc(t("colDate"))}</th><th>${esc(t("colChord"))}</th><th>${esc(t("colKind"))}</th><th>${esc(t("colResult"))}</th></tr></thead>
+      <tbody>${recent}</tbody></table></div>` : `<p class="st-empty">${esc(t("noData"))}</p>`}</section>`;
+    const type = typeTable(), root = rootTable();
+    const detail = `<section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${tabsHTML()}</div>${periodHTML()}${chartHTML()}
+      ${type || root ? `<div class="st-two">${type ? `<div><h4>${esc(t("byTypeH"))}</h4>${type}</div>` : ""}${root ? `<div><h4>${esc(t("byRootH"))}</h4>${root}</div>` : ""}</div>` : ""}</section>`;
+    return `${whoHTML()}<div class="st-two st-top">${weak}${habit}</div>
+      <section class="st-card st-line"><div class="st-stats">${totalsHTML()}</div></section>
+      ${detail}${recentCard}${reviewHTML(false)}`;
   }
 
-  return { init, openMine, openStudents, refresh: render, close: () => $("statsDlg") && $("statsDlg").close(), localDay, buckets, qualityRows };
+  return { init, openMine, openStudents, refresh: render, close: () => $("statsDlg") && $("statsDlg").close(),
+    localDay, period, buckets, qualityRows, rootPc, rootRows, weakest };
 })();
 if (typeof module !== "undefined") module.exports = StatsPage;
 
@@ -1900,8 +2178,10 @@ const Account = (() => {
     ctx.startReview(items);
   }
   // for StatsPage
-  const summary = (uid, range, today) => sb.rpc("practice_summary", { p_user: uid, p_range: range, p_today: today });
+  const summary = (uid, range, today, custom) => sb.rpc("practice_summary", { p_user: uid, p_range: range, p_today: today,
+    p_from: custom ? custom.from : null, p_to: custom ? custom.to : null });
   const students = () => sb.rpc("student_list");
+  const overview = (uid, today) => sb.rpc("student_overview", { p_user: uid, p_today: today });
   // called by the trainer when the user picks another language
   function langChanged(lang) { if (active() && profile.preferred_lang !== lang) updateProfile({ preferred_lang: lang }); }
   // called by the trainer after every settings save
@@ -1913,7 +2193,7 @@ const Account = (() => {
 
   // ---------- dialog ----------
   const TITLES = { login: "viewLogin", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw",
-    account: "viewAccount", complete: "viewComplete", restore: "viewRestore" };
+    account: "viewAccount", complete: "viewComplete", restore: "viewRestore", delete: "deleteAcct" };
   function fmtDate(d) {
     const tag = { ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" }[ctx.lang()] || "en-US";
     return new Date(d).toLocaleDateString(tag, { year: "numeric", month: "long", day: "numeric" });
@@ -1937,6 +2217,7 @@ const Account = (() => {
       $("signupLang").value = langForTimeZone(tz);
     }
     if (v === "complete" && profile) $("completeName").value = profile.full_name || "";
+    if (v === "delete") { document.querySelector('#authDlg form[data-view="delete"]').reset(); deleteReady(); }
     // a password left visible on one view must not stay visible on the next
     document.querySelectorAll("#authDlg .pw-wrap input").forEach(i => { i.type = "password"; });
     document.querySelectorAll("#authDlg .pw-eye").forEach(b => b.classList.remove("on"));
@@ -1971,6 +2252,7 @@ const Account = (() => {
   function refresh() {
     if (!ctx || !configured()) return;
     $("authTitle").textContent = ctx.t(TITLES[view]);
+    deleteReady();   // the phrase to type is in the new language now
     const key = $("authMsg").dataset.key;
     if (key) $("authMsg").textContent = ctx.t(key, msgVars);
     render();
@@ -2001,10 +2283,16 @@ const Account = (() => {
     $("menuReview").disabled = !count;
   }
 
+  // 회원 탈퇴 is enabled only once the password is filled in and the phrase is typed exactly
+  function deleteReady() {
+    const f = document.querySelector('#authDlg form[data-view="delete"]');
+    $("deleteSubmit").disabled = !(f.current.value && f.phrase.value === ctx.t("deletePhrase"));
+  }
+
   async function busy(form, fn) {
     const btn = form.querySelector('[type="submit"]');
     if (btn) btn.disabled = true;
-    try { await fn(); } catch (e) { setMsg("no", errorKey(e)); } finally { if (btn) btn.disabled = false; }
+    try { await fn(); } catch (e) { setMsg("no", errorKey(e)); } finally { if (btn) btn.disabled = false; if (form.dataset.view === "delete") deleteReady(); }
   }
   const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
   const back = () => location.origin + location.pathname;
@@ -2094,6 +2382,18 @@ const Account = (() => {
         if (error) return setMsg("no", errorKey(error));
         f.reset(); show("account", { kind: "ok", key: "msgPwChanged" });
       },
+      // 회원 탈퇴: the password is checked by logging in with it again, then the 7-day grace period starts
+      delete: async f => {
+        if (f.phrase.value !== ctx.t("deletePhrase")) return;
+        const check = await sb.auth.signInWithPassword({ email: user.email, password: f.current.value });
+        if (check.error) return setMsg("no", check.error.code === "invalid_credentials" ? "errCurrentPw" : errorKey(check.error));
+        const { data, error } = await sb.rpc("request_account_deletion");
+        if (error) return setMsg("no", errorKey(error));
+        f.reset();
+        profile = null;   // so the sign-out below is not taken for a declined restore
+        await sb.auth.signOut();
+        show("login", { kind: "ok", key: "msgDeleted", vars: { date: fmtDate(data) } });
+      },
     };
     document.querySelectorAll("#authDlg form[data-view]").forEach(f => {
       f.addEventListener("submit", e => { e.preventDefault(); busy(f, () => forms[f.dataset.view](f)); });
@@ -2103,14 +2403,8 @@ const Account = (() => {
     $("menuMy").onclick = () => { $("authDlg").close(); StatsPage.openMine({ id: user.id, nickname: profile ? profile.nickname : "" }); };
     $("menuStudents").onclick = () => { $("authDlg").close(); StatsPage.openStudents(); };
     $("menuReview").onclick = startReview;
-    $("deleteAcctBtn").onclick = async () => {
-      if (!confirm(ctx.t("deleteConfirm"))) return;
-      const { data, error } = await sb.rpc("request_account_deletion");
-      if (error) return setMsg("no", errorKey(error));
-      profile = null;   // so the close/sign-out below is not taken for a declined restore
-      await sb.auth.signOut();
-      show("login", { kind: "ok", key: "msgDeleted", vars: { date: fmtDate(data) } });
-    };
+    $("deleteAcctBtn").onclick = () => open("delete");
+    document.querySelector('#authDlg form[data-view="delete"]').addEventListener("input", deleteReady);
     $("restoreBtn").onclick = async () => {
       const { error } = await sb.rpc("restore_account");
       if (error) return setMsg("no", errorKey(error));
@@ -2121,7 +2415,7 @@ const Account = (() => {
     $("restoreLogoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
   }
 
-  return { init, settingsChanged, langChanged, refresh, record, startReview, summary, students, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
+  return { init, settingsChanged, langChanged, refresh, record, startReview, summary, students, overview, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
 })();
 if (typeof module !== "undefined") module.exports = Account;
 
@@ -2414,6 +2708,11 @@ if (typeof module !== "undefined") module.exports = Account;
   }
   function renderReview() {
     $("reviewBar").hidden = !review;
+    // settings do not apply to the missed questions: grey them out until the retry ends
+    const sheet = document.querySelector(".sheet");
+    sheet.classList.toggle("locked", !!review);
+    $("lockNote").hidden = !review;
+    sheet.querySelectorAll("input, button").forEach(el => { el.disabled = !!review; });
     if (review) $("reviewText").textContent = t("reviewBar", { n: review.queue.length + (review.cur && review.cur.hits < 2 ? 1 : 0) });
   }
   $("reviewStop").onclick = () => stopReview(false);

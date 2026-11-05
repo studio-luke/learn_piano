@@ -261,13 +261,25 @@ $$;
 revoke execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb) from public, anon;
 grant execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb) to authenticated;
 
--- statistics for the 마이페이지 / 학생 통계 page: totals (all time), and per chord type and per day
--- (per month for '1y') over the chosen range. A student may ask only for their own; the admin for anyone.
-create or replace function public.practice_summary(p_user uuid, p_range text, p_today date)
+-- the root (베이스) of a chord as asked: its leading note name, e.g. 'F♯' of 'F♯m7(♭5)'
+create or replace function public.chord_root(symbol text)
+returns text language sql immutable set search_path = '' as $$
+  select substring(symbol from '^[A-G](?:𝄫|𝄪|♭|♯)?');
+$$;
+
+-- statistics for the 마이페이지 / 학생 통계 page: totals (all time), and per chord type, per root and per day over
+-- the chosen range: '7d', '30d', '1y' (per month) or 'custom' (p_from..p_to, per month when longer than 62 days —
+-- the same rule as src/stats.js). firstDay = the first practice day, the earliest date the calendar allows.
+-- A student may ask only for their own; the admin for anyone.
+drop function if exists public.practice_summary(uuid, text, date);   -- before the custom range was added
+create or replace function public.practice_summary(p_user uuid, p_range text, p_today date,
+  p_from date default null, p_to date default null)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
   today date := p_today;
   since date;
+  until date;
+  monthly boolean;
 begin
   if auth.uid() is null or (p_user <> auth.uid() and not public.is_admin()) then
     raise exception 'not allowed';
@@ -275,26 +287,73 @@ begin
   if today is null or today not between current_date - 1 and current_date + 1 then
     today := current_date;
   end if;
-  since := case p_range when '7d' then today - 6 when '30d' then today - 29
-    else (date_trunc('month', today) - interval '11 months')::date end;
+  until := today;
+  if p_range = 'custom' and p_from is not null and p_to is not null then
+    since := least(p_from, p_to);
+    until := least(greatest(p_from, p_to), today);
+  else
+    since := case p_range when '7d' then today - 6 when '30d' then today - 29
+      else (date_trunc('month', today) - interval '11 months')::date end;
+  end if;
+  monthly := p_range = '1y' or (p_range = 'custom' and until - since > 62);
   return jsonb_build_object(
     'since', since,
+    'until', until,
+    'firstDay', (select min(day) from public.practice_log where user_id = p_user),
     'totals', (select jsonb_build_object('total', total, 'first', first_correct, 'streak', streak, 'best', best_streak)
       from public.practice_stats where user_id = p_user),
     'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok)) from (
       select quality, count(*) as n, count(*) filter (where first_try) as ok from public.practice_log
-      where user_id = p_user and day between since and today group by quality) x), '[]'::jsonb),
+      where user_id = p_user and day between since and until group by quality) x), '[]'::jsonb),
+    'byRoot', coalesce((select jsonb_agg(jsonb_build_object('r', r, 'n', n, 'ok', ok)) from (
+      select public.chord_root(symbol) as r, count(*) as n, count(*) filter (where first_try) as ok from public.practice_log
+      where user_id = p_user and day between since and until group by 1) x), '[]'::jsonb),
     'byDay', coalesce((select jsonb_agg(jsonb_build_object('d', d, 'n', n, 'ok', ok) order by d) from (
-      select case when p_range = '1y' then date_trunc('month', day)::date else day end as d,
+      select case when monthly then date_trunc('month', day)::date else day end as d,
         count(*) as n, count(*) filter (where first_try) as ok
-      from public.practice_log where user_id = p_user and day between since and today group by 1) y), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and day between since and until group by 1) y), '[]'::jsonb),
     'review', coalesce((select jsonb_agg(jsonb_build_object('symbol', symbol, 'q', quality, 'hits', hits) order by added_at)
       from public.review_queue where user_id = p_user), '[]'::jsonb)
   );
 end;
 $$;
-revoke execute on function public.practice_summary(uuid, text, date) from public, anon;
-grant execute on function public.practice_summary(uuid, text, date) to authenticated;
+revoke execute on function public.practice_summary(uuid, text, date, date, date) from public, anon;
+grant execute on function public.practice_summary(uuid, text, date, date, date) to authenticated;
+
+-- extra numbers for the teacher's view of one student (admin only): all-time results per chord type and
+-- per root (for 약점), practice habits, and the 50 latest questions
+create or replace function public.student_overview(p_user uuid, p_today date)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  today date := p_today;
+begin
+  if not public.is_admin() then
+    raise exception 'not allowed';
+  end if;
+  if today is null or today not between current_date - 1 and current_date + 1 then
+    today := current_date;
+  end if;
+  return jsonb_build_object(
+    'joined', (select created_at from public.profiles where id = p_user),
+    'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok)) from (
+      select quality, count(*) as n, count(*) filter (where first_try) as ok
+      from public.practice_log where user_id = p_user group by quality) x), '[]'::jsonb),
+    'byRoot', coalesce((select jsonb_agg(jsonb_build_object('r', r, 'n', n, 'ok', ok)) from (
+      select public.chord_root(symbol) as r, count(*) as n, count(*) filter (where first_try) as ok
+      from public.practice_log where user_id = p_user group by 1) x), '[]'::jsonb),
+    'days', (select count(distinct day) from public.practice_log where user_id = p_user),
+    'lastDay', (select max(day) from public.practice_log where user_id = p_user),
+    'week', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'n', n) order by day) from (
+      select day, count(*) as n from public.practice_log
+      where user_id = p_user and day between today - 6 and today group by day) w), '[]'::jsonb),
+    'recent', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'first', first_try, 'review', review) order by id desc) from (
+      select id, day, symbol, quality, first_try, review from public.practice_log
+      where user_id = p_user order by id desc limit 50) r), '[]'::jsonb)
+  );
+end;
+$$;
+revoke execute on function public.student_overview(uuid, date) from public, anon;
+grant execute on function public.student_overview(uuid, date) to authenticated;
 
 -- the admin's student list (empty for everyone else)
 create or replace function public.student_list()

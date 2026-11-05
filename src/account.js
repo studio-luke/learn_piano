@@ -164,8 +164,10 @@ const Account = (() => {
     ctx.startReview(items);
   }
   // for StatsPage
-  const summary = (uid, range, today) => sb.rpc("practice_summary", { p_user: uid, p_range: range, p_today: today });
+  const summary = (uid, range, today, custom) => sb.rpc("practice_summary", { p_user: uid, p_range: range, p_today: today,
+    p_from: custom ? custom.from : null, p_to: custom ? custom.to : null });
   const students = () => sb.rpc("student_list");
+  const overview = (uid, today) => sb.rpc("student_overview", { p_user: uid, p_today: today });
   // called by the trainer when the user picks another language
   function langChanged(lang) { if (active() && profile.preferred_lang !== lang) updateProfile({ preferred_lang: lang }); }
   // called by the trainer after every settings save
@@ -177,7 +179,7 @@ const Account = (() => {
 
   // ---------- dialog ----------
   const TITLES = { login: "viewLogin", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw",
-    account: "viewAccount", complete: "viewComplete", restore: "viewRestore" };
+    account: "viewAccount", complete: "viewComplete", restore: "viewRestore", delete: "deleteAcct" };
   function fmtDate(d) {
     const tag = { ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" }[ctx.lang()] || "en-US";
     return new Date(d).toLocaleDateString(tag, { year: "numeric", month: "long", day: "numeric" });
@@ -201,6 +203,7 @@ const Account = (() => {
       $("signupLang").value = langForTimeZone(tz);
     }
     if (v === "complete" && profile) $("completeName").value = profile.full_name || "";
+    if (v === "delete") { document.querySelector('#authDlg form[data-view="delete"]').reset(); deleteReady(); }
     // a password left visible on one view must not stay visible on the next
     document.querySelectorAll("#authDlg .pw-wrap input").forEach(i => { i.type = "password"; });
     document.querySelectorAll("#authDlg .pw-eye").forEach(b => b.classList.remove("on"));
@@ -235,6 +238,7 @@ const Account = (() => {
   function refresh() {
     if (!ctx || !configured()) return;
     $("authTitle").textContent = ctx.t(TITLES[view]);
+    deleteReady();   // the phrase to type is in the new language now
     const key = $("authMsg").dataset.key;
     if (key) $("authMsg").textContent = ctx.t(key, msgVars);
     render();
@@ -265,10 +269,16 @@ const Account = (() => {
     $("menuReview").disabled = !count;
   }
 
+  // 회원 탈퇴 is enabled only once the password is filled in and the phrase is typed exactly
+  function deleteReady() {
+    const f = document.querySelector('#authDlg form[data-view="delete"]');
+    $("deleteSubmit").disabled = !(f.current.value && f.phrase.value === ctx.t("deletePhrase"));
+  }
+
   async function busy(form, fn) {
     const btn = form.querySelector('[type="submit"]');
     if (btn) btn.disabled = true;
-    try { await fn(); } catch (e) { setMsg("no", errorKey(e)); } finally { if (btn) btn.disabled = false; }
+    try { await fn(); } catch (e) { setMsg("no", errorKey(e)); } finally { if (btn) btn.disabled = false; if (form.dataset.view === "delete") deleteReady(); }
   }
   const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
   const back = () => location.origin + location.pathname;
@@ -358,6 +368,18 @@ const Account = (() => {
         if (error) return setMsg("no", errorKey(error));
         f.reset(); show("account", { kind: "ok", key: "msgPwChanged" });
       },
+      // 회원 탈퇴: the password is checked by logging in with it again, then the 7-day grace period starts
+      delete: async f => {
+        if (f.phrase.value !== ctx.t("deletePhrase")) return;
+        const check = await sb.auth.signInWithPassword({ email: user.email, password: f.current.value });
+        if (check.error) return setMsg("no", check.error.code === "invalid_credentials" ? "errCurrentPw" : errorKey(check.error));
+        const { data, error } = await sb.rpc("request_account_deletion");
+        if (error) return setMsg("no", errorKey(error));
+        f.reset();
+        profile = null;   // so the sign-out below is not taken for a declined restore
+        await sb.auth.signOut();
+        show("login", { kind: "ok", key: "msgDeleted", vars: { date: fmtDate(data) } });
+      },
     };
     document.querySelectorAll("#authDlg form[data-view]").forEach(f => {
       f.addEventListener("submit", e => { e.preventDefault(); busy(f, () => forms[f.dataset.view](f)); });
@@ -367,14 +389,8 @@ const Account = (() => {
     $("menuMy").onclick = () => { $("authDlg").close(); StatsPage.openMine({ id: user.id, nickname: profile ? profile.nickname : "" }); };
     $("menuStudents").onclick = () => { $("authDlg").close(); StatsPage.openStudents(); };
     $("menuReview").onclick = startReview;
-    $("deleteAcctBtn").onclick = async () => {
-      if (!confirm(ctx.t("deleteConfirm"))) return;
-      const { data, error } = await sb.rpc("request_account_deletion");
-      if (error) return setMsg("no", errorKey(error));
-      profile = null;   // so the close/sign-out below is not taken for a declined restore
-      await sb.auth.signOut();
-      show("login", { kind: "ok", key: "msgDeleted", vars: { date: fmtDate(data) } });
-    };
+    $("deleteAcctBtn").onclick = () => open("delete");
+    document.querySelector('#authDlg form[data-view="delete"]').addEventListener("input", deleteReady);
     $("restoreBtn").onclick = async () => {
       const { error } = await sb.rpc("restore_account");
       if (error) return setMsg("no", errorKey(error));
@@ -385,6 +401,6 @@ const Account = (() => {
     $("restoreLogoutBtn").onclick = async () => { await sb.auth.signOut(); $("authDlg").close(); };
   }
 
-  return { init, settingsChanged, langChanged, refresh, record, startReview, summary, students, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
+  return { init, settingsChanged, langChanged, refresh, record, startReview, summary, students, overview, errorKey, syncable, isPublicKey, missingFields, langForTimeZone, TERMS_VERSION };
 })();
 if (typeof module !== "undefined") module.exports = Account;

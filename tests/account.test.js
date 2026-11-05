@@ -73,7 +73,7 @@ test("every t(\"key\") in the page scripts exists in i18n", () => {
   const I18N = new Function(fs.readFileSync(path.join(__dirname, "../src/i18n.js"), "utf8") + "; return I18N;")();
   const src = ["../src/ui.html", "../src/stats.js", "../src/account.js"].map(f => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
   const used = new Set([...src.matchAll(/\bt\("(\w+)"\s*[,)]/g)].map(m => m[1]));
-  ["7d", "30d", "1y"].forEach(r => used.add("range" + r));   // t("range" + r)
+  ["7d", "30d", "1y", "custom"].forEach(r => used.add("range" + r));   // t("range" + r)
   const missing = [...used].filter(k => !(k in I18N.ko));
   assert.deepStrictEqual(missing, []);
 });
@@ -97,4 +97,29 @@ test("stats: chord types follow the settings order, 7alt after 7", () => {
   const E = require("../src/engine.js");
   const rows = [{ q: "m7b5" }, { q: "7alt" }, { q: "maj" }, { q: "dom7" }].map(r => ({ ...r, n: 1, ok: 1 }));
   assert.deepStrictEqual(Stats.qualityRows(rows, E.TYPES).map(r => r.q), ["maj", "dom7", "7alt", "m7b5"]);
+});
+
+test("stats: roots grouped by key, weak spots", () => {
+  assert.deepStrictEqual(["C", "C♯", "D♭", "B♯", "E𝄪", "C♭", "F♯"].map(Stats.rootPc), [0, 1, 1, 0, 6, 11, 6]);
+  const rows = Stats.rootRows([{ r: "C♯", n: 4, ok: 2 }, { r: "D♭", n: 6, ok: 5 }, { r: "C", n: 3, ok: 3 }]);
+  assert.deepStrictEqual(rows, [{ pc: 0, n: 3, ok: 3 }, { pc: 1, n: 10, ok: 7 }]);
+  const w = Stats.weakest([{ q: "a", n: 10, ok: 9 }, { q: "b", n: 4, ok: 0 }, { q: "c", n: 20, ok: 10 }, { q: "d", n: 8, ok: 8 }, { q: "e", n: 10, ok: 5 }]);
+  assert.deepStrictEqual(w.map(r => r.q), ["c", "e", "a"]);   // b: too few questions, d: no misses
+});
+
+test("delete account: the phrase to type is shown in the label of every language", () => {
+  const I18N = new Function(fs.readFileSync(path.join(__dirname, "../src/i18n.js"), "utf8") + "; return I18N;")();
+  for (const l of I18N.LANGS) assert.ok(I18N[l].deleteTypeHTML.includes(`<b>${I18N[l].deletePhrase}</b>`), l);
+});
+
+test("stats: custom period — daily up to 62 days, monthly after, never past today", () => {
+  const p = Stats.period("custom", "2026-11-05", { from: "2026-10-01", to: "2026-12-31" });
+  assert.deepStrictEqual(p, { from: "2026-10-01", to: "2026-11-05", monthly: false });
+  assert.strictEqual(Stats.buckets("custom", "2026-11-05", [], { from: "2026-10-01", to: "2026-11-05" }).length, 36);
+  const swapped = Stats.period("custom", "2026-11-05", { from: "2026-11-01", to: "2026-10-20" });
+  assert.deepStrictEqual([swapped.from, swapped.to], ["2026-10-20", "2026-11-01"]);
+  const long = Stats.buckets("custom", "2026-11-05", [{ d: "2026-02-01", n: 3, ok: 2 }], { from: "2026-01-15", to: "2026-11-05" });
+  assert.strictEqual(long.length, 11);
+  assert.deepStrictEqual([long[0].key, long[1], long[10].key], ["2026-01-01", { key: "2026-02-01", n: 3, ok: 2 }, "2026-11-01"]);
+  assert.strictEqual(Stats.period("1y", "2026-11-05").from, "2025-12-01");
 });
