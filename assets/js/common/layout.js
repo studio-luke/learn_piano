@@ -23,6 +23,18 @@ const LANG_SELECT = `
 // 줄 3개 메뉴 아이콘
 const MENU_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
 
+/** 주소에서 .html 떼기: "/about.html" → "/about", "/teacher/index.html" → "/teacher/" */
+export const cleanPath = p => p.replace(/\/index\.html$/, "/").replace(/\.html$/, "");
+
+/**
+ * 주소창을 깔끔하게: .html로 들어왔으면 페이지를 다시 불러오지 않고 주소창만 .html 없는 주소로 바꿈(history.replaceState).
+ * 같은 폴더 안의 주소라서 페이지 안의 상대 링크·파일 경로는 그대로 맞아요. 새로고침해도 서버가 /about → about.html로 연결해요.
+ */
+function cleanAddressBar() {
+  const clean = cleanPath(location.pathname);
+  if (clean !== location.pathname) history.replaceState(history.state, "", clean + location.search + location.hash);
+}
+
 // 머리글. stats=true면 연습 페이지의 "정답/시도 · 연속" 표시, back=true면 "← 연습으로" 링크
 function headerHTML({ stats, back }) {
   return `
@@ -42,17 +54,17 @@ function headerHTML({ stats, back }) {
     </div>`;
 }
 
-// 왼쪽 메뉴(사이트 지도). 지금 보고 있는 페이지는 강조, 준비 중인 기능은 흐리게
+// 왼쪽 메뉴(사이트 지도, 회원 여부와 상관없이 같음). 지금 보고 있는 페이지는 강조, 준비 중인 기능은 흐리게
 function drawerHTML() {
-  const here = location.pathname.replace(/index\.html$/, "");
+  const here = cleanPath(location.pathname);
   const item = it => {
     const label = `<span data-i18n="${it.key}"></span>`;
     if (it.soon) return `<span class="nav-item soon">${label}<small data-i18n="navSoon"></small></span>`;
     const href = ROOT + it.path;
-    const current = new URL(href).pathname.replace(/index\.html$/, "") === here;
-    return `<a class="nav-item${it.need ? " need-" + it.need : ""}" href="${href}"${current ? ' aria-current="page"' : ""}>${label}</a>`;
+    const current = cleanPath(new URL(href).pathname) === here;
+    return `<a class="nav-item" href="${href}"${current ? ' aria-current="page"' : ""}>${label}</a>`;
   };
-  const homeCurrent = new URL(ROOT).pathname === here;
+  const homeCurrent = cleanPath(new URL(ROOT).pathname) === here;
   return `
 <dialog class="nav-drawer" id="navDrawer" aria-label="메뉴" data-i18n-aria="menuOpen">
   <div class="nav-head">
@@ -61,7 +73,7 @@ function drawerHTML() {
   </div>
   <nav class="nav-list">
     <a class="nav-item" href="${ROOT}"${homeCurrent ? ' aria-current="page"' : ""}><span data-i18n="navHome"></span></a>
-    ${SITEMAP.map(g => `<p class="nav-group" data-i18n="${g.group}"></p>${g.items.map(item).join("")}`).join("")}
+    ${SITEMAP.map(g => (g.group ? `<p class="nav-group" data-i18n="${g.group}"></p>` : `<hr class="nav-sep">`) + g.items.map(item).join("")).join("")}
   </nav>
 </dialog>`;
 }
@@ -79,18 +91,7 @@ const FOOTER = `
       <dd><a class="contact-val" href="https://www.instagram.com/thrill_kim/" target="_blank" rel="noopener">@thrill_kim</a></dd>
     </div>
   </dl>
-  <nav class="legal-links" hidden><a href="${ROOT}terms.html" data-i18n="termsLink"></a><a href="${ROOT}privacy.html" data-i18n="privacyLink"></a></nav>`;
-
-// 메뉴의 회원 전용 항목: 마이페이지는 로그인했을 때, 학생 통계는 관리자일 때만
-function renderNav() {
-  document.querySelectorAll(".nav-item.need-member").forEach(el => { el.hidden = !Account.user; });
-  document.querySelectorAll(".nav-item.need-admin").forEach(el => { el.hidden = !Account.isAdmin(); });
-  document.querySelectorAll(".nav-group").forEach(g => {   // 항목이 다 숨겨진 묶음은 제목도 숨김
-    let n = g.nextElementSibling, any = false;
-    while (n && !n.classList.contains("nav-group")) { if (!n.hidden) any = true; n = n.nextElementSibling; }
-    g.hidden = !any;
-  });
-}
+  <nav class="legal-links" hidden><a href="${ROOT}terms" data-i18n="termsLink"></a><a href="${ROOT}privacy" data-i18n="privacyLink"></a></nav>`;
 
 /**
  * 도움말(?) 버튼: <span class="help"><button class="help-btn">?</button><span class="help-pop">설명</span></span>
@@ -117,6 +118,7 @@ function wireHelp() {
  * @param back   머리글에 "← 연습으로" 링크를 넣을지
  */
 export function startPage({ title = "docTitle", stats = false, back = false } = {}) {
+  cleanAddressBar();
   const header = $("siteHeader"), footer = $("siteFooter");
   if (header) header.innerHTML = headerHTML({ stats, back });
   if (footer) { footer.innerHTML = FOOTER; footer.setAttribute("aria-labelledby", "contactH"); }
@@ -153,8 +155,6 @@ export function startPage({ title = "docTitle", stats = false, back = false } = 
 
   if (Account.configured) document.querySelectorAll(".legal-links").forEach(el => { el.hidden = false; });
   initAuthDialog();
-  Account.on("change", renderNav);
-  renderNav();
   // 계정의 사용 언어가 어느 기기에서든 화면 언어가 됨
   Account.on("profile", p => { if (p.preferred_lang && p.preferred_lang !== lang()) setLang(p.preferred_lang); });
   Account.start();

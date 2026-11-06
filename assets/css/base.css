@@ -153,6 +153,7 @@ dialog.nav-drawer[open] { animation: nav-in 180ms ease-out; }
 .nav-brand .logo { width: 1.1em; height: 1.1em; vertical-align: -0.2em; margin-right: 0.25em; }
 .nav-list { display: flex; flex-direction: column; }
 .nav-group { margin: 16px 4px 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.nav-sep { border: none; border-top: 1px solid var(--line); margin: 14px 4px 6px; }
 .nav-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 11px 10px; border-radius: 10px; font-size: 15px; font-weight: 500; color: var(--ink); text-decoration: none; }
 a.nav-item:hover { background: var(--sunken); }
 .nav-item[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }

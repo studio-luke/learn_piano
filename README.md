@@ -20,21 +20,25 @@ npm run audit      # 폰 화면 레이아웃 검사 (처음 한 번: npm i && np
 | 주소 | 파일 | 내용 |
 |---|---|---|
 | `/` | `index.html` | 홈 — 소개와 학습 메뉴 카드 |
+| `/about` | `about.html` | About Us — 서비스 소개와 문의 연락처 |
 | `/trainer/chords/` | `trainer/chords/index.html` | 랜덤 코드 연습(코드 트레이너). 누구나 사용, 로그인하면 기록 저장 |
-| `/mypage.html` | `mypage.html` | 마이페이지 — 내 연습 통계, 틀린 문제 다시 풀기 (로그인한 회원) |
+| `/mypage` | `mypage.html` | 마이페이지 — 내 연습 통계, 틀린 문제 다시 풀기 (로그인한 회원) |
 | `/teacher/` | `teacher/index.html` | 선생님 — 학생 목록 (관리자만) |
-| `/teacher/student.html?id=…` | `teacher/student.html` | 선생님 — 학생 한 명의 기록 (관리자만) |
-| `/terms.html`, `/privacy.html` | | 이용약관·개인정보처리방침 (초안, 한국어만) |
+| `/teacher/student?id=…` | `teacher/student.html` | 선생님 — 학생 한 명의 기록 (관리자만) |
+| `/terms`, `/privacy` | `terms.html`, `privacy.html` | 이용약관·개인정보처리방침 (초안, 한국어만) |
+
+주소에는 `.html`을 쓰지 않아요. 실제 사이트(Cloudflare)와 로컬 서버(`npm run dev`)가 `/about` → `about.html`로 연결하고, `/about.html`로 들어오면 `/about`으로 넘겨줘요. 다른 서버로 열어도 페이지 JS가 주소창의 `.html`을 지워요(`common/layout.js` `cleanAddressBar`). 링크를 새로 만들 때도 `.html` 없이 쓰세요.
 
 ## 폴더 구조
 
 ```
-index.html  trainer/chords/  mypage.html  teacher/  terms.html  privacy.html   페이지 (HTML은 틀만, 내용은 JS가 채움)
+index.html  about.html  trainer/chords/  mypage.html  teacher/  terms.html  privacy.html   페이지 (HTML은 틀만, 내용은 JS가 채움)
 favicon.svg  favicon-32.png  apple-touch-icon.png              파비콘 (오븐 창 속 8분음표. svg가 원본)
 
 assets/css/
   base.css        공통: 색·글꼴 토큰(테마, 다크 모드), 머리글·바닥글, ☰ 왼쪽 메뉴, 도움말(?), 버튼·체크박스·알림
   home.css        홈: 소개, 학습 메뉴 카드
+  about.css       About Us
   practice.css    연습 페이지: 연습 카드, 건반, 타이머 버튼, 출제 설정, 폰 세로·가로 레이아웃
   stats.css       통계 페이지: 카드, 그래프, 표, 기간 달력, 선생님 화면
   account.css     로그인 창과 계정 사이드바
@@ -61,6 +65,7 @@ assets/js/
   stats/view.js           통계 화면 조각 (숫자 카드, 그래프, 표, 기간 달력)
   stats/gate.js           통계 페이지 입장 확인 (로그인·관리자)
   pages/home.js           홈 (학습 메뉴 카드)
+  pages/about.js          About Us (이메일 복사)
   pages/practice.js       연습 페이지 시작점 (위 practice/* 를 연결, 단축키)
   pages/mypage.js  teacher-list.js  teacher-student.js   각 통계 페이지
 

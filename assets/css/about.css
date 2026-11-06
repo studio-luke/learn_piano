@@ -1,0 +1,16 @@
+/* ===== About Us (about.html) ===== */
+
+.about { max-width: 720px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.about-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 8px 8px; }
+.about-logo { width: 64px; height: 64px; }
+.about-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(32px, 6vw, 44px); margin: 0; }
+.about-lead { margin: 0; max-width: 32em; color: var(--muted); font-size: 15px; line-height: 1.7; }
+.about-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.about-card h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.about-card p { margin: 0; line-height: 1.75; }
+/* 문의 (바닥글의 .contact-row 모양을 그대로 씀) */
+.about-contact dl { margin: 4px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.about-contact dt { font-weight: 500; color: var(--muted); min-width: 80px; }
+.about-contact dd { margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.about-cta { margin: 8px 0 0; text-align: center; }
+.about-cta .btn { text-decoration: none; display: inline-block; padding-inline: 28px; }

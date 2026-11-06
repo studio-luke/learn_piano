@@ -1,0 +1,72 @@
+<!doctype html>
+<!-- ===== About Us — 주소 /about.html =====
+     코드오븐이 어떤 서비스인지 짧은 소개와 문의 연락처. 문구는 assets/js/i18n/*.js의 about… 키.
+     머리글·바닥글·메뉴는 assets/js/common/layout.js, 이 페이지 동작(이메일 복사)은 assets/js/pages/about.js. -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ChordOven 소개 — 연습으로 음악을 완성하는 음악 학습 플랫폼. 문의: kim_8417@naver.com">
+<title>About Us · ChordOven</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#F5ECDD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1E1612" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Music&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/account.css">
+<link rel="stylesheet" href="assets/css/about.css">
+<script type="module" src="assets/js/pages/about.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="top" id="siteHeader"></header>
+
+  <main class="about">
+    <section class="about-hero">
+      <img class="about-logo" src="favicon.svg" alt="">
+      <h2 class="about-title">About Us</h2>
+      <p class="about-lead" data-i18n="aboutLead"></p>
+    </section>
+
+    <section class="about-card">
+      <h3 data-i18n="aboutWhatH">어떤 서비스인가요</h3>
+      <p data-i18n="aboutWhat"></p>
+    </section>
+
+    <section class="about-card">
+      <h3 data-i18n="aboutNameH">이름에 담은 뜻</h3>
+      <p data-i18n="aboutName"></p>
+    </section>
+
+    <section class="about-card">
+      <h3 data-i18n="aboutForH">이런 분께 추천해요</h3>
+      <p data-i18n="aboutFor"></p>
+    </section>
+
+    <!-- 문의 연락처 -->
+    <section class="about-card about-contact">
+      <h3 data-i18n="aboutContactH">문의</h3>
+      <p class="note" data-i18n="aboutContact"></p>
+      <dl>
+        <div class="contact-row">
+          <dt>E-mail</dt>
+          <dd><span class="contact-val" id="aboutMail">kim_8417@naver.com</span><button class="mini-btn" id="aboutCopy" type="button" data-i18n="copy">복사</button></dd>
+        </div>
+        <div class="contact-row">
+          <dt>Instagram</dt>
+          <dd><a class="contact-val" href="https://www.instagram.com/thrill_kim/" target="_blank" rel="noopener">@thrill_kim</a></dd>
+        </div>
+      </dl>
+    </section>
+
+    <p class="about-cta"><a class="btn primary" href="trainer/chords/" data-i18n="homeStart">랜덤 코드 연습 시작</a></p>
+  </main>
+
+  <footer class="contact" id="siteFooter"></footer>
+</div>
+</body>
+</html>

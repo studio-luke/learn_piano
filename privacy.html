@@ -6,6 +6,8 @@
 <title>개인정보처리방침 · ChordOven</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/legal.css">
+<!-- 주소창에서 .html 숨기기 (다른 페이지는 assets/js/common/layout.js가 같은 일을 함) -->
+<script>if (/\.html$/.test(location.pathname)) history.replaceState(null, "", location.pathname.replace(/\.html$/, "") + location.search + location.hash);</script>
 </head>
 <body>
 <main class="legal">

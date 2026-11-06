@@ -22,9 +22,16 @@ export function serve(port = 8766, host = "127.0.0.1") {
   const server = http.createServer((req, res) => {
     let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
     if (PRIVATE.test(p) || p.includes("..")) { res.writeHead(404); return res.end("not found"); }
+    // 깔끔한 주소로 넘겨주기 (Cloudflare의 기본 동작과 같게):
+    //   /about.html → /about,  /teacher/index.html → /teacher/,  /trainer/chords → /trainer/chords/
+    const query = new URL(req.url, "http://x").search;
+    const go = to => { res.writeHead(307, { Location: to + query }); res.end(); };
+    if (p.endsWith("/index.html")) return go(p.slice(0, -"index.html".length));
+    if (p.endsWith(".html") && fs.existsSync(path.join(ROOT, p))) return go(p.slice(0, -".html".length));
+    if (!p.endsWith("/") && fs.existsSync(path.join(ROOT, p, "index.html"))) return go(p + "/");
     if (p.endsWith("/")) p += "index.html";                       // /teacher/ → teacher/index.html
     let file = path.join(ROOT, p);
-    if (!path.extname(file) && fs.existsSync(file + ".html")) file += ".html";   // /mypage → mypage.html (Cloudflare와 같게)
+    if (!path.extname(file) && fs.existsSync(file + ".html")) file += ".html";   // /mypage → mypage.html
     fs.readFile(file, (err, data) => {
       if (err) { res.writeHead(404); return res.end("not found"); }
       res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-store" });
