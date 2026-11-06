@@ -283,7 +283,12 @@ dialog.page { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh
 .st-cal-head .icon-btn:disabled { opacity: 0.3; cursor: default; background: none; }
 .st-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; text-align: center; }
 .st-cal-week span { font-size: 11px; color: var(--muted); padding-block: 2px; }
-.st-cal-grid button { border: none; background: none; height: 32px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); border-radius: 0; }
+.st-cal-grid button { position: relative; border: none; background: none; height: 34px; padding-bottom: 6px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); border-radius: 0; }
+/* practised that day: a small green dot under the number */
+.st-cal-grid button.has::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--ok); }
+.st-cal-grid button.end.has::after { background: var(--accent-ink); }
+.st-cal-legend { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.st-cal-legend i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
 .st-cal-grid button:hover:not(:disabled) { background: var(--sunken); }
 .st-cal-grid button:disabled { color: var(--line); cursor: default; }
 .st-cal-grid button.today { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
@@ -1114,6 +1119,7 @@ const I18N = {
     lockNote: "틀린 문제 다시 풀기 중에는 출제 설정을 바꿀 수 없어요.",
     calPickStart: "시작일을 눌러 주세요.",
     calPickEnd: "종료일을 눌러 주세요.",
+    calPracticed: "연습한 날",
     calPrev: "이전 달",
     calNext: "다음 달",
     periodNote: "{date}(첫 연습일)부터 고를 수 있어요. 62일이 넘으면 월별로 보여요.",
@@ -1318,6 +1324,7 @@ const I18N = {
     lockNote: "Practice settings can't be changed while retrying missed chords.",
     calPickStart: "Tap the start date.",
     calPickEnd: "Tap the end date.",
+    calPracticed: "Practice day",
     calPrev: "Previous month",
     calNext: "Next month",
     periodNote: "Dates from {date} (first practice). Ranges over 62 days are shown by month.",
@@ -1522,6 +1529,7 @@ const I18N = {
     lockNote: "間違えた問題の解き直し中は出題設定を変更できません。",
     calPickStart: "開始日をタップしてください。",
     calPickEnd: "終了日をタップしてください。",
+    calPracticed: "練習した日",
     calPrev: "前の月",
     calNext: "次の月",
     periodNote: "{date}（最初の練習日）から選べます。62日を超えると月別で表示します。",
@@ -1726,6 +1734,7 @@ const I18N = {
     lockNote: "重做错题时不能更改出题设置。",
     calPickStart: "请点选开始日期。",
     calPickEnd: "请点选结束日期。",
+    calPracticed: "有练习的日子",
     calPrev: "上个月",
     calNext: "下个月",
     periodNote: "可从 {date}（第一次练习）开始选择。超过 62 天按月显示。",
@@ -1945,13 +1954,17 @@ const StatsPage = (() => {
     const m = parse(cal.month);
     const days = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 0)).getUTCDate();
     const sel = cal.from ? { from: cal.from, to: cal.from } : range === "custom" && custom ? custom : null;
+    const practiced = new Set(((data && data.practiceDays) || []).map(d => String(d).slice(0, 10)));
     // weekday initials, Sunday first (2023-01-01 was a Sunday)
     const heads = Array.from({ length: 7 }, (_, i) => `<span>${esc(dateText(addDays("2023-01-01", i), { weekday: "narrow" }))}</span>`).join("");
     let cells = "<span></span>".repeat(m.getUTCDay());
     for (let d = 1; d <= days; d++) {
       const k = cal.month.slice(0, 8) + pad(d);
-      const cls = [sel && k >= sel.from && k <= sel.to ? "in" : "", sel && (k === sel.from || k === sel.to) ? "end" : "", k === max ? "today" : ""].filter(Boolean).join(" ");
-      cells += `<button type="button" data-cal-day="${k}" class="${cls}"${k < min || k > max ? " disabled" : ""}>${d}</button>`;
+      const cls = [sel && k >= sel.from && k <= sel.to ? "in" : "", sel && (k === sel.from || k === sel.to) ? "end" : "", k === max ? "today" : "",
+        practiced.has(k) ? "has" : ""].filter(Boolean).join(" ");
+      // green dot = practised that day
+      const tip = practiced.has(k) ? ` title="${esc(t("calPracticed"))}"` : "";
+      cells += `<button type="button" data-cal-day="${k}" class="${cls}"${tip}${k < min || k > max ? " disabled" : ""}>${d}</button>`;
     }
     const canPrev = cal.month > min.slice(0, 8) + "01", canNext = cal.month < max.slice(0, 8) + "01";
     return `<div class="st-cal" role="dialog" aria-label="${esc(t("rangecustom"))}">
@@ -1960,6 +1973,7 @@ const StatsPage = (() => {
         <button type="button" class="icon-btn" data-cal-nav="1" aria-label="${esc(t("calNext"))}"${canNext ? "" : " disabled"}>›</button></div>
       <div class="st-cal-grid st-cal-week">${heads}</div><div class="st-cal-grid">${cells}</div>
       <p class="st-cal-hint">${esc(t(cal.from ? "calPickEnd" : "calPickStart"))}</p>
+      <p class="st-cal-legend"><i aria-hidden="true"></i>${esc(t("calPracticed"))}</p>
       <p class="note">${esc(t("periodNote", { date: dateText(min, { year: "numeric", month: "long", day: "numeric" }) }))}</p></div>`;
   }
   function chartHTML() {

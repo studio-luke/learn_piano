@@ -196,13 +196,17 @@ const StatsPage = (() => {
     const m = parse(cal.month);
     const days = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 0)).getUTCDate();
     const sel = cal.from ? { from: cal.from, to: cal.from } : range === "custom" && custom ? custom : null;
+    const practiced = new Set(((data && data.practiceDays) || []).map(d => String(d).slice(0, 10)));
     // weekday initials, Sunday first (2023-01-01 was a Sunday)
     const heads = Array.from({ length: 7 }, (_, i) => `<span>${esc(dateText(addDays("2023-01-01", i), { weekday: "narrow" }))}</span>`).join("");
     let cells = "<span></span>".repeat(m.getUTCDay());
     for (let d = 1; d <= days; d++) {
       const k = cal.month.slice(0, 8) + pad(d);
-      const cls = [sel && k >= sel.from && k <= sel.to ? "in" : "", sel && (k === sel.from || k === sel.to) ? "end" : "", k === max ? "today" : ""].filter(Boolean).join(" ");
-      cells += `<button type="button" data-cal-day="${k}" class="${cls}"${k < min || k > max ? " disabled" : ""}>${d}</button>`;
+      const cls = [sel && k >= sel.from && k <= sel.to ? "in" : "", sel && (k === sel.from || k === sel.to) ? "end" : "", k === max ? "today" : "",
+        practiced.has(k) ? "has" : ""].filter(Boolean).join(" ");
+      // green dot = practised that day
+      const tip = practiced.has(k) ? ` title="${esc(t("calPracticed"))}"` : "";
+      cells += `<button type="button" data-cal-day="${k}" class="${cls}"${tip}${k < min || k > max ? " disabled" : ""}>${d}</button>`;
     }
     const canPrev = cal.month > min.slice(0, 8) + "01", canNext = cal.month < max.slice(0, 8) + "01";
     return `<div class="st-cal" role="dialog" aria-label="${esc(t("rangecustom"))}">
@@ -211,6 +215,7 @@ const StatsPage = (() => {
         <button type="button" class="icon-btn" data-cal-nav="1" aria-label="${esc(t("calNext"))}"${canNext ? "" : " disabled"}>›</button></div>
       <div class="st-cal-grid st-cal-week">${heads}</div><div class="st-cal-grid">${cells}</div>
       <p class="st-cal-hint">${esc(t(cal.from ? "calPickEnd" : "calPickStart"))}</p>
+      <p class="st-cal-legend"><i aria-hidden="true"></i>${esc(t("calPracticed"))}</p>
       <p class="note">${esc(t("periodNote", { date: dateText(min, { year: "numeric", month: "long", day: "numeric" }) }))}</p></div>`;
   }
   function chartHTML() {

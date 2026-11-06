@@ -269,7 +269,8 @@ $$;
 
 -- statistics for the 마이페이지 / 학생 통계 page: totals (all time), and per chord type, per root and per day over
 -- the chosen range: '7d', '30d', '1y' (per month) or 'custom' (p_from..p_to, per month when longer than 62 days —
--- the same rule as src/stats.js). firstDay = the first practice day, the earliest date the calendar allows.
+-- the same rule as src/stats.js). firstDay = the first practice day, the earliest date the calendar allows;
+-- practiceDays = every date with practice (all time), marked with a dot on that calendar.
 -- A student may ask only for their own; the admin for anyone.
 drop function if exists public.practice_summary(uuid, text, date);   -- before the custom range was added
 create or replace function public.practice_summary(p_user uuid, p_range text, p_today date,
@@ -300,6 +301,8 @@ begin
     'since', since,
     'until', until,
     'firstDay', (select min(day) from public.practice_log where user_id = p_user),
+    'practiceDays', coalesce((select jsonb_agg(d order by d) from (
+      select distinct day as d from public.practice_log where user_id = p_user) pd), '[]'::jsonb),
     'totals', (select jsonb_build_object('total', total, 'first', first_correct, 'streak', streak, 'best', best_streak)
       from public.practice_stats where user_id = p_user),
     'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok)) from (
