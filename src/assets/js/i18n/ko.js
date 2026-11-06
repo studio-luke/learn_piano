@@ -264,4 +264,13 @@ export default {
   aboutFor: "<p>코드와 화성학 이론을 배우고 싶으신 분, 출퇴근 길 등에 틈틈이 음악 공부를 하고 싶은 분에게 추천해요.</p><p>또한 학생에게 음악 연습 숙제를 내고 관리하고 싶으신 음악 선생님께 추천해요.</p>",
   aboutContactH: "문의",
   aboutContact: "서비스 이용, 수업, 제휴 등 궁금한 점이 있으면 편하게 연락 주세요.",
+
+  // 언어별 페이지의 언어 이름(입구 페이지 링크)과 검색 결과에 나오는 제목·설명 (tools/build.js가 HTML에 넣음)
+  langName: "한국어",
+  seoHomeTitle: "ChordOven — 화성학·코드 연습 음악 학습 플랫폼",
+  seoHomeDesc: "화성학과 피아노 반주 이론을 온라인에서 공부하고 복습하는 음악 학습 플랫폼. 랜덤 코드 생성기로 3화음·7화음·텐션 코드를 화면 건반에서 연습하고 연습 통계를 확인하세요.",
+  seoTrainerTitle: "랜덤 코드 생성기 · 건반으로 코드 연습 | ChordOven",
+  seoTrainerDesc: "공부하고 싶은 코드를 텐션까지 골라 랜덤으로 출제하고, 화면 건반으로 눌러 채점하는 코드 연습 도구. 3화음, 7화음, 9·11·13 텐션, 7alt, 자리바꿈도 정답.",
+  seoAboutTitle: "About Us · ChordOven",
+  seoAboutDesc: "ChordOven 소개 — 화성학과 피아노 반주 이론을 공부하고 복습하는 음악 학습 플랫폼. 문의: kim_8417@naver.com",
 };

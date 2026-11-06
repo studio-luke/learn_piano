@@ -4,16 +4,16 @@ import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import * as Account from "../public/assets/js/account/helpers.js";
-import { CONFIG } from "../public/assets/js/config.js";
-import * as Stats from "../public/assets/js/stats/data.js";
-import { Engine as E } from "../public/assets/js/core/engine.js";
-import ko from "../public/assets/js/i18n/ko.js";
-import en from "../public/assets/js/i18n/en.js";
-import ja from "../public/assets/js/i18n/ja.js";
-import zh from "../public/assets/js/i18n/zh.js";
+import * as Account from "../src/assets/js/account/helpers.js";
+import { CONFIG } from "../src/assets/js/config.js";
+import * as Stats from "../src/assets/js/stats/data.js";
+import { Engine as E } from "../src/assets/js/core/engine.js";
+import ko from "../src/assets/js/i18n/ko.js";
+import en from "../src/assets/js/i18n/en.js";
+import ja from "../src/assets/js/i18n/ja.js";
+import zh from "../src/assets/js/i18n/zh.js";
 
-const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");   // 사이트 파일
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src");   // 사이트 원본 파일
 const STRINGS = { ko, en, ja, zh };
 // 사이트의 HTML·JS 파일 내용 전부 (번역 키를 실제로 쓰는 곳을 찾으려고)
 function siteSource() {
@@ -34,7 +34,7 @@ const jwt = payload => ["eyJhbGciOiJIUzI1NiJ9", Buffer.from(JSON.stringify(paylo
 
 test("config.js never holds a secret key", () => {
   if (!CONFIG.supabaseKey) return;   // 회원 기능 꺼짐
-  assert.ok(Account.isPublicKey(CONFIG.supabaseKey), "public/assets/js/config.js: publishable/anon 키를 넣을 것 (secret/service_role 키 금지)");
+  assert.ok(Account.isPublicKey(CONFIG.supabaseKey), "src/assets/js/config.js: publishable/anon 키를 넣을 것 (secret/service_role 키 금지)");
   assert.match(CONFIG.supabaseUrl, /^https:\/\//);
 });
 

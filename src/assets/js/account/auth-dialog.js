@@ -8,10 +8,7 @@ import { Account } from "./account.js";
 import { errorKey, missingFields, langForTimeZone, TERMS_VERSION, PW_MIN, NICK_MAX, NAME_MAX, GRACE_DAYS } from "./helpers.js";
 import { t, lang, locale, setLang, applyI18n, onLangChange } from "../i18n/index.js";
 import { $ } from "../common/dom.js";
-import { ROUTES } from "../common/sitemap.js";
-
-/** 사이트 맨 위 폴더 주소 (teacher/ 안의 페이지에서도 링크가 맞게) */
-export const ROOT = new URL("../../../", import.meta.url).href;
+import { ROUTES, pageUrl } from "../common/sitemap.js";
 
 // 사이드바 모양으로 여는 화면들
 const SIDE = new Set(["account", "changepw"]);
@@ -98,8 +95,8 @@ const MARKUP = `
   <div class="auth-form" data-view="account" hidden>
     <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
     <nav class="side-menu">
-      <a class="menu-item" id="menuMy" href="${ROOT}${ROUTES.mypage}"><span data-i18n="menuMy"></span><span class="chev" aria-hidden="true">›</span></a>
-      <a class="menu-item" id="menuStudents" href="${ROOT}${ROUTES.teacher}" hidden><span data-i18n="menuStudents"></span><span class="chev" aria-hidden="true">›</span></a>
+      <a class="menu-item" id="menuMy" href="${pageUrl(ROUTES.mypage)}"><span data-i18n="menuMy"></span><span class="chev" aria-hidden="true">›</span></a>
+      <a class="menu-item" id="menuStudents" href="${pageUrl(ROUTES.teacher)}" hidden><span data-i18n="menuStudents"></span><span class="chev" aria-hidden="true">›</span></a>
       <button class="menu-item" type="button" id="menuReview"><span data-i18n="menuReview"></span><span class="badge" id="reviewCount"></span></button>
       <button class="menu-item" type="button" data-go="changepw"><span data-i18n="changePw"></span><span class="chev" aria-hidden="true">›</span></button>
       <button class="menu-item" type="button" id="logoutBtn"><span data-i18n="logout"></span></button>
@@ -120,7 +117,7 @@ const here = () => location.origin + location.pathname;
 const fmtDate = d => new Date(d).toLocaleDateString(locale(), { year: "numeric", month: "long", day: "numeric" });
 
 /** 틀린 문제 다시 풀기를 누르면 할 일. 연습 페이지가 바꿔 끼우고, 다른 페이지에서는 연습 페이지로 이동 */
-export const hooks = { startReview: () => { location.href = `${ROOT}${ROUTES.trainer}?review=1`; } };
+export const hooks = { startReview: () => { location.href = `${pageUrl(ROUTES.trainer)}?review=1`; } };
 
 /** 창을 열고 화면 v를 보여줌 */
 export function open(v, message) {

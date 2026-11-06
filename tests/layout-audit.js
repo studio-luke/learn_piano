@@ -10,7 +10,7 @@ import { serve } from "../tools/serve.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 8799;   // 검사용 서버 (npm run dev의 8766과 겹치지 않게)
-const URL = `http://127.0.0.1:${PORT}/trainer/chords/`;   // 랜덤 코드 연습 페이지
+const URL = `http://127.0.0.1:${PORT}/ko/trainer/chords/`;   // 랜덤 코드 연습 페이지 (한국어판, npm run audit가 먼저 빌드함)
 const OUT = path.join(HERE, "audit-output");
 fs.mkdirSync(OUT, { recursive: true });
 

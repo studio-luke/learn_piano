@@ -6,10 +6,10 @@
 // 페이지 JS는 보통 이렇게 시작해요:
 //   import { startPage } from "../common/layout.js";
 //   startPage({ title: "menuMy" });
-import { t, lang, setLang, applyI18n, onLangChange } from "../i18n/index.js";
+import { t, lang, setLang, applyI18n, onLangChange, PAGE_LANG } from "../i18n/index.js";
 import { Account } from "../account/account.js";
-import { initAuthDialog, ROOT } from "../account/auth-dialog.js";
-import { SITEMAP, ROUTES } from "./sitemap.js";
+import { initAuthDialog } from "../account/auth-dialog.js";
+import { SITEMAP, ROUTES, ROOT, pageUrl } from "./sitemap.js";
 import { $ } from "./dom.js";
 
 const LANG_SELECT = `
@@ -40,11 +40,11 @@ function headerHTML({ stats, back }) {
   return `
     <div class="brand">
       <button class="menu-btn" id="menuBtn" type="button" aria-label="메뉴" data-i18n-aria="menuOpen" aria-controls="navDrawer" aria-expanded="false">${MENU_ICON}</button>
-      <h1><a href="${ROOT}" class="brand-link"><img class="logo" src="${ROOT}favicon.svg" alt="">Chord<em>Oven</em></a></h1>
+      <h1><a href="${pageUrl(ROUTES.home)}" data-route="${ROUTES.home}" class="brand-link"><img class="logo" src="${ROOT}favicon.svg" alt="">Chord<em>Oven</em></a></h1>
       <span data-i18n="tagline"></span>
     </div>
     <div class="top-right">
-      ${back ? `<a class="linkbtn top-back" href="${ROOT}${ROUTES.trainer}" data-i18n="backPractice"></a>` : ""}
+      ${back ? `<a class="linkbtn top-back" href="${pageUrl(ROUTES.trainer)}" data-route="${ROUTES.trainer}" data-i18n="backPractice"></a>` : ""}
       ${stats ? `<div class="stats" aria-label="연습 기록" data-i18n-aria="statsAria">
         <span class="stat"><span data-i18n="firstTry"></span> <b id="stFirst">0</b> / <b id="stTotal">0</b></span>
         <span class="stat"><span data-i18n="streak"></span> <b id="stStreak">0</b></span>
@@ -60,19 +60,19 @@ function drawerHTML() {
   const item = it => {
     const label = `<span data-i18n="${it.key}"></span>`;
     if (it.soon) return `<span class="nav-item soon">${label}<small data-i18n="navSoon"></small></span>`;
-    const href = ROOT + it.path;
+    const href = pageUrl(it.path);
     const current = cleanPath(new URL(href).pathname) === here;
-    return `<a class="nav-item" href="${href}"${current ? ' aria-current="page"' : ""}>${label}</a>`;
+    return `<a class="nav-item" href="${href}" data-route="${it.path}"${current ? ' aria-current="page"' : ""}>${label}</a>`;
   };
-  const homeCurrent = cleanPath(new URL(ROOT).pathname) === here;
+  const homeCurrent = cleanPath(new URL(pageUrl(ROUTES.home)).pathname) === here;
   return `
 <dialog class="nav-drawer" id="navDrawer" aria-label="메뉴" data-i18n-aria="menuOpen">
   <div class="nav-head">
-    <a class="brand-link nav-brand" href="${ROOT}"><img class="logo" src="${ROOT}favicon.svg" alt="">Chord<em>Oven</em></a>
+    <a class="brand-link nav-brand" href="${pageUrl(ROUTES.home)}" data-route="${ROUTES.home}"><img class="logo" src="${ROOT}favicon.svg" alt="">Chord<em>Oven</em></a>
     <form method="dialog"><button class="icon-btn" aria-label="닫기" data-i18n-aria="close">✕</button></form>
   </div>
   <nav class="nav-list">
-    <a class="nav-item" href="${ROOT}"${homeCurrent ? ' aria-current="page"' : ""}><span data-i18n="navHome"></span></a>
+    <a class="nav-item" href="${pageUrl(ROUTES.home)}" data-route="${ROUTES.home}"${homeCurrent ? ' aria-current="page"' : ""}><span data-i18n="navHome"></span></a>
     ${SITEMAP.map(g => (g.group ? `<p class="nav-group" data-i18n="${g.group}"></p>` : `<hr class="nav-sep">`) + g.items.map(item).join("")).join("")}
   </nav>
 </dialog>`;
@@ -92,6 +92,14 @@ const FOOTER = `
     </div>
   </dl>
   <nav class="legal-links" hidden><a href="${ROOT}terms" data-i18n="termsLink"></a><a href="${ROOT}privacy" data-i18n="privacyLink"></a></nav>`;
+
+/**
+ * 언어에 따라 주소가 달라지는 링크(data-route가 붙은 머리글·메뉴 링크)를 현재 언어 주소로 다시 맞춤.
+ * 마이페이지처럼 주소가 하나인 페이지에서 언어를 바꿨을 때 홈·코드 연습 링크가 새 언어로 가게 하려고.
+ */
+function relink() {
+  document.querySelectorAll("a[data-route]").forEach(a => { a.href = pageUrl(a.dataset.route); });
+}
 
 /**
  * 도움말(?) 버튼: <span class="help"><button class="help-btn">?</button><span class="help-pop">설명</span></span>
@@ -124,9 +132,11 @@ export function startPage({ title = "docTitle", stats = false, back = false } = 
   if (footer) { footer.innerHTML = FOOTER; footer.setAttribute("aria-labelledby", "contactH"); }
   document.body.insertAdjacentHTML("beforeend", drawerHTML());
 
-  const setTitle = () => { document.title = t(title) + " · ChordOven"; };
+  // 탭 제목: 언어별 페이지는 빌드가 검색용 제목을 넣어 두었으므로 그대로 두고, 나머지 페이지만 여기서 정함
+  const setTitle = () => { if (!PAGE_LANG) document.title = t(title) + " · ChordOven"; };
   applyI18n(); setTitle();
   onLangChange(setTitle);
+  onLangChange(relink);
 
   // ☰ 메뉴: 왼쪽에서 나오는 사이드바. 바깥(어두운 배경)을 누르면 닫힘
   const drawer = $("navDrawer"), menuBtn = $("menuBtn");
@@ -139,10 +149,16 @@ export function startPage({ title = "docTitle", stats = false, back = false } = 
   });
   wireHelp();
 
-  // 언어 고르기: 화면 언어를 바꾸고, 로그인 중이면 계정의 사용 언어도 바꿈
+  // 언어 고르기: 로그인 중이면 계정의 사용 언어를 바꾸고, 화면 언어를 바꿈.
+  // 언어별 페이지에서는 setLang이 다른 주소로 이동하므로, 계정 저장이 끝난 뒤에 이동해야 저장이 끊기지 않아요.
   const sel = $("langSel");
   sel.value = lang();
-  sel.onchange = e => { setLang(e.target.value); Account.langChanged(e.target.value); };
+  sel.onchange = async e => {
+    const l = e.target.value;
+    if (PAGE_LANG) { try { await Account.langChanged(l); } catch (err) { /* 저장 실패해도 언어는 바꿈 */ } }
+    else Account.langChanged(l);
+    setLang(l);
+  };
   onLangChange(l => { sel.value = l; });
 
   // 이메일 복사: 클립보드를 못 쓰면 주소를 선택해 두어 직접 복사하게

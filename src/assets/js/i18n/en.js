@@ -263,4 +263,13 @@ export default {
   aboutFor: "<p>For anyone who wants to learn chords and harmony theory, and anyone who wants to study music in spare moments, like on the commute.</p><p>Also for music teachers who want to give their students practice homework and keep track of it.</p>",
   aboutContactH: "Contact",
   aboutContact: "Questions about the service, lessons or working together are always welcome.",
+
+  // 언어별 페이지의 언어 이름(입구 페이지 링크)과 검색 결과에 나오는 제목·설명 (tools/build.js가 HTML에 넣음)
+  langName: "English",
+  seoHomeTitle: "ChordOven — Learn and practice chords and harmony",
+  seoHomeDesc: "A music learning platform for studying and reviewing harmony and piano accompaniment online. Practice triads, seventh chords and tension chords on an on-screen keyboard with the random chord generator, and track your stats.",
+  seoTrainerTitle: "Random Chord Generator · Practice chords on a keyboard | ChordOven",
+  seoTrainerDesc: "A chord practice tool: pick the chords you want to study, down to the tensions, get them at random and play them on the on-screen keyboard to check. Triads, seventh chords, 9/11/13 tensions, 7alt; any inversion counts.",
+  seoAboutTitle: "About Us · ChordOven",
+  seoAboutDesc: "About ChordOven — a music learning platform for studying and reviewing harmony and piano accompaniment theory. Contact: kim_8417@naver.com",
 };

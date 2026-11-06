@@ -1,5 +1,7 @@
 node_modules/
 .wrangler/
+# 빌드 결과 (npm run build가 src/에서 만듦 — Cloudflare도 배포 때 직접 만듦)
+dist/
 tests/audit-output/
 
 # private notes: kept on this computer only, not published (repo and site are public)

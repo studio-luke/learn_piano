@@ -263,4 +263,13 @@ export default {
   aboutFor: "<p>推荐给想学习和弦与和声理论的人，以及想利用通勤等零碎时间学习音乐的人。</p><p>也推荐给想给学生布置练习作业并进行管理的音乐老师。</p>",
   aboutContactH: "联系我们",
   aboutContact: "关于服务使用、课程或合作的任何问题，欢迎随时联系。",
+
+  // 언어별 페이지의 언어 이름(입구 페이지 링크)과 검색 결과에 나오는 제목·설명 (tools/build.js가 HTML에 넣음)
+  langName: "简体中文",
+  seoHomeTitle: "ChordOven — 和弦与和声练习的音乐学习平台",
+  seoHomeDesc: "在线学习和复习和声学与钢琴伴奏理论的音乐学习平台。用随机和弦生成器在屏幕键盘上练习三和弦、七和弦和延伸音和弦，并查看练习统计。",
+  seoTrainerTitle: "随机和弦生成器 · 在键盘上练习和弦 | ChordOven",
+  seoTrainerDesc: "和弦练习工具：选择想学的和弦（可细到延伸音），随机出题，在屏幕键盘上弹奏并判分。支持三和弦、七和弦、9/11/13 延伸音、7alt，任意转位均算正确。",
+  seoAboutTitle: "About Us · ChordOven",
+  seoAboutDesc: "关于 ChordOven — 学习和复习和声学与钢琴伴奏理论的音乐学习平台。联系: kim_8417@naver.com",
 };

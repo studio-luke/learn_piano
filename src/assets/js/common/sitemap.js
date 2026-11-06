@@ -10,7 +10,12 @@
 //   soon   true면 "준비 중"으로 보이고 누를 수 없음
 //   icon   홈 카드의 작은 그림 (글자 이모지)
 
-/** 페이지 주소 (사이트 맨 위 기준). 링크는 ROOT(auth-dialog.js) + 이 값으로 만들어요.
+import { lang } from "../i18n/index.js";
+
+/** 사이트 맨 위 주소 (예: https://chordoven.com/). 이 파일 위치(assets/js/common/)에서 세 칸 위 */
+export const ROOT = new URL("../../../", import.meta.url).href;
+
+/** 페이지 주소 (사이트 맨 위 기준, 언어 표시 없이). 링크는 꼭 아래 pageUrl()로 만들어요.
  *  주소에는 .html을 붙이지 않아요 — 실제 사이트(Cloudflare)와 로컬 서버(tools/serve.js)가 /about → about.html로 연결해 줘요. */
 export const ROUTES = {
   home: "",
@@ -19,6 +24,15 @@ export const ROUTES = {
   mypage: "mypage",
   teacher: "teacher/",
 };
+
+/** 언어별로 따로 만드는 페이지 (/ko/about, /en/about …). tools/build.js의 PAGES와 같게 유지할 것 */
+export const LOCALIZED = [ROUTES.home, ROUTES.trainer, ROUTES.about];
+
+/**
+ * 페이지 링크 주소. 언어별 페이지면 언어 표시를 붙임:
+ *   pageUrl(ROUTES.about) → ".../ko/about",  pageUrl(ROUTES.mypage) → ".../mypage"
+ */
+export const pageUrl = (route, l = lang()) => ROOT + (LOCALIZED.includes(route) ? l + "/" : "") + route;
 
 export const SITEMAP = [
   {

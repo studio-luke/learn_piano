@@ -121,8 +121,8 @@ export const Account = {
     clearTimeout(pushTimer);
     pushTimer = setTimeout(() => Account.updateProfile({ settings: syncable(settings) }), 1200);
   },
-  /** 화면 언어를 바꾸면 계정의 사용 언어도 바꿈 */
-  langChanged(lang) { if (Account.active() && profile.preferred_lang !== lang) Account.updateProfile({ preferred_lang: lang }); },
+  /** 화면 언어를 바꿨을 때 계정의 사용 언어도 바꿈. 저장이 끝날 때까지 기다릴 수 있게 Promise를 돌려줌 */
+  langChanged(lang) { if (Account.active() && profile.preferred_lang !== lang) return Account.updateProfile({ preferred_lang: lang }); },
 
   // ---------- 연습 기록 ----------
   /** 계정의 누적 기록 (머리글 정답/시도·연속). 로그인·새로고침 때만 불러와 화면 값을 바꿈 */

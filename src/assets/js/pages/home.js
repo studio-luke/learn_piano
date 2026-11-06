@@ -3,8 +3,7 @@
 // 로그인했으면 소개 아래에 "내 연습 통계 보기" 링크를 보여줘요.
 import { startPage } from "../common/layout.js";
 import { Account } from "../account/account.js";
-import { ROOT } from "../account/auth-dialog.js";
-import { SITEMAP } from "../common/sitemap.js";
+import { SITEMAP, pageUrl } from "../common/sitemap.js";
 import { t, onLangChange } from "../i18n/index.js";
 import { $, esc } from "../common/dom.js";
 
@@ -19,7 +18,7 @@ function renderCards() {
       <span class="card-foot">${esc(t(it.soon ? "navSoon" : "homeOpen"))}</span>`;
     return it.soon
       ? `<div class="card soon" aria-disabled="true">${body}</div>`
-      : `<a class="card" href="${ROOT}${it.path}">${body}</a>`;
+      : `<a class="card" href="${pageUrl(it.path)}">${body}</a>`;
   }).join("");
 }
 

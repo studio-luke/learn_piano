@@ -1,11 +1,11 @@
 // 코드 엔진 규칙 + 번역 키 검사.  실행: npm test   (Node 18 이상, 설치할 것 없음)
 import test from "node:test";
 import assert from "node:assert";
-import { Engine as E } from "../public/assets/js/core/engine.js";
-import ko from "../public/assets/js/i18n/ko.js";
-import en from "../public/assets/js/i18n/en.js";
-import ja from "../public/assets/js/i18n/ja.js";
-import zh from "../public/assets/js/i18n/zh.js";
+import { Engine as E } from "../src/assets/js/core/engine.js";
+import ko from "../src/assets/js/i18n/ko.js";
+import en from "../src/assets/js/i18n/en.js";
+import ja from "../src/assets/js/i18n/ja.js";
+import zh from "../src/assets/js/i18n/zh.js";
 
 const ALL = Object.fromEntries(E.TYPES.map(t => [t.id, true]));
 const base = { types: ALL, optB: false, bases: Array(12).fill(false), optC: true, cMax: 2, optD: true, optE: false };
