@@ -229,13 +229,16 @@ function rebuild(sp, s) {
  * 출제 설정 s로 문제 하나 만들기.
  * @param s           출제 설정 (types, optB, bases, optC, cMax, optD, optE)
  * @param rnd         난수 함수 (테스트에서 고정값을 넣을 수 있게)
- * @param prevSymbol  바로 앞 문제 — 같은 문제가 연달아 나오지 않게
+ * @param prev        바로 앞 문제 (문제 객체) — 같은 베이스(건반 기준: C♯과 D♭은 같은 베이스)가 연달아 나오지 않게.
+ *                    출제할 베이스가 하나뿐이면(옵션 B로 하나만 고름) 어쩔 수 없이 같은 베이스 (사용자 결정 2026-11-06)
  * @returns 문제 객체, 또는 { error: "noTypes" | "noBases" | "noChord" } (화면이 번역해서 보여줌)
  */
-function generate(s, rnd = Math.random, prevSymbol = null) {
+function generate(s, rnd = Math.random, prev = null) {
   const types = TYPES.filter(t => s.types[t.id]);
   if (!types.length) return { error: "noTypes" };
-  const pcs = rootPool(s);
+  const all = rootPool(s);
+  // 바로 앞 문제의 베이스는 빼고 고름 (고를 베이스가 그것 하나뿐이면 그대로)
+  const pcs = prev && all.length > 1 ? all.filter(pc => pc !== prev.rootPc) : all;
   if (!pcs.length) return { error: "noBases" };
 
   for (let tries = 0; tries < 80; tries++) {
@@ -261,9 +264,10 @@ function generate(s, rnd = Math.random, prevSymbol = null) {
     if (!parts) continue;   // 쓰지 않는 철자 → 다시 뽑기
     const { head, items } = makeLabel(type, tens, alt, s.optD, rnd);
     const q = question(type, root, tens, alt, head, items, parts);
-    if (q.symbol === prevSymbol && tries < 79) continue;
     return q;
   }
+  // 앞 문제의 베이스를 뺀 나머지로는 만들 수 없었음(아주 드묾) → 그 베이스도 포함해서 다시
+  if (pcs !== all) return generate(s, rnd, null);
   return { error: "noChord" };
 }
 

@@ -70,9 +70,10 @@ function skipTimed() {
 const unfinished = () => !!(timer.cur && !timer.cur.sent && !state.skip && state.q);
 
 // ---------- 틀린 문제 다시 풀기 ----------
-// 틀린 문제들이 차례로 돌아가며 나오고, 처음 채점에 2번 맞히면 목록에서 빠져요 (DB의 record_attempt도 같은 규칙).
+// 남은 틀린 문제 중에서 무작위로 나오고(바로 앞 문제는 연달아 나오지 않게), 처음 채점에 2번 맞히면 목록에서 빠져요
+// (DB의 record_attempt도 같은 규칙). 무작위 순서는 사용자 결정 2026-11-06.
 // 다시 풀기 중에는 출제 설정이 적용되지 않으므로 설정이 잠겨요.
-let review = null;   // { queue: [{ symbol, spec, hits }], cur: 지금 문제 }
+let review = null;   // { queue: 아직 남은 문제 [{ symbol, spec, hits }], cur: 지금 문제 }
 export const inReview = () => !!review;
 
 export function startReview(items) {
@@ -88,8 +89,12 @@ export function stopReview(done) {
   if (done) setFeedback("ok", () => t("reviewDone"));
 }
 function nextReview() {
-  if (review.cur && review.cur.hits < 2) review.queue.push(review.cur);   // 아직 2번 못 맞힌 문제는 뒤로
-  review.cur = review.queue.shift() || null;
+  const prev = review.cur;
+  if (prev && prev.hits < 2) review.queue.push(prev);   // 아직 2번 못 맞힌 문제는 목록에 남음
+  // 무작위로 하나. 바로 앞 문제는 빼고 고름 (남은 문제가 그것 하나뿐이면 그대로)
+  const choices = review.queue.length > 1 ? review.queue.filter(it => it !== prev) : review.queue;
+  review.cur = choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
+  if (review.cur) review.queue.splice(review.queue.indexOf(review.cur), 1);
   return review.cur && Engine.rebuild(review.cur.spec, S);
 }
 export function renderReview() {
@@ -107,7 +112,7 @@ export function newQuestion() {
   settleTimed();   // 남은 오답 기록 보내기
   let q = review && nextReview();
   if (review && !q) return stopReview(true);   // 다시 풀기를 다 끝냄
-  if (!q) q = Engine.generate(S, Math.random, state.q && state.q.symbol);
+  if (!q) q = Engine.generate(S, Math.random, state.q);   // 바로 앞 문제와 같은 베이스는 피함
   selected.clear();
   Object.assign(state, { answer: new Set(), good: new Set(), locked: false, attempted: false, skip: false, fb: null });
   $("btnCheck").disabled = !!q.error; $("btnReveal").disabled = !!q.error;

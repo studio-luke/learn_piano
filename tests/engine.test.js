@@ -103,3 +103,22 @@ test("option E: C♭ E♯ A♯ D♯ G♯ a little more often, B♯ and F♭ now 
   assert.ok(rare > 0.165 && rare < 0.21, `C♭ E♯ A♯ D♯ G♯: ${rare}`);
   assert.strictEqual(gen({ optE: false }, 20000).filter(q => /^(B♯|F♭|C♭|E♯|A♯|D♯|G♯)/.test(q.rootName)).length, 0);
 });
+
+test("the next question never has the same root (key) as the previous one, unless only one root is allowed", () => {
+  for (const optE of [false, true]) {
+    let prev = null;
+    for (let i = 0; i < 5000; i++) {
+      const q = E.generate({ ...base, optE }, Math.random, prev);
+      if (prev) assert.notStrictEqual(q.rootPc, prev.rootPc, `${prev.symbol} → ${q.symbol}`);
+      prev = q;
+    }
+  }
+  // 옵션 B로 C 하나만: 계속 C (같은 베이스밖에 없음)
+  const onlyC = { ...base, optB: true, bases: Array.from({ length: 12 }, (_, i) => i === 0) };
+  let prev = E.generate(onlyC);
+  for (let i = 0; i < 50; i++) { const q = E.generate(onlyC, Math.random, prev); assert.strictEqual(q.rootPc, 0); prev = q; }
+  // 두 개면 번갈아
+  const cAndG = { ...base, optB: true, bases: Array.from({ length: 12 }, (_, i) => i === 0 || i === 7) };
+  prev = E.generate(cAndG);
+  for (let i = 0; i < 50; i++) { const q = E.generate(cAndG, Math.random, prev); assert.notStrictEqual(q.rootPc, prev.rootPc); prev = q; }
+});
