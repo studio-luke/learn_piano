@@ -3,7 +3,7 @@
 도메인: chordoven.com (구매 완료, 아직 연결 안 함 — 플랫폼이 어느 정도 갖춰지면 연결 후 홍보 예정)
 
 레슨생이 수업에서 배운 코드를 2옥타브 피아노 건반(C3–C5)으로 복습하는 웹앱입니다.
-빌드 도구 없이 HTML·CSS·JS(ES 모듈) 파일을 그대로 배포합니다. 회원 기능(선택)은 Supabase를 쓰고, `assets/js/config.js`에 키를 넣었을 때만 켜집니다.
+빌드 도구 없이 HTML·CSS·JS(ES 모듈) 파일을 그대로 배포합니다. 회원 기능(선택)은 Supabase를 쓰고, `public/assets/js/config.js`에 키를 넣었을 때만 켜집니다.
 
 ## 바로 시작하기
 
@@ -31,65 +31,76 @@ npm run audit      # 폰 화면 레이아웃 검사 (처음 한 번: npm i && np
 
 ## 폴더 구조
 
+저장소 루트에는 개발용 파일만 두고, **사이트로 공개되는 파일은 모두 `public/`** 에 있어요 (정적 사이트의 보편적인 구조).
+Cloudflare는 `public/` 폴더만 배포하므로 `tests/`, `supabase/`, `README.md` 같은 파일은 사이트 주소로 열리지 않아요.
+
 ```
-index.html  about.html  trainer/chords/  mypage.html  teacher/  terms.html  privacy.html   페이지 (HTML은 틀만, 내용은 JS가 채움)
-favicon.svg  favicon-32.png  apple-touch-icon.png              파비콘 (오븐 창 속 8분음표. svg가 원본)
+public/                     ← 사이트 (이 폴더 = 사이트 맨 위 /)
+  index.html                홈
+  about.html                About Us
+  trainer/chords/index.html 랜덤 코드 연습
+  mypage.html               마이페이지
+  teacher/index.html, student.html   선생님 — 학생 목록·학생 기록
+  terms.html  privacy.html  이용약관·개인정보처리방침
+  favicon.svg  favicon-32.png  apple-touch-icon.png   파비콘 (오븐 창 속 8분음표. svg가 원본)
+  assets/css/
+    base.css        공통: 색·글꼴 토큰(테마, 다크 모드), 머리글·바닥글, ☰ 왼쪽 메뉴, 도움말(?), 버튼·체크박스·알림
+    home.css        홈: 소개, 학습 메뉴 카드
+    about.css       About Us
+    practice.css    연습 페이지: 연습 카드, 건반, 타이머 버튼, 출제 설정, 폰 세로·가로 레이아웃
+    stats.css       통계 페이지: 카드, 그래프, 표, 기간 달력, 선생님 화면
+    account.css     로그인 창과 계정 사이드바
+    legal.css       약관 페이지
 
-assets/css/
-  base.css        공통: 색·글꼴 토큰(테마, 다크 모드), 머리글·바닥글, ☰ 왼쪽 메뉴, 도움말(?), 버튼·체크박스·알림
-  home.css        홈: 소개, 학습 메뉴 카드
-  about.css       About Us
-  practice.css    연습 페이지: 연습 카드, 건반, 타이머 버튼, 출제 설정, 폰 세로·가로 레이아웃
-  stats.css       통계 페이지: 카드, 그래프, 표, 기간 달력, 선생님 화면
-  account.css     로그인 창과 계정 사이드바
-  legal.css       약관 페이지
-
-assets/js/
-  config.js               Supabase 주소와 공개 키 (비우면 회원 기능 꺼짐)
-  core/engine.js          코드 엔진: 출제·채점·철자·보이싱 (화면 없는 순수 함수 → Node에서 테스트)
-  i18n/index.js           언어 고르기, t("키") 문구 함수, data-i18n 속성 채우기
-  i18n/ko.js en.js ja.js zh.js   화면 문구 (ko가 원문, 네 파일의 키가 같아야 함)
-  common/layout.js        모든 페이지의 머리글·바닥글·☰ 왼쪽 메뉴·도움말(?)과 페이지 시작(startPage)
-  common/sitemap.js       사이트 지도: 메뉴와 홈 카드에 나오는 페이지 목록 (새 기능은 여기에 추가)
-  common/dom.js           $("id"), esc()(HTML 안전하게), toast()(아래 알림)
-  common/storage.js       localStorage 읽기·쓰기 (chordoven.* 키)
-  account/account.js      로그인 상태와 DB 연결 (Supabase를 부르는 곳은 여기뿐)
-  account/auth-dialog.js  로그인 창·회원가입·계정 사이드바 화면
-  account/helpers.js      회원 기능의 작은 규칙 (오류 문구, 공개 키 확인 등 — 테스트용으로 분리)
-  practice/settings.js    출제 설정 상태와 카드, 설정 잠금
-  practice/keyboard.js    건반 그리기와 마우스·터치·키보드 입력
-  practice/audio.js       피아노 소리 (Web Audio로 합성, 소리 파일 없음)
-  practice/timer.js       타이머 (시계, 버튼, 도움말, 5분 규칙)
-  practice/quiz.js        문제 흐름: 출제 → 채점 → 기록, 틀린 문제 다시 풀기
-  stats/data.js           통계 계산 (기간, 그래프 칸, 표 묶기 — 순수 함수)
-  stats/view.js           통계 화면 조각 (숫자 카드, 그래프, 표, 기간 달력)
-  stats/gate.js           통계 페이지 입장 확인 (로그인·관리자)
-  pages/home.js           홈 (학습 메뉴 카드)
-  pages/about.js          About Us (이메일 복사)
-  pages/practice.js       연습 페이지 시작점 (위 practice/* 를 연결, 단축키)
-  pages/mypage.js  teacher-list.js  teacher-student.js   각 통계 페이지
+  assets/js/
+    config.js               Supabase 주소와 공개 키 (비우면 회원 기능 꺼짐)
+    core/engine.js          코드 엔진: 출제·채점·철자·보이싱 (화면 없는 순수 함수 → Node에서 테스트)
+    i18n/index.js           언어 고르기, t("키") 문구 함수, data-i18n 속성 채우기
+    i18n/ko.js en.js ja.js zh.js   화면 문구 (ko가 원문, 네 파일의 키가 같아야 함)
+    common/layout.js        모든 페이지의 머리글·바닥글·☰ 왼쪽 메뉴·도움말(?)과 페이지 시작(startPage)
+    common/sitemap.js       사이트 지도: 메뉴와 홈 카드에 나오는 페이지 목록 (새 기능은 여기에 추가)
+    common/dom.js           $("id"), esc()(HTML 안전하게), toast()(아래 알림)
+    common/storage.js       localStorage 읽기·쓰기 (chordoven.* 키)
+    account/account.js      로그인 상태와 DB 연결 (Supabase를 부르는 곳은 여기뿐)
+    account/auth-dialog.js  로그인 창·회원가입·계정 사이드바 화면
+    account/helpers.js      회원 기능의 작은 규칙 (오류 문구, 공개 키 확인 등 — 테스트용으로 분리)
+    practice/settings.js    출제 설정 상태와 카드, 설정 잠금
+    practice/keyboard.js    건반 그리기와 마우스·터치·키보드 입력
+    practice/audio.js       피아노 소리 (Web Audio로 합성, 소리 파일 없음)
+    practice/timer.js       타이머 (시계, 버튼, 도움말, 5분 규칙)
+    practice/quiz.js        문제 흐름: 출제 → 채점 → 기록, 틀린 문제 다시 풀기
+    stats/data.js           통계 계산 (기간, 그래프 칸, 표 묶기 — 순수 함수)
+    stats/view.js           통계 화면 조각 (숫자 카드, 그래프, 표, 기간 달력)
+    stats/gate.js           통계 페이지 입장 확인 (로그인·관리자)
+    pages/home.js           홈 (학습 메뉴 카드)
+    pages/about.js          About Us (이메일 복사)
+    pages/practice.js       연습 페이지 시작점 (위 practice/* 를 연결, 단축키)
+    pages/mypage.js  teacher-list.js  teacher-student.js   각 통계 페이지
 
 supabase/schema.sql   DB 표·권한(RLS)·함수. Supabase SQL Editor에서 실행 (다시 실행해도 안전)
 tests/                engine.test.js, account.test.js (npm test), layout-audit.js (npm run audit)
-tools/serve.js        로컬 서버 (npm run dev, 레이아웃 검사도 사용)
-wrangler.jsonc  .assetsignore   Cloudflare 배포 설정 (저장소 루트를 사이트로, node_modules 등 제외)
+tools/serve.js        로컬 서버 (npm run dev — public/를 사이트처럼 보여줌, 레이아웃 검사도 사용)
+package.json          npm 명령 (dev, test, audit)
+wrangler.jsonc        Cloudflare 배포 설정 (public/ 폴더를 사이트로)
 ```
+
+HTML은 틀만 있고 내용은 JS가 채워요.
 
 운영자 개인 문서(작업 안내서, 사양 메모, 설정 가이드)는 저장소에 올리지 않습니다(`.gitignore`).
 
 ### 코드를 읽는 순서 (처음 볼 때)
 
-1. `assets/js/core/engine.js` — 문제가 어떻게 만들어지고 채점되는지
-2. `assets/js/pages/practice.js` → `practice/quiz.js` — 연습 화면이 어떻게 돌아가는지
-3. `assets/js/account/account.js` + `supabase/schema.sql` — 로그인과 기록이 DB에 어떻게 들어가는지
-4. `assets/js/stats/` + `pages/mypage.js` — 통계 화면
+1. `public/assets/js/core/engine.js` — 문제가 어떻게 만들어지고 채점되는지
+2. `public/assets/js/pages/practice.js` → `practice/quiz.js` — 연습 화면이 어떻게 돌아가는지
+3. `public/assets/js/account/account.js` + `supabase/schema.sql` — 로그인과 기록이 DB에 어떻게 들어가는지
+4. `public/assets/js/stats/` + `pages/mypage.js` — 통계 화면
 
 ### 자주 하는 수정
 
-- **화면 문구 바꾸기·추가**: `assets/js/i18n/` 네 파일 모두. HTML에는 `data-i18n="키"`, JS에서는 `t("키")`. `npm test`가 빠진 키를 잡아요.
-- **새 학습 기능(페이지) 추가**: 폴더와 HTML을 만들고(예: `trainer/voice-leading/index.html`, 경로는 `../../` 기준), `assets/js/pages/`에 시작 JS를 두고 `startPage()`를 부른 뒤, `common/sitemap.js` 항목에 `path`를 넣고 `soon`을 지우면 ☰ 메뉴와 홈 카드에 함께 나타나요.
+- **화면 문구 바꾸기·추가**: `public/assets/js/i18n/` 네 파일 모두. HTML에는 `data-i18n="키"`, JS에서는 `t("키")`. `npm test`가 빠진 키를 잡아요.
+- **새 학습 기능(페이지) 추가**: 폴더와 HTML을 만들고(예: `public/trainer/voice-leading/index.html`, 경로는 `../../` 기준), `public/assets/js/pages/`에 시작 JS를 두고 `startPage()`를 부른 뒤, `common/sitemap.js` 항목에 `path`를 넣고 `soon`을 지우면 ☰ 메뉴와 홈 카드에 함께 나타나요.
 - **코드 종류 추가**: `core/engine.js`의 `TYPES`에 한 줄 (id는 DB 기록에도 쓰이니 한번 정하면 바꾸지 말 것) + `i18n`의 묶음 이름.
-- **색 바꾸기**: `assets/css/base.css` 맨 위 `:root` 토큰과 다크 모드 두 블록. 화면 곳곳에 색 값을 직접 쓰지 말 것.
+- **색 바꾸기**: `public/assets/css/base.css` 맨 위 `:root` 토큰과 다크 모드 두 블록. 화면 곳곳에 색 값을 직접 쓰지 말 것.
 - **DB 바꾸기**: `supabase/schema.sql`을 고친 뒤 Supabase SQL Editor에서 파일 전체를 다시 실행 (이미 회원이 있으면 새 열은 비어도 되게 추가). 사이트보다 DB를 먼저.
 
 ## 기술 메모

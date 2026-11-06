@@ -1,3 +1,5 @@
+// Cloudflare 배포 설정. main 브랜치에 push하면 Cloudflare가 `npx wrangler deploy`로 이 설정대로 올려요.
+// 사이트로 공개되는 것은 public/ 폴더뿐이에요 (tests/, tools/, supabase/, README 등 개발용 파일은 사이트에 안 올라감).
 {
   "name": "learn-piano",
   "compatibility_date": "2026-10-23",
@@ -5,6 +7,6 @@
     "enabled": true
   },
   "assets": {
-    "directory": "."
+    "directory": "./public"
   }
 }

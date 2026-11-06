@@ -3,20 +3,20 @@
 // 이 서버로 열어서 확인하세요:   npm run dev   →   http://localhost:8766
 // (폰에서 같은 와이파이로 보려면: HOST=0.0.0.0 npm run dev 후 http://<이 컴퓨터 IP>:8766 — 공유가 끝나면 꺼 주세요)
 //
-// 실제 사이트(Cloudflare)처럼 저장소의 파일을 그대로 보내요. 다만 개인 문서·설정 파일은 보내지 않아요(아래 PRIVATE).
+// 실제 사이트(Cloudflare)처럼 public/ 폴더의 파일을 그대로 보내요 (public/ 밖의 개발용 파일은 보내지 않음).
 // 레이아웃 검사(tests/layout-audit.js)도 이 서버를 씁니다.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");   // 사이트 = public/
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
   ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".ico": "image/x-icon",
 };
-// 보내지 않는 것: 운영자 개인 문서, 설정, 테스트·도구, 숨김 파일
-const PRIVATE = /^\/(docs|node_modules|tests|tools|supabase|\.[^/]*)(\/|$)|^\/(CLAUDE\.md|chordoven-spec\.md|package(-lock)?\.json|wrangler\.jsonc)$/;
+// 숨김 파일(.DS_Store 등)은 보내지 않음
+const PRIVATE = /\/\./;
 
 export function serve(port = 8766, host = "127.0.0.1") {
   const server = http.createServer((req, res) => {

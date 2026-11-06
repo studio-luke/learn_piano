@@ -8,6 +8,8 @@
 .about-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px; display: flex; flex-direction: column; gap: 8px; }
 .about-card h3 { margin: 0; font-size: 16px; font-weight: 700; }
 .about-card p { margin: 0; line-height: 1.75; }
+/* 소개 본문: 문구 파일(i18n)에 <p>로 문단을 나눠 적어 두면 문단 사이를 띄워 줌 */
+.about-text { line-height: 1.75; display: flex; flex-direction: column; gap: 12px; }
 /* 문의 (바닥글의 .contact-row 모양을 그대로 씀) */
 .about-contact dl { margin: 4px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
 .about-contact dt { font-weight: 500; color: var(--muted); min-width: 80px; }
