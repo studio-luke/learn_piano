@@ -1,0 +1,120 @@
+/* ===== 통계 페이지 (마이페이지, 선생님 — 학생 목록·학생 기록) ===== */
+
+.page-main { max-width: 960px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.page-title { font-family: var(--font-body); font-weight: 700; font-size: 22px; margin: 0; }
+#statsBody { display: flex; flex-direction: column; gap: 16px; }
+/* 새 기간을 불러오는 동안 지금 그래프·표를 흐리게 (화면이 비거나 튀지 않게) */
+#statsBody.loading .st-chart-wrap, #statsBody.loading .st-table { opacity: 0.45; transition: opacity 120ms; }
+
+/* ---------- 카드·숫자 ---------- */
+.st-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.st-card h3 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.st-card h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.st-card h4 small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.st-card h4 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.st-card h4 .help-btn { width: 20px; height: 20px; font-size: 12px; }
+.st-gate { align-items: flex-start; }
+.st-head { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.st-who { margin: 0; display: flex; align-items: baseline; gap: 10px; font-size: 18px; }
+.st-who span { color: var(--muted); font-size: 14px; }
+.st-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+.st-stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-stat span { font-size: 12px; color: var(--muted); }
+.st-stat b { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.st-stat small { font-size: 12px; color: var(--muted); }
+.st-small .st-stat b { font-size: 18px; }
+.st-empty { margin: 0; color: var(--muted); font-size: 14px; }
+.st-line { padding-block: 12px; }
+
+/* ---------- 기간 버튼과 달력 (stats/view.js PeriodPicker) ---------- */
+.st-tabs { position: relative; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.st-custom { font-variant-numeric: tabular-nums; }
+.st-cal { position: absolute; top: calc(100% + 6px); right: 0; z-index: 4; width: 272px; max-width: calc(100vw - 40px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 40px -16px rgba(40,20,10,.45); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+.st-cal-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+.st-cal-head .icon-btn:disabled { opacity: 0.3; cursor: default; background: none; }
+.st-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; text-align: center; }
+.st-cal-week span { font-size: 11px; color: var(--muted); padding-block: 2px; }
+.st-cal-grid button { position: relative; border: none; background: none; height: 34px; padding-bottom: 6px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); border-radius: 0; }
+.st-cal-grid button:hover:not(:disabled) { background: var(--sunken); }
+.st-cal-grid button:disabled { color: var(--line); cursor: default; }
+.st-cal-grid button.today { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.st-cal-grid button.in { background: var(--accent-soft); }                /* 고른 기간 */
+.st-cal-grid button.end { background: var(--accent); color: var(--accent-ink); font-weight: 700; border-radius: 8px; }   /* 시작일·종료일 */
+/* 연습한 날: 숫자 아래 작은 초록 점 */
+.st-cal-grid button.has::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--ok); }
+.st-cal-grid button.end.has::after { background: var(--accent-ink); }
+.st-cal-hint { margin: 0; font-size: 12px; font-weight: 600; color: var(--accent); }
+.st-cal-legend { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.st-cal-legend i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.st-cal .note { margin: 0; }
+
+/* ---------- 막대그래프 ---------- */
+.st-chart-wrap { position: relative; padding-top: 16px; }
+.st-max { position: absolute; top: 0; left: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st-chart { display: flex; align-items: stretch; gap: 6px; height: 170px; border-bottom: 1px solid var(--line); background: linear-gradient(var(--line) 1px, transparent 1px) top / 100% 50%; }
+.st-chart.dense, .st-x.dense { gap: 2px; }
+.st-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.st-bar i { display: block; }
+.st-bar .ok { background: var(--ok); }
+.st-bar .no { background: var(--warn); opacity: 0.75; }
+.st-x { display: flex; gap: 6px; font-size: 11px; color: var(--muted); }
+.st-x span { flex: 1 1 0; min-width: 0; text-align: center; white-space: nowrap; overflow: visible; display: flex; justify-content: center; }
+
+/* ---------- 표 ---------- */
+.st-part { min-width: 0; }
+.st-part + .st-part { margin-top: 4px; }
+.st-scroll-x { overflow-x: auto; }
+.st-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.st-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 6px; border-bottom: 1px solid var(--line); }
+.st-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); }
+.st-table tr:last-child td { border-bottom: none; }
+.st-table .num { text-align: right; white-space: nowrap; }
+.st-type { font-weight: 600; }
+/* 정답률 막대 */
+.st-rate { display: inline-block; vertical-align: middle; width: clamp(40px, 12vw, 120px); height: 8px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-right: 6px; }
+.st-rate i { display: block; height: 100%; background: var(--ok); }
+.st-rate-n { font-size: 12px; color: var(--muted); }
+/* 학생 목록의 이름 링크 */
+.st-student { display: flex; flex-direction: column; color: var(--ink); text-decoration: none; }
+.st-student b { font-weight: 600; color: var(--accent); }
+.st-student span { font-size: 12px; color: var(--muted); }
+.st-student:hover b { text-decoration: underline; }
+
+/* ---------- 틀린 문제 ---------- */
+.st-count { display: inline-block; margin-left: 4px; color: var(--ink); }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-chip { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 14px; background: var(--bg); display: inline-flex; gap: 6px; align-items: center; }
+.st-chip i { font-style: normal; font-size: 9px; color: var(--ok); letter-spacing: 1px; }
+
+/* ---------- 선생님 화면 ---------- */
+/* 넓은 화면에서 두 칸 */
+.st-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 760px) { .st-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.st-top { align-items: stretch; }
+/* 약점: 코드 종류·베이스·텐션을 자리가 되면 나란히 */
+.st-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+.st-weak { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.st-weak li { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.st-weak-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.st-weak li b { font-weight: 700; }
+.st-weak .st-rate { width: 100%; margin: 0; }
+/* 최근 7일 */
+.st-week { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.st-week > span:first-child { margin-right: 4px; }
+.st-day { width: 26px; height: 26px; border-radius: 6px; background: var(--sunken); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+.st-day.on { background: var(--ok); color: var(--accent-ink); font-weight: 700; }
+/* 최근 푼 문제 (긴 목록은 상자 안에서 스크롤) */
+.st-scroll { max-height: 440px; overflow: auto; }
+.st-scroll thead th { position: sticky; top: 0; background: var(--surface); }
+.st-scroll th:first-child, .st-scroll td:first-child { width: 4.5em; text-align: left; }
+.st-dim { color: var(--muted); font-size: 13px; }
+.st-res { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
+.st-res.ok { background: var(--ok-soft); color: var(--ok); }
+.st-res.no { background: var(--warn-soft); color: var(--warn); }
+.st-tag { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 0 6px; }
+
+@media (max-width: 520px) {
+  .st-table { font-size: 13px; }
+  .st-table th, .st-table td { padding-inline: 4px; }
+  .st-card { padding: 14px 12px; }
+}

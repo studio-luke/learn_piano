@@ -1,0 +1,100 @@
+// ===== 선생님 — 학생 기록 (teacher/student.html?id=학생ID) =====
+// 관리자가 학생 한 명의 연습을 지도용으로 보는 화면. 학생 마이페이지와 같은 데이터를 쓰지만 배치가 달라요(사용자 요청).
+//   1. 약점: 전체 기간, 정답률이 낮은 코드 종류·베이스·텐션 각 3개
+//   2. 연습 습관: 연습한 날, 하루 평균, 최근 연습일, 가입일, 타이머 사용·중단, 최근 7일
+//   3. 전체 기간 숫자
+//   4. 연습량 그래프 + 코드 종류·베이스·텐션 표 (기간 선택)
+//   5. 최근 푼 문제 50개 (날짜·코드·종류·결과·걸린 시간)
+//   6. 틀린 문제 목록
+// 데이터: practice_summary(기간별) + student_overview(이 화면 전용, 관리자만).
+import { startPage } from "../common/layout.js";
+import { Account } from "../account/account.js";
+import { t, locale, onLangChange } from "../i18n/index.js";
+import { $, esc } from "../common/dom.js";
+import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, card, dateText, sec, typeName, rootName, tensionName } from "../stats/view.js";
+import { localDay, buckets, rootRows, tensionRows, weakest, pct, WEAK_MIN } from "../stats/data.js";
+import { Engine } from "../core/engine.js";
+import { gateHTML, wireGate } from "../stats/gate.js";
+
+startPage({ title: "studentPage", back: true });
+
+const body = $("statsBody");
+const uid = new URLSearchParams(location.search).get("id");
+const picker = new PeriodPicker();
+let data = null, ov = null, loading = false, failed = false, seq = 0;
+
+async function load() {
+  loading = true; failed = false;
+  render();
+  const n = ++seq;
+  const { range, custom } = picker;
+  // 학생 정보·약점·습관(ov)은 기간과 상관없어서 처음 한 번만 받음
+  const [res, ovRes] = await Promise.all([Account.summary(uid, range, custom), ov ? { data: ov } : Account.overview(uid)]);
+  if (n !== seq) return;
+  loading = false;
+  if (res.error || ovRes.error || !ovRes.data || !ovRes.data.nickname) failed = true;
+  else { data = { ...res.data, range, custom }; ov = ovRes.data; }
+  render();
+}
+
+// 약점 목록 하나 (정답률이 낮은 순)
+function weakList(rows, name) {
+  const w = weakest(rows);
+  if (!w.length) return `<p class="st-empty">${esc(t("weakNone"))}</p>`;
+  return `<ol class="st-weak">${w.map(r => `<li><span class="st-weak-row"><b>${esc(name(r))}</b><span class="st-rate-n">${pct(r.ok, r.n)}% · ${esc(t("unitQ", { n: r.n }))}</span></span><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span></li>`).join("")}</ol>`;
+}
+
+function render() {
+  const gate = gateHTML("admin");
+  if (gate) { body.innerHTML = gate; return; }
+  if (!uid || failed) { body.innerHTML = `<p class="st-empty">${esc(t("errLoad"))}</p>`; return; }
+  if (!data) { body.innerHTML = `<p class="st-empty">${esc(t("loading"))}</p>`; return; }
+
+  const who = `<p class="st-who"><b>${esc(ov.nickname)}</b><span>${esc(ov.full_name)}</span></p>`;
+  const weak = `<section class="st-card"><h3>${esc(t("weakH"))}</h3>
+    <div class="st-pair">
+      <div><h4>${esc(t("weakTypes"))}</h4>${weakList(ov.byQuality || [], r => typeName(r.q))}</div>
+      <div><h4>${esc(t("weakRoots"))}</h4>${weakList(rootRows(ov.byRoot), r => rootName(r.pc))}</div>
+      <div><h4>${esc(t("weakTensions"))}</h4>${weakList(tensionRows(ov.byTension, Engine.TYPES), tensionName)}</div>
+    </div>
+    <p class="note">${esc(t("weakNote", { n: WEAK_MIN }))}</p></section>`;
+
+  const total = data.totals ? data.totals.total : 0;
+  const week = buckets("7d", localDay(), ov.week);
+  const dots = week.map(x => `<span class="st-day${x.n ? " on" : ""}" title="${esc(dateText(x.key, { month: "long", day: "numeric" }))} · ${esc(t("unitQ", { n: x.n }))}">${esc(dateText(x.key, { weekday: "narrow" }))}</span>`).join("");
+  const habit = `<section class="st-card"><h3>${esc(t("habitH"))}</h3><div class="st-stats st-small">
+    ${card(t("habitDays"), esc(t("unitDays", { n: ov.days || 0 })))}
+    ${card(t("habitAvg"), esc(t("unitQ", { n: ov.days ? Math.round(total / ov.days) : 0 })))}
+    ${card(t("habitLast"), ov.lastDay ? esc(dateText(ov.lastDay, { month: "short", day: "numeric" })) : "–")}
+    ${card(t("habitJoined"), ov.joined ? esc(new Date(ov.joined).toLocaleDateString(locale(), { year: "numeric", month: "numeric", day: "numeric" })) : "–")}
+    ${card(t("habitTimer"), esc(t("unitTimes", { n: ov.sessions || 0 })), t("habitAbandoned", { n: ov.abandoned || 0 }))}
+    </div><div class="st-week"><span>${esc(t("habitWeek"))}</span>${dots}</div></section>`;
+
+  const recentRows = (ov.recent || []).map(r => `<tr><td class="num st-dim">${esc(dateText(r.d, { month: "numeric", day: "numeric" }))}</td>
+    <td class="st-type">${esc(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}</td><td class="st-dim">${esc(typeName(r.q))}</td>
+    <td><span class="st-res ${r.first ? "ok" : "no"}">${esc(t(r.first ? "sCorrect" : "sWrong"))}</span></td>
+    <td class="num st-dim">${r.ms != null ? esc(sec(r.ms)) : ""}</td></tr>`).join("");
+  const recent = `<section class="st-card"><h3>${esc(t("recentH"))}</h3>${recentRows ? `<div class="st-scroll"><table class="st-table">
+    <thead><tr><th class="num">${esc(t("colDate"))}</th><th>${esc(t("colChord"))}</th><th>${esc(t("colKind"))}</th><th>${esc(t("colResult"))}</th><th class="num">${esc(t("colTook"))}</th></tr></thead>
+    <tbody>${recentRows}</tbody></table></div>` : `<p class="st-empty">${esc(t("noData"))}</p>`}</section>`;
+
+  const tables = tablesHTML(data);
+  body.innerHTML = `${who}
+    <div class="st-two st-top">${weak}${habit}</div>
+    <section class="st-card st-line"><div class="st-stats">${totalsHTML(data)}</div></section>
+    <section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${picker.html(data.firstDay, data.practiceDays)}</div>
+      ${chartHTML(data)}${tables ? `<div class="st-two">${tables}</div>` : ""}</section>
+    ${recent}${reviewHTML(data, false)}`;
+  body.classList.toggle("loading", loading);
+}
+
+wireGate(body);
+body.addEventListener("click", e => {
+  const action = picker.click(e);
+  if (action === "load") return load();
+  if (action === "render") render();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && picker.escape()) render(); });
+onLangChange(render);
+Account.on("change", () => { if (!gateHTML("admin") && !data && !loading && uid) load(); else render(); });
+render();

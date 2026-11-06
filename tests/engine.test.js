@@ -1,9 +1,11 @@
-// Engine rules + translation keys.  Run: npm test   (Node 18+, no dependencies)
-const test = require("node:test");
-const assert = require("node:assert");
-const fs = require("fs");
-const path = require("path");
-const E = require("../src/engine.js");
+// 코드 엔진 규칙 + 번역 키 검사.  실행: npm test   (Node 18 이상, 설치할 것 없음)
+import test from "node:test";
+import assert from "node:assert";
+import { Engine as E } from "../assets/js/core/engine.js";
+import ko from "../assets/js/i18n/ko.js";
+import en from "../assets/js/i18n/en.js";
+import ja from "../assets/js/i18n/ja.js";
+import zh from "../assets/js/i18n/zh.js";
 
 const ALL = Object.fromEntries(E.TYPES.map(t => [t.id, true]));
 const base = { types: ALL, optB: false, bases: Array(12).fill(false), optC: true, cMax: 2, optD: true, optE: false };
@@ -67,13 +69,11 @@ test("7alt: R 3 ♭7 + at least one altered tension; about 10% of dominant 7ths"
   assert.ok(!E.grade([r, r + 4, r + 10, r + 2], q).correct);  // natural 9 is wrong
 });
 
-test("translations: every language has every key", () => {
-  const src = fs.readFileSync(path.join(__dirname, "../src/i18n.js"), "utf8");
-  const I18N = new Function(src + "; return I18N;")();
-  const keys = Object.keys(I18N.ko);
-  for (const l of I18N.LANGS) {
-    const missing = keys.filter(k => !(k in I18N[l]));
-    assert.deepStrictEqual(missing, [], `${l} missing keys`);
+test("translations: every language has exactly the keys of ko.js", () => {
+  const keys = Object.keys(ko);
+  for (const [l, strings] of Object.entries({ en, ja, zh })) {
+    assert.deepStrictEqual(keys.filter(k => !(k in strings)), [], `${l} missing keys`);
+    assert.deepStrictEqual(Object.keys(strings).filter(k => !(k in ko)), [], `${l} has keys ko.js does not`);
   }
 });
 
@@ -93,4 +93,13 @@ test("rebuild: a saved question comes back the same", () => {
   assert.strictEqual(E.rebuild({ type: "nope", l: 0, a: 0, tens: [], head: "", items: [] }, {}), null);
   assert.strictEqual(E.rebuild({ type: "dom7", l: 9, a: 0, tens: [], head: "7", items: [] }, {}), null);
   assert.strictEqual(E.rebuild({ type: "dom7", l: 0, a: 0, tens: ["x"], head: "7", items: [] }, {}), null);
+});
+
+test("option E: C♭ E♯ A♯ D♯ G♯ a little more often, B♯ and F♭ now and then", () => {
+  const qs = gen({ optE: true }, 40000);
+  const share = names => qs.filter(q => names.includes(q.rootName)).length / qs.length;
+  assert.ok(share(["B♯"]) > 0.002 && share(["F♭"]) > 0.005, "B♯ / F♭ appear");
+  const rare = share(["C♭", "E♯", "A♯", "D♯", "G♯"]);
+  assert.ok(rare > 0.165 && rare < 0.21, `C♭ E♯ A♯ D♯ G♯: ${rare}`);
+  assert.strictEqual(gen({ optE: false }, 20000).filter(q => /^(B♯|F♭|C♭|E♯|A♯|D♯|G♯)/.test(q.rootName)).length, 0);
 });

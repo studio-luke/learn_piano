@@ -1,0 +1,47 @@
+/* ===== 로그인 창과 계정 사이드바 (account/auth-dialog.js) =====
+   같은 <dialog class="auth">가 평소에는 가운데 창, 로그인 뒤 "내 계정"에서는 .side가 붙어 오른쪽 사이드바가 돼요. */
+
+dialog.auth { width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 22px 20px 20px; box-shadow: 0 24px 60px -24px rgba(40,20,10,.5); }
+dialog.auth::backdrop { background: rgba(40,25,15,.45); }
+.auth h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0 36px 14px 0; line-height: 1.2; }
+.auth-close { position: absolute; top: 12px; right: 12px; margin: 0; }
+.auth-form { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.auth-note { font-size: 12px; color: var(--muted); margin: 0; }
+.auth .check { font-size: 13px; }
+.auth .check a { color: var(--accent); }
+.auth-links { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+/* 창 위쪽 안내 (성공은 초록, 오류는 주황) */
+.auth-msg { font-size: 13px; border-radius: 8px; padding: 8px 10px; margin: 0 0 12px; }
+.auth-msg:empty { display: none; }
+.auth-msg.ok { background: var(--ok-soft); color: var(--ok); }
+.auth-msg.no { background: var(--warn-soft); color: var(--warn); }
+/* 회원 탈퇴 경고 */
+.auth-warn { margin: 0; font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+
+/* 입력 칸 */
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
+.field small { color: var(--muted); font-weight: 400; font-size: 12px; }
+/* 글자 크기 16px: 이보다 작으면 아이폰이 칸을 누를 때 화면을 확대함 */
+.field input, .field select { font-size: 16px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+/* 비밀번호 칸 + 오른쪽 안의 눈 버튼 */
+.pw-wrap { position: relative; display: flex; }
+.pw-wrap input { width: 100%; padding-right: 46px; }
+.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 38px; height: 36px; border: none; background: none; border-radius: 8px; color: var(--muted); display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pw-eye:hover, .pw-eye.on { color: var(--accent); }
+
+/* ---------- 오른쪽 사이드바 (로그인한 뒤 "내 계정") ---------- */
+dialog.auth.side { margin: 0 0 0 auto; width: min(380px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: var(--radius) 0 0 var(--radius); border-right: none; padding-top: max(22px, env(safe-area-inset-top, 0px)); padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+dialog.auth.side[open] { animation: side-in 180ms ease-out; }
+@keyframes side-in { from { transform: translateX(48px); opacity: 0; } }
+@media (max-width: 420px) { dialog.auth.side { border-radius: 0; border-left: none; } }   /* 폰에서는 화면 전체 */
+.acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
+.acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
+.side-menu { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+/* 메뉴 줄: <a>(다른 페이지로)와 <button>(이 자리에서) 모양을 같게 */
+.menu-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; border: none; border-bottom: 1px solid var(--line); background: none; padding: 13px 4px; font-size: 15px; font-weight: 500; color: var(--ink); text-decoration: none; }
+.menu-item:hover:not(:disabled) { color: var(--accent); }
+.menu-item:disabled { color: var(--muted); cursor: default; }
+.menu-item .chev { color: var(--muted); }
+.badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-align: center; margin-left: auto; }
+.badge:empty { display: none; }

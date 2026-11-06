@@ -1,13 +1,17 @@
-// Phone layout check: npm run audit
-// Needs once: npm i  &&  npx playwright install chromium
-// Opens index.html at 16 phone sizes, portrait/landscape, with and without browser bars,
-// in the two heaviest states (long stacked chord, 7alt answer) and reports clipped buttons/keyboard.
-const { chromium } = require("playwright");
-const fs = require("fs");
-const path = require("path");
+// 폰 화면 레이아웃 검사:  npm run audit
+// 처음 한 번 필요:  npm i  &&  npx playwright install chromium
+// 연습 페이지를 폰 16종 크기 × 세로/가로 × 주소창 있음/없음으로 열어, 가장 무거운 두 상태
+// (괄호가 세로로 쌓인 긴 코드, 7alt 정답 확인)에서 버튼·건반이 잘리는지 확인해요. 문제가 있는 화면은 tests/audit-output/에 스크린샷.
+import { chromium } from "playwright";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { serve } from "../tools/serve.js";
 
-const URL = "file://" + path.resolve(__dirname, "../index.html");
-const OUT = path.join(__dirname, "audit-output");
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PORT = 8799;   // 검사용 서버 (npm run dev의 8766과 겹치지 않게)
+const URL = `http://127.0.0.1:${PORT}/trainer/chords/`;   // 랜덤 코드 연습 페이지
+const OUT = path.join(HERE, "audit-output");
 fs.mkdirSync(OUT, { recursive: true });
 
 // CSS viewport sizes (portrait). Source: yesviz.com/viewport, Oct 2026
@@ -27,6 +31,7 @@ async function setup(page, state) {
   await page.goto(URL);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await page.waitForSelector(".key");   // 모듈 스크립트가 건반을 그릴 때까지
   await page.waitForTimeout(200);
   // the log-in button is hidden until Supabase is configured; check the header with it shown (long nickname)
   await page.evaluate(() => {
@@ -57,6 +62,7 @@ async function setup(page, state) {
 }
 
 (async () => {
+  const server = await serve(PORT);
   const browser = await chromium.launch();
   let problems = 0;
   for (const state of ["long", "alt"]) {
@@ -96,5 +102,6 @@ async function setup(page, state) {
   }
   console.log(problems ? `${problems} layouts with problems (screenshots in tests/audit-output)` : "All layouts OK");
   await browser.close();
+  server.close();
   process.exitCode = problems ? 1 : 0;
 })();

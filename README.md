@@ -3,64 +3,119 @@
 도메인: chordoven.com (구매 완료, 아직 연결 안 함 — 플랫폼이 어느 정도 갖춰지면 연결 후 홍보 예정)
 
 레슨생이 수업에서 배운 코드를 2옥타브 피아노 건반(C3–C5)으로 복습하는 웹앱입니다.
-서버, 빌드 도구 없이 HTML 파일 하나로 동작합니다. 회원 기능(선택)은 Supabase를 쓰고, `src/config.js`에 키를 넣었을 때만 켜집니다.
+빌드 도구 없이 HTML·CSS·JS(ES 모듈) 파일을 그대로 배포합니다. 회원 기능(선택)은 Supabase를 쓰고, `assets/js/config.js`에 키를 넣었을 때만 켜집니다.
 
-## 파일 구성
+## 바로 시작하기
 
-| 파일 | 내용 |
-|---|---|
-| `index.html` | 바로 배포할 수 있는 완성본. 이 파일 하나만 올리면 동작함 |
-| `src/engine.js` | 코드 엔진. 코드 정의, 출제 가중치, 텐션 규칙, 음 철자, 채점, 정답 보이싱. DOM 없이 순수 함수라 Node에서도 테스트 가능 (`require("./src/engine.js")`) |
-| `src/ui.html` | 화면(HTML·CSS·UI 스크립트). `/*ENGINE*/`, `/*I18N*/`, `/*CONFIG*/`, `/*STATS*/`, `/*ACCOUNT*/` 자리에 아래 파일들이 들어감 |
-| `src/config.js` | Supabase 주소와 공개 키. 비어 있으면 회원 기능 꺼짐 |
-| `src/account.js` | 회원가입·로그인·비밀번호 재설정·탈퇴, 출제 설정과 연습 기록을 계정에 저장 |
-| `src/stats.js` | 마이페이지·학생 통계 화면 (정답·오답, 날짜별 그래프, 코드 종류별, 틀린 문제) |
-| `supabase/schema.sql` | DB 테이블·권한(RLS)·가입 처리·탈퇴 함수. Supabase SQL Editor에서 실행 |
-| `terms.html`, `privacy.html`, `legal.css` | 이용약관·개인정보처리방침 (초안, 한국어만) |
-| `src/i18n.js` | 화면 문구 번역(한국어·영어·일본어·중국어 간체). 문구를 바꾸거나 언어를 추가할 때 이 파일만 고치면 됨 |
-| `build.js` | `node build.js` 로 src 파일들을 합쳐 `index.html`을 다시 만듦 |
-| `tests/engine.test.js` | 엔진 규칙·번역 키 자동 검사 (`npm test`) |
-| `tests/account.test.js` | 회원 기능 검사: 오류 문구 매핑, 기기별 설정 제외, **config.js에 비밀 키가 들어가면 실패** (`npm test`) |
-| `tests/layout-audit.js` | 16개 폰 화면 크기에서 버튼·건반 잘림 검사 (`npm run audit`) |
-| `package.json` | `npm run build` / `npm test` / `npm run audit` 명령 정의 |
-| `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png` | 파비콘(오븐 창 속 8분음표). svg가 원본, png는 svg를 바탕으로 만든 것 |
-| `wrangler.jsonc`, `.assetsignore` | Cloudflare 배포 설정. 저장소 루트를 사이트로 올리되 `node_modules` 등은 제외 |
+```bash
+npm run dev        # 로컬 서버 → http://localhost:8766 (JS 모듈이라 파일을 직접 열면 동작하지 않음). 연습은 /trainer/chords/
+npm test           # 엔진 규칙·번역 키·설정 안전 검사 (설치할 것 없음, Node 18 이상)
+npm run audit      # 폰 화면 레이아웃 검사 (처음 한 번: npm i && npx playwright install chromium)
+```
+
+고친 파일이 곧 배포되는 파일이에요. 빌드 단계가 없으니 저장소에 올린(main에 push한) 파일이 그대로 사이트가 됩니다.
+
+## 페이지
+
+| 주소 | 파일 | 내용 |
+|---|---|---|
+| `/` | `index.html` | 홈 — 소개와 학습 메뉴 카드 |
+| `/trainer/chords/` | `trainer/chords/index.html` | 랜덤 코드 연습(코드 트레이너). 누구나 사용, 로그인하면 기록 저장 |
+| `/mypage.html` | `mypage.html` | 마이페이지 — 내 연습 통계, 틀린 문제 다시 풀기 (로그인한 회원) |
+| `/teacher/` | `teacher/index.html` | 선생님 — 학생 목록 (관리자만) |
+| `/teacher/student.html?id=…` | `teacher/student.html` | 선생님 — 학생 한 명의 기록 (관리자만) |
+| `/terms.html`, `/privacy.html` | | 이용약관·개인정보처리방침 (초안, 한국어만) |
+
+## 폴더 구조
+
+```
+index.html  trainer/chords/  mypage.html  teacher/  terms.html  privacy.html   페이지 (HTML은 틀만, 내용은 JS가 채움)
+favicon.svg  favicon-32.png  apple-touch-icon.png              파비콘 (오븐 창 속 8분음표. svg가 원본)
+
+assets/css/
+  base.css        공통: 색·글꼴 토큰(테마, 다크 모드), 머리글·바닥글, ☰ 왼쪽 메뉴, 도움말(?), 버튼·체크박스·알림
+  home.css        홈: 소개, 학습 메뉴 카드
+  practice.css    연습 페이지: 연습 카드, 건반, 타이머 버튼, 출제 설정, 폰 세로·가로 레이아웃
+  stats.css       통계 페이지: 카드, 그래프, 표, 기간 달력, 선생님 화면
+  account.css     로그인 창과 계정 사이드바
+  legal.css       약관 페이지
+
+assets/js/
+  config.js               Supabase 주소와 공개 키 (비우면 회원 기능 꺼짐)
+  core/engine.js          코드 엔진: 출제·채점·철자·보이싱 (화면 없는 순수 함수 → Node에서 테스트)
+  i18n/index.js           언어 고르기, t("키") 문구 함수, data-i18n 속성 채우기
+  i18n/ko.js en.js ja.js zh.js   화면 문구 (ko가 원문, 네 파일의 키가 같아야 함)
+  common/layout.js        모든 페이지의 머리글·바닥글·☰ 왼쪽 메뉴·도움말(?)과 페이지 시작(startPage)
+  common/sitemap.js       사이트 지도: 메뉴와 홈 카드에 나오는 페이지 목록 (새 기능은 여기에 추가)
+  common/dom.js           $("id"), esc()(HTML 안전하게), toast()(아래 알림)
+  common/storage.js       localStorage 읽기·쓰기 (chordoven.* 키)
+  account/account.js      로그인 상태와 DB 연결 (Supabase를 부르는 곳은 여기뿐)
+  account/auth-dialog.js  로그인 창·회원가입·계정 사이드바 화면
+  account/helpers.js      회원 기능의 작은 규칙 (오류 문구, 공개 키 확인 등 — 테스트용으로 분리)
+  practice/settings.js    출제 설정 상태와 카드, 설정 잠금
+  practice/keyboard.js    건반 그리기와 마우스·터치·키보드 입력
+  practice/audio.js       피아노 소리 (Web Audio로 합성, 소리 파일 없음)
+  practice/timer.js       타이머 (시계, 버튼, 도움말, 5분 규칙)
+  practice/quiz.js        문제 흐름: 출제 → 채점 → 기록, 틀린 문제 다시 풀기
+  stats/data.js           통계 계산 (기간, 그래프 칸, 표 묶기 — 순수 함수)
+  stats/view.js           통계 화면 조각 (숫자 카드, 그래프, 표, 기간 달력)
+  stats/gate.js           통계 페이지 입장 확인 (로그인·관리자)
+  pages/home.js           홈 (학습 메뉴 카드)
+  pages/practice.js       연습 페이지 시작점 (위 practice/* 를 연결, 단축키)
+  pages/mypage.js  teacher-list.js  teacher-student.js   각 통계 페이지
+
+supabase/schema.sql   DB 표·권한(RLS)·함수. Supabase SQL Editor에서 실행 (다시 실행해도 안전)
+tests/                engine.test.js, account.test.js (npm test), layout-audit.js (npm run audit)
+tools/serve.js        로컬 서버 (npm run dev, 레이아웃 검사도 사용)
+wrangler.jsonc  .assetsignore   Cloudflare 배포 설정 (저장소 루트를 사이트로, node_modules 등 제외)
+```
 
 운영자 개인 문서(작업 안내서, 사양 메모, 설정 가이드)는 저장소에 올리지 않습니다(`.gitignore`).
 
-수정할 때는 `src/` 파일을 고친 뒤 `npm run build`(= `node build.js`)와 `npm test`를 실행하면 됩니다. `index.html`을 직접 고쳐도 동작은 하지만, 다음 빌드 때 덮어써집니다.
+### 코드를 읽는 순서 (처음 볼 때)
+
+1. `assets/js/core/engine.js` — 문제가 어떻게 만들어지고 채점되는지
+2. `assets/js/pages/practice.js` → `practice/quiz.js` — 연습 화면이 어떻게 돌아가는지
+3. `assets/js/account/account.js` + `supabase/schema.sql` — 로그인과 기록이 DB에 어떻게 들어가는지
+4. `assets/js/stats/` + `pages/mypage.js` — 통계 화면
+
+### 자주 하는 수정
+
+- **화면 문구 바꾸기·추가**: `assets/js/i18n/` 네 파일 모두. HTML에는 `data-i18n="키"`, JS에서는 `t("키")`. `npm test`가 빠진 키를 잡아요.
+- **새 학습 기능(페이지) 추가**: 폴더와 HTML을 만들고(예: `trainer/voice-leading/index.html`, 경로는 `../../` 기준), `assets/js/pages/`에 시작 JS를 두고 `startPage()`를 부른 뒤, `common/sitemap.js` 항목에 `path`를 넣고 `soon`을 지우면 ☰ 메뉴와 홈 카드에 함께 나타나요.
+- **코드 종류 추가**: `core/engine.js`의 `TYPES`에 한 줄 (id는 DB 기록에도 쓰이니 한번 정하면 바꾸지 말 것) + `i18n`의 묶음 이름.
+- **색 바꾸기**: `assets/css/base.css` 맨 위 `:root` 토큰과 다크 모드 두 블록. 화면 곳곳에 색 값을 직접 쓰지 말 것.
+- **DB 바꾸기**: `supabase/schema.sql`을 고친 뒤 Supabase SQL Editor에서 파일 전체를 다시 실행 (이미 회원이 있으면 새 열은 비어도 되게 추가). 사이트보다 DB를 먼저.
 
 ## 기술 메모
 
-- 소리: Web Audio API로 직접 합성(샘플 파일 없음). 브라우저 정책상 첫 터치 뒤부터 소리가 남
-- 폰트: Google Fonts(DM Serif Display, IBM Plex Sans KR, Noto Music). 불러오지 못하면 시스템 폰트로 대체
-- 저장: 설정은 브라우저 localStorage에만 저장 (`chordoven.settings.v2`, `chordoven.rotateTip`, `chordoven.lang`. 예전 `chordlab.*` 값은 처음 열 때 자동으로 옮겨짐) 기기마다 따로 저장됨. 로그인하면 출제 설정이 계정(Supabase `profiles.settings`)에도 저장돼 다른 기기에서 이어짐 — 단 "키보드로 건반 입력"은 기기별로 유지
-- 학습 기록(정답/시도 = 첫 채점에 맞힌 수 / 푼 문제 수, 연속)은 페이지를 새로 열면 초기화됨
-- 언어: 저장된 선택 → 브라우저 언어(navigator.languages) → 영어 순으로 결정. 오른쪽 위 드롭다운으로 바꾸면 `chordoven.lang`에 저장. 음이름(C D E…)과 코드 기호는 모든 언어에서 동일
-- 번역: ko 원문, en/ja/zh는 AI 번역 — 현지 음악인 검수 권장
-- 디자인: "크림 & 코코아" 테마 — 크림색 종이 질감 바탕, 코코아색 글자, 테라코타 포인트. 다크 모드는 기기 설정(prefers-color-scheme)을 따름
-- 반응형: 데스크톱 2단, 폰 세로(하단 고정 버튼 줄), 폰 가로(높이 520px 이하, 좌우 분할) 레이아웃
-- 키보드 단축키(데스크톱): Enter 채점(채점이 끝난 뒤에는 다음 문제), L 정답 확인(포기), Space 재생, Esc 지우기, N 다음 문제. 물리 키(e.code) 기준이라 한글 입력 상태에서도 동작
-- 키보드로 건반 입력(마우스·트랙패드가 있는 기기에서만 보이는 옵션, 그런 기기에서는 기본으로 켜짐): C3부터 q2w3er5t6y7ui9o0p[=]azsxc. 키를 누르고 있어도 한 번만 입력
+- 빌드 없음: 브라우저가 `<script type="module">`로 JS 파일을 직접 불러와요. 외부 라이브러리는 회원 기능용 supabase-js 하나(CDN, 버전 고정 + SRI 지문)
+- 소리: Web Audio API로 직접 합성. 브라우저 정책상 첫 터치 뒤부터 소리가 남
+- 폰트: Google Fonts(DM Serif Display, IBM Plex Sans KR, Noto Music). 불러오지 못하면 시스템 폰트
+- 저장: 이 기기에는 localStorage(`chordoven.settings.v2`, `chordoven.lang`, `chordoven.rotateTip`), 로그인하면 출제 설정·연습 기록이 계정(Supabase)에도. "키보드로 건반 입력"은 기기별
+- 권한: DB가 지켜요(행 수준 보안 RLS). 브라우저는 자기 기록만 읽고, 쓰기는 정해진 DB 함수로만. 화면의 검사는 편의용
+- 언어: 저장된 선택 → 브라우저 언어 → 영어. 음이름(C D E…)과 코드 기호는 모든 언어에서 동일. en/ja/zh는 AI 번역 — 현지 음악인 검수 권장
+- 디자인: "크림 & 코코아" 테마. 다크 모드는 기기 설정을 따름
+- 반응형: 데스크톱 2단, 폰 세로(하단 고정 버튼 줄), 폰 가로(높이 520px 이하, 좌우 분할)
+- 단축키(데스크톱): Enter 채점(끝난 문제면 다음 문제), L 정답 확인, Space 재생, Esc 지우기, N 다음 문제. 키보드로 건반 입력: C3부터 q2w3er5t6y7ui9o0p[=]azsxc (물리 키 기준이라 한글 입력 상태에서도 동작)
 
 ## 아직 없는 것
 
-- 언어 전환이 한 주소 안에서 화면만 바뀌는 방식이라, 검색엔진에는 한국어 페이지만 노출됨. 언어별 검색 노출이 필요하면 언어별 주소(/en/, /ja/ 등)와 hreflang 설정이 필요
-- 검색엔진용 메타 정보는 `description` 한 줄만 있음 (Open Graph 이미지, canonical URL, sitemap 없음)
-- 구독, 서버 측 학습 기록 없음 (로그인은 출제 설정 저장까지만)
+- 언어별 주소(/en/ 등)와 hreflang이 없어 검색엔진에는 한국어로만 노출
+- 검색엔진용 메타 정보는 `description` 한 줄뿐 (Open Graph 이미지, canonical, sitemap 없음)
 - 구글·카카오 로그인 없음 (도메인 연결 때 추가 예정)
-- 이용약관·개인정보처리방침 영어 등 번역본 없음
+- 이용약관·개인정보처리방침 번역본 없음
 - 오프라인 동작(PWA) 없음
 
 ## 앞으로 구현할 기능
 
-- [ ] 시간 측정 기능 ('TEST' 기능)
+- [x] 시간 측정 기능 (타이머 — 맞히기까지 걸린 시간 기록, 통계에 평균 시간)
 - [ ] 미디 입력 인식 구현
 - [x] 회원가입·로그인 (이메일, 모두 학생으로 가입, 관리자는 운영자 1명) — Supabase 연결됨
 - [ ] 구글·카카오 로그인 (도메인 연결 때)
 - [ ] 선생님으로 가입 (필요해지면)
-- [x] 개인 학습 통계 기능 (마이페이지: 정답·오답, 코드 종류별, 날짜별, 틀린 문제 다시 풀기)
-- [x] 선생님이 학생의 학습 상태를 조회할 수 있는 페이지 (학생 통계)
+- [x] 개인 학습 통계 기능 (마이페이지: 정답·오답, 코드 종류·베이스·텐션별, 날짜별, 틀린 문제 다시 풀기)
+- [x] 선생님이 학생의 학습 상태를 조회할 수 있는 페이지 (학생 기록)
 - [ ] '내 음악 실력 테스트' 페이지
 - [ ] 각 코드별 설명 페이지
 - [ ] 보이스리딩 학습 페이지

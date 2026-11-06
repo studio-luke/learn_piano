@@ -1,0 +1,27 @@
+/* ===== 홈 (index.html) =====
+   소개 카드 + 학습 메뉴 카드. 베이커리 느낌은 로고 정도로만 절제하고, 학습 메뉴는 명료하게 (브랜드 원칙). */
+
+.home { max-width: 960px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+/* ---------- 소개 ---------- */
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: clamp(28px, 6vw, 56px) clamp(18px, 5vw, 48px); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+.hero-logo { width: 72px; height: 72px; }
+.hero-title { font-family: var(--font-body); font-weight: 700; font-size: clamp(26px, 5vw, 40px); line-height: 1.25; margin: 0; letter-spacing: -0.01em; }   /* 한글 제목은 고딕 (마이페이지와 같게) */
+.hero-lead { max-width: 34em; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
+.hero-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 6px; }
+.hero-start { text-decoration: none; padding-inline: 28px; font-size: 16px; }
+.hero-my { font-size: 13px; text-decoration: none; }
+
+/* ---------- 학습 메뉴 카드 ---------- */
+.home-menu h3 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--ink); text-decoration: none; min-height: 160px; transition: border-color 120ms, transform 120ms; }
+a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.card-icon { font-size: 24px; line-height: 1; }
+.card-name { font-weight: 700; font-size: 16px; }
+.card-desc { color: var(--muted); font-size: 13px; line-height: 1.55; flex: 1; }
+.card-foot { font-size: 12px; font-weight: 600; color: var(--accent); }
+/* 준비 중인 기능: 흐리게 */
+.card.soon { background: transparent; border-style: dashed; }
+.card.soon .card-name, .card.soon .card-icon { opacity: 0.55; }
+.card.soon .card-foot { color: var(--muted); }
