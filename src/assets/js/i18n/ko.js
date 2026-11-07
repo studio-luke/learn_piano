@@ -97,6 +97,8 @@ export default {
   viewChangepw: "비밀번호 변경",
   backAccount: "← 내 계정으로",
   errPwMismatch: "비밀번호가 서로 달라요. 다시 확인해 주세요.",
+  pwMatch: "일치합니다",
+  pwNoMatch: "일치하지 않습니다",
   errCurrentPw: "현재 비밀번호가 맞지 않아요.",
   viewRestore: "계정 복구",
   restoreNote: "탈퇴를 신청한 계정이에요. {date}에 계정과 저장된 설정이 완전히 삭제돼요. 복구하면 지금처럼 계속 쓸 수 있어요.",

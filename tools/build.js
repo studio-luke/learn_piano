@@ -21,6 +21,13 @@ export const DIST = path.join(HERE, "..", "dist");
 // 사이트 주소 (검색엔진에 알려주는 정식 주소). 도메인을 바꾸면 여기만 고치면 돼요.
 export const SITE = "https://chordoven.com";
 
+// 도메인 연결 전에 학생들에게 공유한 옛 주소 (Cloudflare Worker 기본 주소).
+// 이 주소로 들어오면 모든 페이지가 SITE의 같은 페이지로 넘겨줌 — 경로·?뒷부분·#뒷부분(로그인 메일 링크의 토큰 등)을 그대로 유지.
+// 정확히 이 이름만 비교하므로 브랜치 미리보기 주소(<브랜치>-learn-piano.….workers.dev)와 로컬 서버는 넘겨주지 않음.
+// Worker 이름(learn-piano)을 바꾸면 이 주소가 사라지니 바꾸지 말 것.
+export const OLD_HOST = "learn-piano.jjtmddlf0505.workers.dev";
+export const MOVE_SCRIPT = `<script>if (location.hostname === "${OLD_HOST}") location.replace("${SITE}" + location.pathname + location.search + location.hash);</script>`;
+
 export const LANGS = ["ko", "en", "ja", "zh"];
 // <html lang>과 hreflang에 쓰는 이름 (중국어는 간체라고 밝힘)
 const HTML_LANG = { ko: "ko", en: "en", ja: "ja", zh: "zh-Hans" };
@@ -144,6 +151,11 @@ export async function build(out = DIST) {
     }
     // 3) 원래 주소 = 언어 고르는 입구
     fs.writeFileSync(path.join(out, fileFor(page.route)), entryPage(page.route, S));
+  }
+  // 4) 모든 HTML의 <head> 맨 앞에 옛 주소 넘겨주기 스크립트 (페이지가 그려지거나 다른 JS가 돌기 전에 바로 이동)
+  for (const f of fs.readdirSync(out, { recursive: true }).filter(f => f.endsWith(".html"))) {
+    const file = path.join(out, f);
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/<head>\n?/, m => m + MOVE_SCRIPT + "\n"));
   }
   fs.writeFileSync(path.join(out, "sitemap.xml"), sitemapXml());
   fs.writeFileSync(path.join(out, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);

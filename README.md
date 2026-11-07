@@ -1,6 +1,6 @@
 # ChordOven — 코드 트레이너
 
-도메인: chordoven.com (구매 완료, 아직 연결 안 함 — 플랫폼이 어느 정도 갖춰지면 연결 후 홍보 예정)
+도메인: https://chordoven.com (Cloudflare 연결 완료, 2026-11-07). 예전에 공유한 `learn-piano.jjtmddlf0505.workers.dev` 주소로 들어오면 모든 페이지가 chordoven.com의 같은 페이지로 넘겨줘요(`tools/build.js` `OLD_HOST`).
 
 레슨생이 수업에서 배운 코드를 2옥타브 피아노 건반(C3–C5)으로 복습하는 웹앱입니다.
 HTML·CSS·JS(ES 모듈) 파일에 작은 빌드 스크립트 하나(`tools/build.js`, 언어별 페이지 만들기)만 거쳐 배포합니다. 회원 기능(선택)은 Supabase를 쓰고, `src/assets/js/config.js`에 키를 넣었을 때만 켜집니다.

@@ -96,6 +96,8 @@ export default {
   viewChangepw: "パスワードを変更",
   backAccount: "← マイアカウントに戻る",
   errPwMismatch: "パスワードが一致しません。もう一度ご確認ください。",
+  pwMatch: "一致しています",
+  pwNoMatch: "一致しません",
   errCurrentPw: "現在のパスワードが正しくありません。",
   viewRestore: "アカウントの復元",
   restoreNote: "退会を申請したアカウントです。{date}にアカウントと保存した設定が完全に削除されます。復元すると今まで通り使えます。",

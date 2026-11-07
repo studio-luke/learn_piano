@@ -4,7 +4,7 @@ import assert from "node:assert";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { build, localize, PAGES, LANGS, SITE, SRC } from "../tools/build.js";
+import { build, localize, PAGES, LANGS, SITE, SRC, OLD_HOST, MOVE_SCRIPT } from "../tools/build.js";
 import { LOCALIZED } from "../src/assets/js/common/sitemap.js";
 import ko from "../src/assets/js/i18n/ko.js";
 import en from "../src/assets/js/i18n/en.js";
@@ -43,9 +43,28 @@ test("build: old addresses become language entry pages (old shared links keep wo
   assert.ok(read("trainer/chords/index.html").includes('"/trainer/chords/" + location.search'));   // ?review=1도 그대로 넘김
 });
 
-test("build: pages that are not per language are copied as they are", () => {
+test("build: pages that are not per language are copied as they are (plus the old-address script)", () => {
   for (const f of ["mypage.html", "teacher/index.html", "teacher/student.html", "terms.html", "privacy.html", "assets/js/config.js", "favicon.svg"])
-    assert.strictEqual(read(f), fs.readFileSync(path.join(SRC, f), "utf8"), f);
+    assert.strictEqual(read(f).replace(MOVE_SCRIPT + "\n", ""), fs.readFileSync(path.join(SRC, f), "utf8"), f);
+});
+
+test("build: every page sends the old workers.dev address to the same page on the domain", () => {
+  const pages = fs.readdirSync(out, { recursive: true }).filter(f => f.endsWith(".html"));
+  assert.ok(pages.length >= 8 + PAGES.length * LANGS.length);
+  for (const f of pages) {
+    const html = read(f);
+    assert.strictEqual(html.split(MOVE_SCRIPT).length - 1, 1, f);                      // 딱 한 번
+    assert.strictEqual(html.indexOf("<script"), html.indexOf(MOVE_SCRIPT), f);         // 다른 스크립트보다 먼저
+  }
+  // 실제로 돌려보기: 옛 주소면 경로·?·# 그대로 새 주소로, 미리보기·로컬 주소면 그대로
+  const run = href => {
+    const u = new URL(href); let moved = null;
+    new Function("location", MOVE_SCRIPT.replace(/<\/?script>/g, ""))({ hostname: u.hostname, pathname: u.pathname, search: u.search, hash: u.hash, replace: x => { moved = x; } });
+    return moved;
+  };
+  assert.strictEqual(run(`https://${OLD_HOST}/trainer/chords/?review=1#x`), `${SITE}/trainer/chords/?review=1#x`);
+  assert.strictEqual(run(`https://accounts-${OLD_HOST}/ko/`), null);
+  assert.strictEqual(run("http://localhost:8766/ko/"), null);
 });
 
 test("build: sitemap.xml lists every localized page, robots.txt points to it", () => {

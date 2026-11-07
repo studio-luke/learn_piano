@@ -94,13 +94,13 @@ button { cursor: pointer; }
 
 /* ---------- 버튼 ---------- */
 .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 14px; font-weight: 500; font-size: 14px; }
-.btn:hover { background: var(--sunken); }
+/* 마우스를 올렸을 때의 변화는 켜진 버튼에만 (꺼진 버튼은 올려도 색이 그대로) */
+.btn:hover:not(:disabled) { background: var(--sunken); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; box-shadow: inset 0 -2px 0 rgba(0,0,0,.15); }
-.btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.06); background: var(--accent); }
 .btn.danger { background: var(--warn); border-color: var(--warn); color: var(--accent-ink); font-weight: 600; }
 .btn.danger:hover:not(:disabled) { filter: brightness(1.06); background: var(--warn); }
-.btn:disabled, .btn:disabled:hover { opacity: 0.4; cursor: not-allowed; filter: none; }
-.btn:not(.primary):disabled:hover { background: var(--surface); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn kbd { font-family: inherit; font-size: 11px; opacity: 0.7; margin-left: 6px; }
 .mini-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 500; color: var(--muted); }
 .mini-btn:hover { background: var(--sunken); color: var(--ink); }

@@ -96,6 +96,8 @@ export default {
   viewChangepw: "Change password",
   backAccount: "← Back to my account",
   errPwMismatch: "The passwords don't match. Please check them again.",
+  pwMatch: "Matches",
+  pwNoMatch: "Doesn't match",
   errCurrentPw: "Your current password is incorrect.",
   viewRestore: "Restore account",
   restoreNote: "You asked to delete this account. It and its saved settings will be permanently deleted on {date}. Restore it to keep using it as before.",

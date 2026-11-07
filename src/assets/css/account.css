@@ -21,6 +21,11 @@ dialog.auth::backdrop { background: rgba(40,25,15,.45); }
 /* 입력 칸 */
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
 .field small { color: var(--muted); font-weight: 400; font-size: 12px; }
+/* 칸 제목 줄: 제목 + (비밀번호 확인 칸이면) 오른쪽 옆에 일치 여부 */
+.field-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pw-match { font-size: 12px; font-weight: 600; }
+.pw-match.ok { color: var(--ok); }
+.pw-match.no { color: var(--warn); }
 /* 글자 크기 16px: 이보다 작으면 아이폰이 칸을 누를 때 화면을 확대함 */
 .field input, .field select { font-size: 16px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
 .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }

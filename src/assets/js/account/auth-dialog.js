@@ -18,8 +18,9 @@ const TITLES = { login: "viewLogin", signup: "viewSignup", reset: "viewReset", n
 
 // 비밀번호 칸 오른쪽의 눈 모양 버튼 (누르고 있는 동안 비밀번호가 보임)
 const EYE = `<button type="button" class="pw-eye" aria-label="비밀번호 보기" data-i18n-aria="showPw"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button>`;
+// name이 password2(비밀번호 확인 칸)이면 제목 옆에 "일치합니다 / 일치하지 않습니다" 자리를 둠 (pwMatch()가 채움)
 const pw = (name, autocomplete, labelKey, hint = "") =>
-  `<label class="field"><span data-i18n="${labelKey}"></span><span class="pw-wrap"><input type="password" name="${name}" autocomplete="${autocomplete}" required>${EYE}</span>${hint}</label>`;
+  `<label class="field"><span class="field-head"><span data-i18n="${labelKey}"></span>${name === "password2" ? `<span class="pw-match" aria-live="polite"></span>` : ""}</span><span class="pw-wrap"><input type="password" name="${name}" autocomplete="${autocomplete}" required>${EYE}</span>${hint}</label>`;
 const LANG_OPTIONS = `<option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">简体中文</option>`;
 const PW_HINT = `<small data-i18n="pwHint"></small>`;
 
@@ -146,6 +147,7 @@ function show(v, message) {
   dlg().querySelectorAll(".pw-wrap input").forEach(i => { i.type = "password"; });
   dlg().querySelectorAll(".pw-eye").forEach(b => b.classList.remove("on"));
   dlg().querySelectorAll("[data-view]").forEach(el => { el.hidden = el.dataset.view !== v; });
+  pwMatch();
   dlg().classList.toggle("side", SIDE.has(v));
   $("authTitle").textContent = t(TITLES[v]);
   setMsg(message ? message.kind : "", message ? message.key : "", message && message.vars);
@@ -186,6 +188,17 @@ async function countReview() {
   const n = await Account.reviewCount();
   $("reviewCount").textContent = n || "";
   $("menuReview").disabled = !n;
+}
+
+// 비밀번호 확인 칸 제목 옆 표시: 확인 칸에 뭔가 썼을 때만, 두 칸이 같으면 초록 "일치합니다", 다르면 주황 "일치하지 않습니다"
+// (회원가입·새 비밀번호·비밀번호 변경 화면 모두. 실제 제출 때는 SUBMIT에서 한 번 더 확인)
+function pwMatch() {
+  dlg().querySelectorAll(".pw-match").forEach(el => {
+    const f = el.closest("form"), typed = f.password2.value;
+    const same = typed === f.password.value;
+    el.className = "pw-match" + (typed ? (same ? " ok" : " no") : "");
+    el.textContent = typed ? t(same ? "pwMatch" : "pwNoMatch") : "";
+  });
 }
 
 // 회원 탈퇴 버튼: 비밀번호를 넣고 확인 문구를 정확히 똑같이 썼을 때만 켜짐
@@ -310,25 +323,33 @@ export function initAuthDialog() {
   const btn = $("accountBtn");
   if (btn) btn.onclick = () => open(!Account.user ? "login" : Account.profile && Account.profile.deleted_at ? "restore" : "account");
 
-  // 계정 복구 창을 닫으면(✕, Esc, 바깥 클릭) 탈퇴를 그대로 두고 로그아웃.
+  // 계정 복구 창을 닫으면(✕, Esc) 탈퇴를 그대로 두고 로그아웃.
   // dialog의 "close" 이벤트 대신 각 동작에서 처리: 창을 빠르게 닫았다 열면 Chrome이 close 이벤트를 빠뜨리는 경우가 있었음
   const declineRestore = () => { if (view === "restore" && Account.profile && Account.profile.deleted_at) Account.signOut(); };
   dlg().addEventListener("cancel", declineRestore);
   dlg().querySelector(".auth-close button").addEventListener("click", declineRestore);
+  // 가운데 창(로그인·회원가입 등)은 ✕나 Esc로만 닫힘. 바깥(어두운 배경)을 눌러도 닫지 않음 (2026-11-07 사용자 결정):
+  // 입력칸의 글자를 드래그해 고르다가 창 밖에서 마우스를 떼면 그것도 "바깥 클릭"이 되어 창이 꺼지고 입력이 날아갔기 때문.
+  // "내 계정" 사이드바 메뉴(account 화면)만 바깥을 누르면 닫힘. 입력칸이 있는 비밀번호 변경 화면은 사이드바여도 안 닫힘.
+  // 누르기 시작한 곳도 바깥이어야 닫음 (창 안에서 누르고 밖에서 뗀 경우는 무시)
+  let downOutside = false;
+  const outside = e => {
+    const r = dlg().getBoundingClientRect();
+    return e.target === dlg() && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+  };
+  dlg().addEventListener("pointerdown", e => { downOutside = outside(e); });
   dlg().addEventListener("click", e => {
     const go = e.target.closest("[data-go]");
     if (go) { e.preventDefault(); open(go.dataset.go); return; }
-    if (e.target === dlg()) {
-      // dialog 자체가 눌린 경우는 안쪽 여백일 수도, 바깥(배경)일 수도 있음 → 상자 밖일 때만 닫음
-      const r = dlg().getBoundingClientRect();
-      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) { declineRestore(); close(); }
-    }
+    if (view === "account" && downOutside && outside(e)) close();
   });
 
   dlg().querySelectorAll("form[data-view]").forEach(f => {
     f.addEventListener("submit", e => { e.preventDefault(); busy(f, () => SUBMIT[f.dataset.view](f)); });
   });
   form("delete").addEventListener("input", deleteReady);
+  dlg().addEventListener("input", e => { if (e.target.name === "password" || e.target.name === "password2") pwMatch(); });
+  onLangChange(pwMatch);
 
   $("logoutBtn").onclick = async () => { await Account.signOut(); close(); };
   $("menuReview").onclick = () => { close(); hooks.startReview(); };

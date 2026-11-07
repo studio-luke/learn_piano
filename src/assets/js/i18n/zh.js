@@ -96,6 +96,8 @@ export default {
   viewChangepw: "修改密码",
   backAccount: "← 返回我的账户",
   errPwMismatch: "两次输入的密码不一致，请重新确认。",
+  pwMatch: "一致",
+  pwNoMatch: "不一致",
   errCurrentPw: "当前密码不正确。",
   viewRestore: "恢复账户",
   restoreNote: "该账户已申请注销，将于 {date} 永久删除账户及已保存的设置。恢复后即可照常使用。",
