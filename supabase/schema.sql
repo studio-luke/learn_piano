@@ -103,6 +103,32 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- ---------- keep the auth email language in step with the profile ----------
+-- Supabase's email templates (docs/supabase-email-templates.md) pick the language from the user metadata
+-- (.Data.preferred_lang), which is only written at sign-up. When the site changes profiles.preferred_lang
+-- (language menu while logged in), copy it into the metadata so the next password-reset email uses it.
+create or replace function public.sync_lang_to_auth()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  update auth.users
+    set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('preferred_lang', new.preferred_lang)
+    where id = new.id;
+  return new;
+end;
+$$;
+revoke execute on function public.sync_lang_to_auth() from public, anon, authenticated;
+
+drop trigger if exists profiles_sync_lang on public.profiles;
+create trigger profiles_sync_lang after update of preferred_lang on public.profiles
+  for each row when (old.preferred_lang is distinct from new.preferred_lang)
+  execute function public.sync_lang_to_auth();
+
+-- one-time catch-up for members who changed the language before this trigger existed (safe to run again)
+update auth.users u
+  set raw_user_meta_data = coalesce(u.raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('preferred_lang', p.preferred_lang)
+  from public.profiles p
+  where p.id = u.id and u.raw_user_meta_data ->> 'preferred_lang' is distinct from p.preferred_lang;
+
 -- ---------- account deletion (회원 탈퇴) with a 7-day grace period ----------
 -- Leaving only marks the profile (deleted_at). Logging in within 7 days offers to restore the account;
 -- after that the hourly cron job below deletes the auth user, which also deletes the profile (on delete cascade).
