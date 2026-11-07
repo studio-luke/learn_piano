@@ -43,7 +43,7 @@ $("reviewStop").onclick = () => stopReview(false);
 // 초점이 어디 있든 동작해요(초점 받은 버튼이 Enter/Space를 먹지 않게). 언어 고르기·글자 입력 칸에서는 꺼짐.
 // 물리 키(e.code)로 맞춰서 한글 입력 상태에서도 동작해요.
 //   Enter 채점 (끝난 문제면 다음 문제)   Space 누른 건반 재생   Esc/Backspace 지우기
-//   N 또는 → 다음 문제                    L 정답 확인            그 밖: 키보드로 건반 입력(옵션)
+//   N 또는 → 다음 문제                    G 정답 확인(2026-11-07 L → G, L이 건반 키가 되어서)   그 밖: 키보드로 건반 입력(옵션)
 document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   // 로그인 창·메뉴 등 창이 열려 있으면 꺼짐 (로그인 창에 글자를 치는 동안 피아노가 울리면 안 됨)
@@ -61,7 +61,7 @@ document.addEventListener("keydown", e => {
     e.preventDefault(); if (selected.size) Sound.chord(selected, false);
   } else if (e.code === "Escape" || e.code === "Backspace") { e.preventDefault(); selected.clear(); renderKeys(); }
   else if (e.code === "KeyN" || e.code === "ArrowRight") { e.preventDefault(); newQuestion(); }
-  else if (e.code === "KeyL") { e.preventDefault(); reveal(); }
+  else if (e.code === "KeyG") { e.preventDefault(); reveal(); }
   else if (S.kbd && IS_PC && e.code in CODE_TO_MIDI) {
     e.preventDefault();
     if (!e.repeat) kb.toggle(CODE_TO_MIDI[e.code]);   // 키를 누르고 있어도 한 번만

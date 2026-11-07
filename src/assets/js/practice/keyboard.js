@@ -8,12 +8,13 @@ export const LOW = 48, HIGH = 72;   // C3 ~ C5 (MIDI 번호)
 const WHITE_PCS = Engine.WHITE;
 const NAMES = Engine.PC_NAMES;
 
-// 컴퓨터 키보드 → 건반 (C3부터 위로): q 2 w 3 e r 5 t 6 y 7 u i 9 o 0 p [ = ] a z s x c
+// 컴퓨터 키보드 → 건반 (C3부터 위로): q 2 w 3 e r 5 t 6 y 7 u i 9 o 0 p [ = ] k , l . /
+// (2026-11-07: 끝의 G♯4~C5를 a z s x c → k , l . /로 — 오른손 자리에 이어지게. L이 건반이 되어 정답 확인은 G로)
 // 글자가 아니라 물리 키(e.code)로 맞춰서, 한글 입력 상태나 다른 자판 배열에서도 같은 자리가 같은 건반이에요.
-const KEY_CHARS = "q2w3er5t6y7ui9o0p[=]azsxc".split("");
+const KEY_CHARS = "q2w3er5t6y7ui9o0p[=]k,l./".split("");
 export const CODE_TO_MIDI = {};
 KEY_CHARS.forEach((ch, i) => {
-  const code = /[a-z]/.test(ch) ? "Key" + ch.toUpperCase() : /\d/.test(ch) ? "Digit" + ch : { "[": "BracketLeft", "]": "BracketRight", "=": "Equal" }[ch];
+  const code = /[a-z]/.test(ch) ? "Key" + ch.toUpperCase() : /\d/.test(ch) ? "Digit" + ch : { "[": "BracketLeft", "]": "BracketRight", "=": "Equal", ",": "Comma", ".": "Period", "/": "Slash" }[ch];
   CODE_TO_MIDI[code] = LOW + i;
 });
 
