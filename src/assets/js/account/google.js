@@ -10,7 +10,10 @@ import { CONFIG } from "../config.js";
 
 const CLIENT_ID = CONFIG.googleClientId || "";
 const SCRIPT = "https://accounts.google.com/gsi/client";
-const LOAD_MS = 10000;
+// 이 시간 안에 구글 버튼을 못 그리면 로딩 아이콘을 멈추고 예전 방식 버튼을 보여줌.
+// (2026-11-07: 폰에서 로딩 아이콘이 끝없이 도는 일이 있었음 — 10초는 사람에게는 "멈춘 화면"이라 4초로 줄이고,
+//  스크립트를 받은 뒤 단계에서 오류·멈춤이 나도 반드시 예전 방식 버튼으로 넘어가게 함)
+const LOAD_MS = 4000;
 // 구글 버튼의 언어 이름
 const GSI_LOCALE = { ko: "ko", en: "en", ja: "ja", zh: "zh_CN" };
 
@@ -52,30 +55,40 @@ async function sha256Hex(text) {
  */
 export async function renderGoogle(slots, locale, onCredential) {
   if (!googleOn || !slots.length) return;
-  try { await load(); } catch (e) {
-    console.warn("구글 로그인 스크립트를 불러오지 못했어요 — 예전 방식 버튼을 씀", e);
-    slots.forEach(slot => slot.classList.add("gsi-failed"));   // CSS가 로딩 아이콘 대신 예전 방식 버튼을 보여줌
-    return;
-  }
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  rawNonce = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "");
-  const nonce = rawNonce;
-  window.google.accounts.id.initialize({
-    client_id: CLIENT_ID,
-    nonce: await sha256Hex(nonce),
-    callback: r => onCredential(r.credential, nonce),
-    auto_select: false,
-    itp_support: true,
-  });
-  slots.forEach(slot => {
-    const target = slot.querySelector(".gsi-target");
-    const width = Math.min(400, Math.max(200, Math.round(slot.clientWidth || 320)));
-    target.textContent = "";
-    window.google.accounts.id.renderButton(target, {
-      type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "rectangular",
-      logo_alignment: "center", width, locale: GSI_LOCALE[locale] || "en",
+  const fail = (why, e) => {
+    console.warn(`구글 로그인 버튼을 그리지 못했어요(${why}) — 예전 방식 버튼을 씀`, e || "");
+    slots.forEach(slot => { if (!slot.classList.contains("gsi-ready")) slot.classList.add("gsi-failed"); });   // CSS가 로딩 아이콘 대신 예전 방식 버튼을 보여줌
+  };
+  // 지난번에 실패했어도 그사이 구글 스크립트가 도착했으면 이번엔 구글 버튼으로 다시 시도 (아니면 예전 방식 버튼을 그대로 둠)
+  if (window.google && window.google.accounts && window.google.accounts.id) slots.forEach(slot => slot.classList.remove("gsi-failed"));
+  // 마지막 안전장치: 어느 단계에서 멈추든(스크립트·암호 계산·구글 함수) 이 시간이 지나면 예전 방식 버튼으로
+  const guard = setTimeout(() => fail("시간 초과"), LOAD_MS + 1000);
+  try {
+    await load();
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    rawNonce = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "");
+    const nonce = rawNonce;
+    window.google.accounts.id.initialize({
+      client_id: CLIENT_ID,
+      nonce: await sha256Hex(nonce),
+      callback: r => onCredential(r.credential, nonce),
+      auto_select: false,
+      itp_support: true,
     });
-    slot.classList.remove("gsi-failed");
-    slot.classList.add("gsi-ready");   // 구글은 처음부터 요청한 폭으로 그려서 바로 보여줌 (CSS가 로딩 아이콘을 숨김)
-  });
+    slots.forEach(slot => {
+      if (slot.classList.contains("gsi-failed")) return;   // 이미 시간 초과로 예전 방식 버튼이 보이면 바꾸지 않음 (보던 버튼이 갑자기 바뀌지 않게)
+      const target = slot.querySelector(".gsi-target");
+      const width = Math.min(400, Math.max(200, Math.round(slot.clientWidth || 320)));
+      target.textContent = "";
+      window.google.accounts.id.renderButton(target, {
+        type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "rectangular",
+        logo_alignment: "center", width, locale: GSI_LOCALE[locale] || "en",
+      });
+      slot.classList.add("gsi-ready");   // 구글은 처음부터 요청한 폭으로 그려서 바로 보여줌 (CSS가 로딩 아이콘을 숨김)
+    });
+  } catch (e) {
+    fail("오류", e);
+  } finally {
+    clearTimeout(guard);
+  }
 }
