@@ -32,7 +32,7 @@
     <section class="desk" aria-label="연습" data-i18n-aria="deskAria">
     <!-- 오른쪽 위: 타이머 버튼과 도움말(?) — 폰 가로에서는 아래 옵션 줄 오른쪽 -->
       <div class="desk-tools">
-        <button class="timer-btn" id="timerBtn" type="button" aria-pressed="false"><span aria-hidden="true">⏱</span><span class="btn-time" id="timerBtnTime"></span><span class="timer-label" id="timerBtnLabel" data-i18n="timerStart">타이머 켜기</span></button>
+        <button class="timer-btn" id="timerBtn" type="button" aria-pressed="false"><span aria-hidden="true">⏱</span><span class="timer-short" data-i18n="timerShort">타이머</span><span class="btn-time" id="timerBtnTime"></span><span class="timer-label" id="timerBtnLabel" data-i18n="timerStart">타이머 켜기</span></button>
         <span class="help" id="timerHelpWrap">
           <button class="help-btn" id="timerHelpBtn" type="button" aria-expanded="false" aria-controls="timerHelp" aria-label="타이머 도움말" data-i18n-aria="timerHelpLabel">?</button>
           <span class="help-pop" id="timerHelp" role="tooltip" data-i18n="timerHelp"></span>
@@ -65,6 +65,9 @@
       </div>
 
       <div class="actions">
+        <!-- 폰 세로 첫 방문 안내: 출제 설정이 아래에 있다는 걸 알려주는 떠 있는 알약 (채점 버튼 줄 바로 위, 누르면 출제 설정으로 스크롤).
+             출제 설정이 한 번 화면에 들어오면 이 기기에서는 다시 안 나옴 (pages/practice.js) -->
+        <button class="scroll-tip" id="scrollTip" type="button" hidden><span class="scroll-tip-arrow" aria-hidden="true">▼</span><span data-i18n="scrollTip">아래로 내리면 출제할 코드를 고를 수 있어요</span></button>
         <button class="btn primary" id="btnCheck"><span data-i18n="check">채점</span><kbd>Enter</kbd></button>
         <button class="btn" id="btnReveal"><span data-i18n="reveal">정답 확인</span><kbd>L</kbd></button>
         <button class="btn next" id="btnNext"><span data-i18n="next">다음 문제 →</span><kbd>N</kbd></button>

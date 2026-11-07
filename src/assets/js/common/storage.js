@@ -3,6 +3,7 @@
 //   chordoven.lang          화면 언어
 //   chordoven.settings.v2   출제 설정 (구조를 크게 바꾸면 v3로 올리고 옮기는 코드를 둘 것)
 //   chordoven.rotateTip     "폰을 가로로 돌리면…" 안내를 닫았는지
+//   chordoven.scrollTip     "아래로 내리면 출제할 코드를…" 안내를 볼 필요가 없어졌는지 (출제 설정을 한 번 봤으면 "seen")
 // 사생활 보호 모드 등에서는 localStorage가 막힐 수 있어서 모든 읽기·쓰기를 try로 감싸요.
 
 const PREFIX = "chordoven.";

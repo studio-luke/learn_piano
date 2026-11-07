@@ -3,7 +3,7 @@
 // 사용자·DB에서 온 글자(닉네임, 코드 이름 등)는 모두 esc()를 거쳐요.
 import { Engine } from "../core/engine.js";
 import { t, locale } from "../i18n/index.js";
-import { esc } from "../common/dom.js";
+import { esc, chordHTML } from "../common/dom.js";
 import { localDay, parseDay, addDays, monthAdd, period, buckets, qualityRows, rootRows, tensionRows, timeText, pct } from "./data.js";
 
 /** "2026-11-05" → 현재 언어의 날짜 글자 (opts: toLocaleDateString 옵션) */
@@ -62,7 +62,7 @@ function tableHTML(head, rows, name) {
   if (!rows.length) return "";
   return `<div class="st-scroll-x"><table class="st-table">
     <thead><tr><th>${esc(head)}</th><th class="num">${esc(t("colCount"))}</th><th class="num">${esc(t("sCorrect"))}</th><th class="num">${esc(t("sWrong"))}</th><th>${esc(t("sRate"))}</th><th class="num">${esc(t("colTime"))}</th></tr></thead>
-    <tbody>${rows.map(r => `<tr><td class="st-type">${esc(name(r))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${r.n - r.ok}</td>
+    <tbody>${rows.map(r => `<tr><td class="st-type">${chordHTML(name(r))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${r.n - r.ok}</td>
       <td><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span><span class="st-rate-n">${pct(r.ok, r.n)}%</span></td>
       <td class="num">${r.t ? esc(sec(r.ms)) : ""}</td></tr>`).join("")}</tbody></table></div>`;
 }
@@ -85,7 +85,7 @@ export function tablesHTML(data) {
 /** 틀린 문제 목록 (●는 다시 풀기에서 처음 채점에 맞힌 횟수, 2번이면 목록에서 빠짐). withButton: 다시 풀기 버튼 */
 export function reviewHTML(data, withButton) {
   const rv = data.review || [];
-  const chips = rv.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${esc(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");
+  const chips = rv.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${chordHTML(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");
   return `<section class="st-card"><div class="st-head"><h3>${esc(t("reviewH"))} <span class="st-count">${rv.length}</span></h3>
     ${withButton && rv.length ? `<button class="btn primary" type="button" id="statsReview">${esc(t("reviewStart"))}</button>` : ""}</div>
     ${rv.length ? `<p class="note">${esc(t("reviewNote"))}</p><div class="st-chips">${chips}</div>` : `<p class="st-empty">${esc(t("reviewEmpty"))}</p>`}</section>`;

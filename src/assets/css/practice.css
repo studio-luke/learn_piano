@@ -17,9 +17,12 @@
 @media (prefers-reduced-motion: reduce) { .symbol.count.pop { animation: none; } }
 .symbol.empty { font-size: 22px; font-family: var(--font-body); color: var(--muted); min-height: auto; padding-block: 24px; }
 /* 괄호 안 항목이 2개 이상이면 재즈 차트처럼 세로로 쌓음 (높은 텐션이 위) */
-.symbol .stack { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 0.03em; margin-block: 0.2em; }
-.symbol .paren { display: inline-block; transform: scaleY(1.45); font-size: 0.9em; line-height: 1; }
-.symbol .col { display: inline-flex; flex-direction: column; align-items: center; font-size: 0.4em; line-height: 1.08; padding-inline: 0.06em; }
+/* 괄호 부분(텐션·♭5)은 윗첨자처럼 작게 위로 (2026-11-07 사용자 요청). 한 개는 .sup, 두 개 이상은 세로로 쌓은 .stack */
+.symbol .sup { font-size: 0.5em; vertical-align: 0.62em; margin-left: 0.03em; line-height: 0; }
+/* 쌓은 괄호: 한 개짜리와 비슷한 크기로 작게, 위쪽에 붙임. 괄호 높이는 줄 수(--n, quiz.js symbolHTML)에 맞춰 늘림 */
+.symbol .stack { display: inline-flex; align-items: center; vertical-align: top; margin-left: 0.03em; margin-top: 0.04em; font-size: 0.55em; line-height: 1; }
+.symbol .paren { display: inline-block; transform: scaleY(calc(var(--n, 2) * 0.62 + 0.05)); line-height: 1; }
+.symbol .col { display: inline-flex; flex-direction: column; align-items: center; font-size: 0.62em; line-height: 1.02; padding-inline: 0.06em; }
 .hint { font-size: 13px; color: var(--muted); }
 .hint:empty { display: none; }
 .hint-narrow { display: none; }
@@ -43,6 +46,7 @@
 .timer { margin-left: 8px; letter-spacing: 0; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); }
 .timer.wait { font-weight: 500; }
 .timer-btn .btn-time { display: none; font-variant-numeric: tabular-nums; }
+.timer-btn .timer-short { display: none; }   /* 폰 세로에서만 "⏱ 타이머" (넓은 화면은 "타이머 켜기/끄기") */
 
 /* ---------- 틀린 문제 다시 풀기 ---------- */
 .review-bar { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 4px 3px 12px; margin-bottom: 4px; }
@@ -81,6 +85,19 @@
 .selline output { color: var(--ink); font-weight: 500; }
 .mini { display: flex; gap: 6px; margin-left: auto; }
 .rotate-tip { display: none; margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+/* 폰 세로 첫 방문: "▼ 아래로 내리면 출제할 코드를 고를 수 있어요" 알약 — 채점 버튼 줄(.actions, 화면 아래 고정) 바로 위에 떠서 통통 튐.
+   보이는 곳은 폰 세로뿐(아래 미디어 쿼리), 언제 숨길지는 pages/practice.js */
+.scroll-tip {
+  display: none; position: absolute; bottom: calc(100% + 10px); left: 0; right: 0; margin: 0 auto; width: max-content; max-width: calc(100% - 24px);
+  align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 999px;
+  background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; line-height: 1.3; text-align: left; word-break: keep-all;   /* 한국어가 낱글자로 끊기지 않게 */
+  box-shadow: 0 8px 20px -8px rgba(40,20,10,.55);
+  animation: scroll-tip-in .3s ease-out .6s both, scroll-tip-bob 1.4s ease-in-out .9s infinite;
+}
+.scroll-tip-arrow { font-size: 11px; }
+@keyframes scroll-tip-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes scroll-tip-bob { 0%, 100% { transform: none; } 50% { transform: translateY(5px); } }
+@media (prefers-reduced-motion: reduce) { .scroll-tip { animation: scroll-tip-in .3s ease-out .6s both; } }
 @media (max-width: 400px) { .long-lbl { display: none; } }   /* 좁은 화면: "▶ 재생" */
 
 /* ---------- 채점 / 정답 확인 / 다음 문제 ---------- */
@@ -121,7 +138,8 @@
   .desk-tools { top: 8px; right: 10px; }
   .prompt { padding-top: 24px; }   /* 오른쪽 위 타이머 버튼과 안내 문구가 겹치지 않게 한 줄 아래로 */
   .timer-btn { padding: 3px 10px; font-size: 12px; }
-  .timer-label { display: none; }   /* 좁은 화면: ⏱ 아이콘만 */
+  .timer-label { display: none; }   /* 좁은 화면: "켜기/끄기" 대신 짧게 "⏱ 타이머" (2026-11-07 아이콘만 있으면 무슨 버튼인지 몰라서) */
+  .timer-btn .timer-short { display: inline; }
   /* 지난 시간은 안내 문구 옆 대신 버튼 안에 (오른쪽 위 버튼과 겹치지 않게) */
   .eyebrow .timer { display: none; }
   .timer-btn .btn-time:not(:empty) { display: inline; }
@@ -130,6 +148,7 @@
   .kb-bar, .legend { padding-inline: 11px; }
   .keyboard { border-radius: 0; }
   .rotate-tip:not([hidden]) { display: block; }
+  .scroll-tip:not([hidden]) { display: flex; }
   .hint-wide { display: none; }
   .hint-narrow { display: inline; }
   .actions {

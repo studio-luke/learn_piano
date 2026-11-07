@@ -72,6 +72,24 @@ document.addEventListener("keydown", e => {
 $("rotateTip").hidden = store.get("rotateTip") === "closed";
 $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; store.set("rotateTip", "closed"); };
 
+// ---------- 폰 세로 첫 방문: 출제 설정이 아래에 있다고 알려주는 알약 (2026-11-07 사용자 요청) ----------
+// 지인들이 폰에서 스크롤을 내려야 코드 종류를 고를 수 있다는 걸 몰랐음.
+// "첫 방문"은 쿠키가 아니라 localStorage로 판단: 서버에 보낼 필요가 없는 이 기기만의 표시라서 (rotateTip과 같은 방식).
+// 들어오기만 해서는 표시하지 않고, 출제 설정 제목이 실제로 화면에 한 번 들어와야(또는 알약을 눌러야) "seen" → 다시 안 나옴.
+// 그래서 넓은 화면처럼 출제 설정이 처음부터 보이는 기기는 곧바로 seen이 되고, 알약도 CSS가 폰 세로에서만 보여줌.
+{
+  const tip = $("scrollTip");
+  const head = document.querySelector(".sheet h2");
+  const done = () => { tip.hidden = true; store.set("scrollTip", "seen"); seen.disconnect(); };
+  // 제목이 화면 위쪽 65% 안에 들어와야 "봤다"고 침 — 맨 아래에 제목만 걸쳐 있으면(채점 버튼 줄 뒤, 코드 칩은 안 보임) 아직 모르는 상태라서
+  const seen = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) done(); }, { rootMargin: "0px 0px -35% 0px" });
+  if (store.get("scrollTip") !== "seen" && head && "IntersectionObserver" in window) {
+    tip.hidden = false;
+    seen.observe(head);
+    tip.onclick = () => { done(); head.closest(".sheet").scrollIntoView({ behavior: "smooth", block: "start" }); };
+  }
+}
+
 // ---------- 타이머 ----------
 initTimer(timerHooks);
 

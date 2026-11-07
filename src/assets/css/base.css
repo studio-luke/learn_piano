@@ -205,3 +205,7 @@ a.contact-val:hover { border-bottom-color: var(--accent); color: var(--accent); 
   .stat { padding: 2px 10px; font-size: 12px; }
   .menu-btn { width: 30px; height: 30px; }   /* 머리글을 낮게 유지 */
 }
+
+/* 코드 이름 끝의 괄호(텐션·♭5)를 살짝 작게 위로 — 윗첨자 느낌 (common/dom.js chordHTML, 2026-11-07 사용자 요청).
+   line-height: 0이라 줄 높이가 늘지 않음 */
+.ch-ten { font-size: 0.75em; vertical-align: 0.35em; line-height: 0; margin-left: 0.04em; }

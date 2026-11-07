@@ -10,7 +10,7 @@
 import { startPage } from "../common/layout.js";
 import { Account } from "../account/account.js";
 import { t, locale, onLangChange } from "../i18n/index.js";
-import { $, esc } from "../common/dom.js";
+import { $, esc, chordHTML } from "../common/dom.js";
 import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, card, dateText, sec, typeName, rootName, tensionName } from "../stats/view.js";
 import { localDay, buckets, rootRows, tensionRows, weakest, pct, WEAK_MIN } from "../stats/data.js";
 import { Engine } from "../core/engine.js";
@@ -41,7 +41,7 @@ async function load() {
 function weakList(rows, name) {
   const w = weakest(rows);
   if (!w.length) return `<p class="st-empty">${esc(t("weakNone"))}</p>`;
-  return `<ol class="st-weak">${w.map(r => `<li><span class="st-weak-row"><b>${esc(name(r))}</b><span class="st-rate-n">${pct(r.ok, r.n)}% · ${esc(t("unitQ", { n: r.n }))}</span></span><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span></li>`).join("")}</ol>`;
+  return `<ol class="st-weak">${w.map(r => `<li><span class="st-weak-row"><b>${chordHTML(name(r))}</b><span class="st-rate-n">${pct(r.ok, r.n)}% · ${esc(t("unitQ", { n: r.n }))}</span></span><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span></li>`).join("")}</ol>`;
 }
 
 function render() {
@@ -71,7 +71,7 @@ function render() {
     </div><div class="st-week"><span>${esc(t("habitWeek"))}</span>${dots}</div></section>`;
 
   const recentRows = (ov.recent || []).map(r => `<tr><td class="num st-dim">${esc(dateText(r.d, { month: "numeric", day: "numeric" }))}</td>
-    <td class="st-type">${esc(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}</td><td class="st-dim">${esc(typeName(r.q))}</td>
+    <td class="st-type">${chordHTML(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}</td><td class="st-dim">${chordHTML(typeName(r.q))}</td>
     <td><span class="st-res ${r.first ? "ok" : "no"}">${esc(t(r.first ? "sCorrect" : "sWrong"))}</span></td>
     <td class="num st-dim">${r.ms != null ? esc(sec(r.ms)) : ""}</td></tr>`).join("");
   const recent = `<section class="st-card"><h3>${esc(t("recentH"))}</h3>${recentRows ? `<div class="st-scroll"><table class="st-table">

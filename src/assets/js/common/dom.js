@@ -8,6 +8,10 @@ export const $ = id => document.getElementById(id);
  *  학생이 닉네임에 스크립트를 넣어 선생님 화면에서 실행시킬 수 있어요(XSS). */
 export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+/** 코드 이름을 HTML로: 끝의 괄호(텐션·♭5 등)를 살짝 작게 위로 올린 윗첨자로 ("C7(♭9,13)" → C7<sup>(♭9,13)</sup>).
+ *  esc()를 먼저 거치므로 DB에서 온 코드 이름에 그대로 써도 안전. 모양은 base.css의 .ch-ten (2026-11-07 사용자 요청) */
+export const chordHTML = s => esc(s).replace(/\(([^()]*)\)$/, '<sup class="ch-ten">($1)</sup>');
+
 let toastTimer;
 /** 화면 아래에 잠깐 뜨는 알림. 페이지에 <div class="toast" id="toast">가 없으면 만들어 붙임 */
 export function toast(text) {
