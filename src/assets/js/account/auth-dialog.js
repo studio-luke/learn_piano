@@ -11,9 +11,12 @@ import { $ } from "../common/dom.js";
 import { ROUTES, pageUrl } from "../common/sitemap.js";
 import { CONFIG } from "../config.js";
 import { drawAvatar, squareJpeg } from "./avatar.js";
+import { prepareCaptcha } from "./captcha.js";
 
 // 사이드바 모양으로 여는 화면들
 const SIDE = new Set(["account", "profile", "changepw"]);
+// Turnstile 토큰이 필요한 화면 (captcha.js)
+const CAPTCHA_VIEWS = new Set(["login", "join", "signup", "reset", "changepw", "delete"]);
 // 화면마다 제목 문구 키
 const TITLES = { login: "viewLogin", join: "viewSignup", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw", profile: "viewProfile",
   account: "viewAccount", complete: "viewComplete", restore: "viewRestore", delete: "deleteAcct" };
@@ -227,6 +230,8 @@ export function open(v, message) {
   if (d.open && d.classList.contains("side") !== SIDE.has(v)) d.close();
   show(v, message);
   if (!d.open) d.showModal();
+  // 자동 가입 방지 토큰을 미리 준비 (버튼을 누를 때 기다리지 않게). 로그인·가입·재설정·비밀번호 확인이 있는 화면만
+  if (CAPTCHA_VIEWS.has(v)) prepareCaptcha();
   if (v === "account") countReview();
   const first = d.querySelector(`[data-view="${v}"] input`);
   if (first) first.focus();
