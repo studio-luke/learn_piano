@@ -68,6 +68,8 @@ const MARKUP = `
   <p class="auth-msg" id="authMsg" role="status"></p>
   <!-- 인증 메일 다시 보내기: 가입 직후, 또는 인증 안 된 주소로 로그인하려 할 때만 보임 (showResend) -->
   <button type="button" class="linkbtn resend-btn" id="resendBtn" hidden></button>
+  <!-- 자동 가입 방지(Turnstile): 사람 확인이 필요할 때만 여기에 확인 상자가 나타남 (captcha.js) -->
+  <div id="captchaBox"></div>
 
   <form class="auth-form" data-view="login" novalidate>
     <p class="auth-note" data-i18n="loginNote"></p>

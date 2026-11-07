@@ -105,6 +105,7 @@ export default {
   errRecoveryA: "Please enter your security answer.",
   errAnswer: "That answer doesn't match. Please try again. ({n}/5)",
   errTooMany: "Too many wrong answers. Please try again in an hour.",
+  errCaptcha: "The bot check failed. Please refresh the page and try again.",
   resetNote: "Answer the security question you set when signing up, and we'll send you a reset email.",
   doNext: "Next",
   otherEmail: "Use a different email",

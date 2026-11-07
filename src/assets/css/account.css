@@ -65,6 +65,8 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .side-menu + .side-menu { border-top: none; }
 /* 사이드바 메뉴 묶음 제목 ("계정 설정") */
 .side-head { margin: 18px 0 0; padding: 0 4px 6px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+/* 자동 가입 방지 확인 상자 (필요할 때만 Turnstile이 채움) */
+#captchaBox:not(:empty) { margin: 0 0 12px; display: flex; justify-content: center; }
 /* 인증 메일 다시 보내기 (안내 문구 바로 아래) */
 .resend-btn { display: block; margin: -4px 0 12px; padding: 2px 0; }
 .resend-btn:disabled { color: var(--muted); cursor: default; }

@@ -106,6 +106,7 @@ export default {
   errRecoveryA: "본인 확인 답변을 입력해 주세요.",
   errAnswer: "답이 맞지 않아요. 다시 확인해 주세요. ({n}/5회)",
   errTooMany: "틀린 횟수가 많아요. 1시간 뒤에 다시 시도해 주세요.",
+  errCaptcha: "자동 가입 방지 확인에 실패했어요. 새로고침한 뒤 다시 시도해 주세요.",
   resetNote: "가입할 때 등록한 본인 확인 질문에 답하면 재설정 메일을 보내 드려요.",
   doNext: "다음",
   otherEmail: "다른 이메일 입력",

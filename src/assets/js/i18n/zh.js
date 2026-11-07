@@ -105,6 +105,7 @@ export default {
   errRecoveryA: "请输入身份验证答案。",
   errAnswer: "答案不正确，请重新确认。（{n}/5次）",
   errTooMany: "错误次数过多，请一小时后再试。",
+  errCaptcha: "人机验证失败，请刷新页面后重试。",
   resetNote: "回答注册时设置的身份验证问题后，我们会向你发送重置邮件。",
   doNext: "下一步",
   otherEmail: "输入其他邮箱",

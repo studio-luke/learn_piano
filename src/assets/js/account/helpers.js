@@ -21,7 +21,7 @@ export function errorKey(err) {
     invalid_credentials: "errInvalid", email_not_confirmed: "errNotConfirmed",
     user_already_exists: "errExists", email_exists: "errExists",
     weak_password: "errWeak", same_password: "errSamePw", email_address_invalid: "errEmail",
-    over_email_send_rate_limit: "errRate", over_request_rate_limit: "errRate",
+    over_email_send_rate_limit: "errRate", over_request_rate_limit: "errRate", captcha_failed: "errCaptcha",
   };
   if (byCode[code]) return byCode[code];
   if (err.status === 429) return "errRate";
