@@ -16,14 +16,6 @@ import { CONFIG } from "../config.js";
 import { Engine } from "../core/engine.js";
 import { localDay } from "../stats/data.js";
 import { isPublicKey, missingFields, needsConsent, syncable } from "./helpers.js";
-import { captchaToken } from "./captcha.js";
-
-// 자동 가입 방지 토큰(Turnstile)을 먼저 받아 fn(token, …)을 부름. 토큰을 못 받으면 Supabase 오류와 같은 모양으로 돌려줌
-const withCaptcha = fn => async (...args) => {
-  let token;
-  try { token = await captchaToken(); } catch (e) { return { data: null, error: { code: "captcha_failed", message: String(e) } }; }
-  return fn(token, ...args);
-};
 
 // supabase-js는 회원 기능이 켜져 있을 때만 CDN에서 불러와요. integrity(SRI)는 그 파일 내용이 바뀌면 거부하게 하는 지문.
 // 버전을 올리면 두 값을 같이 바꿀 것 (지문: https://www.srihash.org 또는 openssl dgst -sha384 -binary | openssl base64 -A)
@@ -118,12 +110,10 @@ export const Account = {
   },
 
   // ---------- 로그인·가입·비밀번호 (결과는 { data, error } 그대로 돌려줌) ----------
-  // 아래 다섯 가지(로그인·가입·인증 메일 다시 보내기·재설정 메일·비밀번호 확인)는 Turnstile 토큰을 함께 보냄 (captcha.js)
-  signIn: withCaptcha((captchaToken, email, password) => sb.auth.signInWithPassword({ email, password, options: { captchaToken } })),
-  signUp: withCaptcha((captchaToken, email, password, data, redirectTo) =>
-    sb.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo, data, captchaToken } })),
+  signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
+  signUp: (email, password, data, redirectTo) => sb.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo, data } }),
   /** 가입 인증 메일 다시 보내기 (같은 주소는 Supabase가 60초에 한 번만 보냄) */
-  resendSignup: withCaptcha((captchaToken, email, redirectTo) => sb.auth.resend({ type: "signup", email, options: { emailRedirectTo: redirectTo, captchaToken } })),
+  resendSignup: (email, redirectTo) => sb.auth.resend({ type: "signup", email, options: { emailRedirectTo: redirectTo } }),
   /** 소셜 로그인 (google, kakao, apple …): 그 회사 로그인 화면으로 갔다가 redirectTo로 돌아옴 */
   signInWithProvider: (provider, redirectTo) => sb.auth.signInWithOAuth({ provider, options: { redirectTo } }),
   /** 소셜 로그인 첫 방문: 성명·닉네임·언어 + 14세 확인·약관 동의를 저장(DB 함수)하고 프로필을 다시 불러옴 */
@@ -164,10 +154,10 @@ export const Account = {
   resetQuestion: email => sb.rpc("reset_question", { p_email: email }),
   /** 비밀번호 찾기 2단계: 답이 맞는지 → { ok, wrong(최근 1시간 틀린 횟수) }. 1시간에 5번 틀리면 오류 too_many */
   checkResetAnswer: (email, answer) => sb.rpc("check_reset_answer", { p_email: email, p_answer: answer }),
-  resetPassword: withCaptcha((captchaToken, email, redirectTo) => sb.auth.resetPasswordForEmail(email, { redirectTo, captchaToken })),
+  resetPassword: (email, redirectTo) => sb.auth.resetPasswordForEmail(email, { redirectTo }),
   updatePassword: password => sb.auth.updateUser({ password }),
   /** 현재 비밀번호 확인: 그 비밀번호로 다시 로그인해 봄 (틀려도 지금 로그인은 유지됨 — supabase-js 코드로 확인) */
-  verifyPassword: withCaptcha((captchaToken, password) => sb.auth.signInWithPassword({ email: user.email, password, options: { captchaToken } })),
+  verifyPassword: password => sb.auth.signInWithPassword({ email: user.email, password }),
   signOut: () => sb.auth.signOut(),
   /** 회원 탈퇴 신청 → 지워지는 날짜를 돌려줌 */
   requestDeletion: () => sb.rpc("request_account_deletion"),
