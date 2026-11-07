@@ -68,11 +68,22 @@ create trigger profiles_touch_updated_at before update on public.profiles
 -- Sign-up sends nickname / full_name / preferred_lang / age14 / terms_version as user metadata (src/account.js).
 -- A sign-up without the 14+ confirmation or without agreeing to the terms is rejected here,
 -- so skipping the checkboxes in the browser does not get around it.
+-- Social sign-in (Google, Kakao, …) cannot send these fields, so for those the profile starts without consent
+-- (age14_confirmed false, terms_version null, provider name, placeholder language). The site then shows the
+-- "complete" screen and complete_signup() below records the consent; until then nothing is recorded.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
   meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
+  nick text;
 begin
+  if coalesce(new.raw_app_meta_data ->> 'provider', 'email') <> 'email' then
+    nick := left(coalesce(nullif(trim(coalesce(meta ->> 'nickname', meta ->> 'name', meta ->> 'full_name', meta ->> 'user_name', meta ->> 'preferred_username')), ''),
+                          nullif(split_part(coalesce(new.email, ''), '@', 1), ''), 'member'), 20);
+    insert into public.profiles (id, nickname, full_name, preferred_lang, age14_confirmed, terms_version)
+    values (new.id, nick, left(coalesce(nullif(trim(coalesce(meta ->> 'full_name', meta ->> 'name')), ''), nick), 50), 'en', false, null);
+    return new;
+  end if;
   if coalesce((meta ->> 'age14')::boolean, false) is not true then
     raise exception 'age14_required';
   end if;
@@ -102,6 +113,36 @@ revoke execute on function public.handle_new_user() from public, anon, authentic
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- social sign-in, first time: the member confirms name / nickname / language and agrees on the "complete" screen.
+-- Consent columns are not in the browser's update grant, so they change only here (same checks as handle_new_user).
+create or replace function public.complete_signup(p_full_name text, p_nickname text, p_lang text, p_age14 boolean, p_terms_version text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  if p_age14 is not true then
+    raise exception 'age14_required';
+  end if;
+  if coalesce(p_terms_version, '') = '' then
+    raise exception 'terms_required';
+  end if;
+  if coalesce(trim(p_full_name), '') = '' then
+    raise exception 'full_name_required';
+  end if;
+  if coalesce(p_lang, '') not in ('ko', 'en', 'ja', 'zh') then
+    raise exception 'preferred_lang_required';
+  end if;
+  update public.profiles
+    set full_name = left(trim(p_full_name), 50),
+        nickname = left(coalesce(nullif(trim(p_nickname), ''), nickname), 20),
+        preferred_lang = p_lang, age14_confirmed = true, terms_version = p_terms_version
+    where id = auth.uid();
+end;
+$$;
+revoke execute on function public.complete_signup(text, text, text, boolean, text) from public, anon;
+grant execute on function public.complete_signup(text, text, text, boolean, text) to authenticated;
 
 -- ---------- keep the auth email language in step with the profile ----------
 -- Supabase's email templates (docs/supabase-email-templates.md) pick the language from the user metadata
@@ -275,8 +316,8 @@ begin
   if uid is null then
     raise exception 'not signed in';
   end if;
-  if not exists (select 1 from public.profiles where id = uid and deleted_at is null) then
-    return;   -- leaving (7-day grace period): nothing is recorded
+  if not exists (select 1 from public.profiles where id = uid and deleted_at is null and terms_version is not null and age14_confirmed) then
+    return;   -- leaving (7-day grace period), or a social sign-in that has not agreed yet: nothing is recorded
   end if;
   -- the time counts only with the user's own timer session, and (outside 틀린 문제 다시 풀기) only for a question
   -- the session's settings could have asked — so a doctored page cannot time easy chords outside the saved settings

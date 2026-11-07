@@ -1,7 +1,7 @@
 // ===== 회원 기능 — 로그인 창과 계정 사이드바 (화면) =====
 // 한 개의 <dialog>가 두 모양으로 쓰여요.
 //   - 가운데 창: 로그인, 회원가입, 비밀번호 재설정, 새 비밀번호, 계정 복구, 정보 추가 입력, 회원 탈퇴
-//   - 오른쪽 사이드바(.side): 로그인한 뒤의 "내 계정" 메뉴와 비밀번호 변경
+//   - 오른쪽 사이드바(.side): 로그인한 뒤의 "내 계정" 메뉴, 회원 정보 변경, 비밀번호 변경
 // 창의 HTML은 아래 MARKUP에 있고, 페이지가 열릴 때 <body> 끝에 붙여요(모든 페이지가 같은 창을 쓰도록).
 // 실제 로그인·DB 작업은 account.js의 Account가 하고, 여기서는 입력 확인과 화면 전환만 해요.
 import { Account } from "./account.js";
@@ -9,11 +9,12 @@ import { errorKey, missingFields, langForTimeZone, TERMS_VERSION, PW_MIN, NICK_M
 import { t, lang, locale, setLang, applyI18n, onLangChange } from "../i18n/index.js";
 import { $ } from "../common/dom.js";
 import { ROUTES, pageUrl } from "../common/sitemap.js";
+import { CONFIG } from "../config.js";
 
 // 사이드바 모양으로 여는 화면들
-const SIDE = new Set(["account", "changepw"]);
+const SIDE = new Set(["account", "profile", "changepw"]);
 // 화면마다 제목 문구 키
-const TITLES = { login: "viewLogin", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw",
+const TITLES = { login: "viewLogin", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw", profile: "viewProfile",
   account: "viewAccount", complete: "viewComplete", restore: "viewRestore", delete: "deleteAcct" };
 
 // 비밀번호 칸 오른쪽의 눈 모양 버튼 (누르고 있는 동안 비밀번호가 보임)
@@ -24,12 +25,30 @@ const pw = (name, autocomplete, labelKey, hint = "") =>
 const LANG_OPTIONS = `<option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">简体中文</option>`;
 const PW_HINT = `<small data-i18n="pwHint"></small>`;
 
+// 소셜 로그인 버튼 (config.js의 oauthProviders에 있는 것만, 그 순서로). 색·로고는 각 회사의 로그인 버튼 안내를 따름
+const SOCIAL_ICONS = {
+  google: `<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>`,
+  kakao: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#000" d="M12 3C6.48 3 2 6.58 2 11c0 2.85 1.86 5.35 4.66 6.77l-.95 3.48c-.08.3.26.54.52.37l4.15-2.75c.53.07 1.07.11 1.62.11 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg>`,
+  apple: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.86-.76-1.47.02-2.83.86-3.59 2.17-1.53 2.66-.39 6.6 1.1 8.76.73 1.06 1.6 2.24 2.73 2.2 1.1-.04 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.23 1.18-2.42 1.2-2.48-.03-.01-2.3-.88-2.32-3.5zM14.2 6.13c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.64-1.05 1.67-.92 2.66.97.08 1.96-.49 2.56-1.21z"/></svg>`,
+};
+const SOCIAL_KEYS = { google: "withGoogle", kakao: "withKakao", apple: "withApple" };
+const PROVIDERS = (CONFIG.oauthProviders || []).filter(p => SOCIAL_ICONS[p]);
+const SOCIAL = PROVIDERS.length ? `<div class="auth-or" data-i18n="orDivider"></div><div class="social">${PROVIDERS.map(p =>
+  `<button type="button" class="btn social-btn ${p}" data-provider="${p}">${SOCIAL_ICONS[p]}<span data-i18n="${SOCIAL_KEYS[p]}"></span></button>`).join("")}</div>` : "";
+// 처음 가입할 때 받는 동의 (이메일 가입 화면, 소셜 로그인 첫 방문의 정보 입력 화면)
+const CONSENT = `
+    <label class="check"><input type="checkbox" name="age14" required><span data-i18n="agreeAge"></span></label>
+    <label class="check"><input type="checkbox" name="terms" required><span data-i18n="agreeTermsHTML"></span></label>
+    <label class="check"><input type="checkbox" name="privacy" required><span data-i18n="agreePrivacyHTML"></span></label>`;
+
 // 창 HTML. data-view = 화면 이름, data-i18n = 문구 키 (applyI18n이 채움), data-go = 누르면 그 화면으로
 const MARKUP = `
 <dialog class="auth" id="authDlg" aria-labelledby="authTitle">
   <form method="dialog" class="auth-close"><button class="icon-btn" aria-label="닫기" data-i18n-aria="close">✕</button></form>
   <h2 id="authTitle"></h2>
   <p class="auth-msg" id="authMsg" role="status"></p>
+  <!-- 인증 메일 다시 보내기: 가입 직후, 또는 인증 안 된 주소로 로그인하려 할 때만 보임 (showResend) -->
+  <button type="button" class="linkbtn resend-btn" id="resendBtn" hidden></button>
 
   <form class="auth-form" data-view="login" novalidate>
     <p class="auth-note" data-i18n="loginNote"></p>
@@ -37,6 +56,7 @@ const MARKUP = `
     ${pw("password", "current-password", "password")}
     <button class="btn primary" type="submit" data-i18n="login"></button>
     <div class="auth-links"><button type="button" class="linkbtn" data-go="signup" data-i18n="goSignup"></button><button type="button" class="linkbtn" data-go="reset" data-i18n="goReset"></button></div>
+    ${SOCIAL}
   </form>
 
   <form class="auth-form" data-view="signup" novalidate hidden>
@@ -46,11 +66,10 @@ const MARKUP = `
     ${pw("password", "new-password", "password", PW_HINT)}
     ${pw("password2", "new-password", "passwordConfirm")}
     <label class="field"><span data-i18n="prefLang"></span><select name="lang" id="signupLang">${LANG_OPTIONS}</select><small data-i18n="prefLangHint"></small></label>
-    <label class="check"><input type="checkbox" name="age14" required><span data-i18n="agreeAge"></span></label>
-    <label class="check"><input type="checkbox" name="terms" required><span data-i18n="agreeTermsHTML"></span></label>
-    <label class="check"><input type="checkbox" name="privacy" required><span data-i18n="agreePrivacyHTML"></span></label>
+    ${CONSENT}
     <button class="btn primary" type="submit" data-i18n="doSignup"></button>
     <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="goLogin"></button></div>
+    ${SOCIAL}
   </form>
 
   <form class="auth-form" data-view="reset" novalidate hidden>
@@ -65,6 +84,16 @@ const MARKUP = `
     <button class="btn primary" type="submit" data-i18n="doNewpw"></button>
   </form>
 
+  <!-- 회원 정보 변경: 지금 정보를 채워 두고, 하나라도 바뀌었을 때만 저장 버튼이 켜짐 (profileReady). 이메일은 보기만 -->
+  <form class="auth-form" data-view="profile" novalidate hidden>
+    <label class="field"><span data-i18n="email"></span><input type="email" name="email" readonly tabindex="-1"><small data-i18n="emailFixedHint"></small></label>
+    <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
+    <label class="field"><span data-i18n="nickname"></span><input type="text" name="nickname" autocomplete="nickname" maxlength="${NICK_MAX}" required><small data-i18n="nicknameHint"></small></label>
+    <label class="field"><span data-i18n="prefLang"></span><select name="lang">${LANG_OPTIONS}</select><small data-i18n="prefLangHint"></small></label>
+    <button class="btn primary" type="submit" id="profileSave" disabled data-i18n="doSave"></button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount"></button></div>
+  </form>
+
   <form class="auth-form" data-view="changepw" novalidate hidden>
     ${pw("current", "current-password", "currentPassword")}
     ${pw("password", "new-password", "newPassword", PW_HINT)}
@@ -76,7 +105,7 @@ const MARKUP = `
   <form class="auth-form" data-view="delete" novalidate hidden>
     <p class="auth-warn" data-i18n="deleteConfirm"></p>
     ${pw("current", "current-password", "currentPassword")}
-    <label class="field"><span data-i18n="deleteTypeHTML"></span><input type="text" name="phrase" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>
+    <label class="field"><span class="delete-type" data-i18n="deleteTypeHTML"></span><input type="text" name="phrase" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>
     <button class="btn danger" type="submit" id="deleteSubmit" disabled data-i18n="deleteAcct"></button>
     <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount"></button></div>
   </form>
@@ -87,9 +116,15 @@ const MARKUP = `
     <button class="btn" type="button" id="restoreLogoutBtn" data-i18n="logout"></button>
   </div>
 
+  <!-- 정보 추가 입력: 필수 항목이 새로 생긴 경우(성명만), 또는 소셜 로그인 첫 방문(.consent 부분까지 — 닉네임·언어·동의) -->
   <form class="auth-form" data-view="complete" novalidate hidden>
-    <p class="auth-note" data-i18n="completeNote"></p>
+    <p class="auth-note" id="completeNote"></p>
     <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
+    <div class="consent auth-form" hidden>
+      <label class="field"><span data-i18n="nickname"></span><input type="text" name="nickname" autocomplete="nickname" maxlength="${NICK_MAX}" required><small data-i18n="nicknameHint"></small></label>
+      <label class="field"><span data-i18n="prefLang"></span><select name="lang">${LANG_OPTIONS}</select><small data-i18n="prefLangHint"></small></label>
+      ${CONSENT}
+    </div>
     <button class="btn primary" type="submit" data-i18n="doSave"></button>
   </form>
 
@@ -99,6 +134,11 @@ const MARKUP = `
       <a class="menu-item" id="menuMy" href="${pageUrl(ROUTES.mypage)}"><span data-i18n="menuMy"></span><span class="chev" aria-hidden="true">›</span></a>
       <a class="menu-item" id="menuStudents" href="${pageUrl(ROUTES.teacher)}" hidden><span data-i18n="menuStudents"></span><span class="chev" aria-hidden="true">›</span></a>
       <button class="menu-item" type="button" id="menuReview"><span data-i18n="menuReview"></span><span class="badge" id="reviewCount"></span></button>
+    </nav>
+    <!-- 계정 설정 묶음 (2026-11-07 사용자 결정: 메뉴가 모두 나란히 있어 읽기 어려움 → 제목으로 나눔) -->
+    <nav class="side-menu" aria-labelledby="acctSettingsHead">
+      <h3 class="side-head" id="acctSettingsHead" data-i18n="acctSettings"></h3>
+      <button class="menu-item" type="button" data-go="profile"><span data-i18n="menuProfile"></span><span class="chev" aria-hidden="true">›</span></button>
       <button class="menu-item" type="button" data-go="changepw"><span data-i18n="changePw"></span><span class="chev" aria-hidden="true">›</span></button>
       <button class="menu-item" type="button" id="logoutBtn"><span data-i18n="logout"></span></button>
     </nav>
@@ -141,8 +181,10 @@ function show(v, message) {
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { /* 시간대를 모르면 영어 */ }
     $("signupLang").value = langForTimeZone(tz);
   }
-  if (v === "complete" && Account.profile) form("complete").fullName.value = Account.profile.full_name || "";
+  if (v === "complete") fillComplete();
+  hideResend();
   if (v === "delete") { form("delete").reset(); deleteReady(); }
+  if (v === "profile") fillProfile();
   // 앞 화면에서 보이게 해 둔 비밀번호가 다음 화면에서도 보이면 안 됨
   dlg().querySelectorAll(".pw-wrap input").forEach(i => { i.type = "password"; });
   dlg().querySelectorAll(".pw-eye").forEach(b => b.classList.remove("on"));
@@ -190,6 +232,61 @@ async function countReview() {
   $("menuReview").disabled = !n;
 }
 
+// 정보 추가 입력 화면: 소셜 로그인 첫 방문이면 닉네임·언어·동의 칸도 보여주고, 아는 값(소셜 계정 이름 등)을 미리 채움
+function fillComplete() {
+  const f = form("complete"), p = Account.profile || {}, consent = Account.needsConsent();
+  f.querySelector(".consent").hidden = !consent;
+  f.querySelectorAll(".consent input, .consent select").forEach(el => { el.disabled = !consent; });
+  $("completeNote").dataset.i18n = consent ? "completeSocialNote" : "completeNote";
+  $("completeNote").textContent = t($("completeNote").dataset.i18n);
+  f.fullName.value = p.full_name || "";
+  if (consent) {
+    f.nickname.value = p.nickname || "";
+    f.lang.value = lang();   // 지금 보고 있는 화면 언어 (프로필의 en은 임시값)
+  }
+}
+
+// ---------- 인증 메일 다시 보내기 ----------
+let resendEmail = "", resendLeft = 0, resendTimer = null;
+const RESEND_WAIT = 60;   // 초. Supabase가 같은 주소에 60초에 한 번만 보내서 그동안 버튼을 끔
+function drawResend() {
+  const b = $("resendBtn");
+  b.disabled = resendLeft > 0;
+  b.textContent = t("resendConfirm") + (resendLeft > 0 ? ` (${resendLeft})` : "");
+}
+function showResend(email) { resendEmail = email; $("resendBtn").hidden = false; drawResend(); }
+function hideResend() { $("resendBtn").hidden = true; }
+async function resend() {
+  if (!resendEmail || resendLeft > 0 || needClient()) return;
+  resendLeft = RESEND_WAIT; drawResend();
+  clearInterval(resendTimer);
+  resendTimer = setInterval(() => { resendLeft--; drawResend(); if (resendLeft <= 0) clearInterval(resendTimer); }, 1000);
+  const { error } = await Account.resendSignup(resendEmail, here());
+  setMsg(error ? "no" : "ok", error ? errorKey(error) : "msgResent");
+}
+
+// 회원 정보 변경 화면: 지금 계정 정보로 칸을 채움 (열 때마다 — 저장하지 않고 나갔다 오면 원래 값으로)
+function fillProfile() {
+  const f = form("profile"), p = Account.profile || {};
+  f.email.value = Account.user ? Account.user.email : "";
+  f.fullName.value = p.full_name || "";
+  f.nickname.value = p.nickname || "";
+  f.lang.value = p.preferred_lang || lang();
+  profileReady();
+}
+// 바뀐 칸만 { 열 이름: 새 값 }으로 (앞뒤 빈칸은 무시하고 비교)
+function profileChanges() {
+  const f = form("profile"), p = Account.profile || {}, out = {};
+  if (f.fullName.value.trim() !== (p.full_name || "")) out.full_name = f.fullName.value.trim();
+  if (f.nickname.value.trim() !== (p.nickname || "")) out.nickname = f.nickname.value.trim();
+  if (f.lang.value !== p.preferred_lang) out.preferred_lang = f.lang.value;
+  return out;
+}
+// 저장 버튼: 하나라도 바뀌었을 때만 켜짐
+function profileReady() {
+  $("profileSave").disabled = !Object.keys(profileChanges()).length;
+}
+
 // 비밀번호 확인 칸 제목 옆 표시: 확인 칸에 뭔가 썼을 때만, 두 칸이 같으면 초록 "일치합니다", 다르면 주황 "일치하지 않습니다"
 // (회원가입·새 비밀번호·비밀번호 변경 화면 모두. 실제 제출 때는 SUBMIT에서 한 번 더 확인)
 function pwMatch() {
@@ -229,7 +326,7 @@ async function busy(f, fn) {
   const btn = f.querySelector('[type="submit"]');
   if (btn) btn.disabled = true;
   try { await fn(); } catch (e) { setMsg("no", errorKey(e)); }
-  finally { if (btn) btn.disabled = false; if (f.dataset.view === "delete") deleteReady(); }
+  finally { if (btn) btn.disabled = false; if (f.dataset.view === "delete") deleteReady(); if (f.dataset.view === "profile") profileReady(); }
 }
 // 아직 Supabase를 못 불러왔으면 네트워크 오류로 안내
 const needClient = () => (Account.client ? false : (setMsg("no", "errNetwork"), true));
@@ -241,7 +338,11 @@ const SUBMIT = {
     if (!validEmail(email)) return setMsg("no", "errEmail");
     if (needClient()) return;
     const { error } = await Account.signIn(email, password);
-    if (error) return setMsg("no", errorKey(error));
+    if (error) {
+      setMsg("no", errorKey(error));
+      if (error.code === "email_not_confirmed") showResend(email); else hideResend();
+      return;
+    }
     f.reset(); close();
   },
   async signup(f) {
@@ -260,15 +361,37 @@ const SUBMIT = {
     if (error) return setMsg("no", errorKey(error));
     f.reset();
     // 이메일 인증을 켜 두어서 보통 세션이 없음 (이미 가입된 주소도 같은 안내 — 가입 여부를 알려주지 않으려고)
-    if (data.session) close(); else show("login", { kind: "ok", key: "msgSignupSent" });
+    if (data.session) close(); else { show("login", { kind: "ok", key: "msgSignupSent" }); showResend(email); }
     if (chosenLang !== lang()) setLang(chosenLang);   // 고른 언어를 바로 화면 언어로
   },
   async complete(f) {
     const fullName = f.fullName.value.trim();
     if (!fullName || fullName.length > NAME_MAX) return setMsg("no", "errFullName");
+    if (Account.needsConsent()) {
+      // 소셜 로그인 첫 방문: 동의는 DB(complete_signup)도 다시 검사함 — 여기는 편의용
+      const nickname = f.nickname.value.trim();
+      if (!nickname || nickname.length > NICK_MAX) return setMsg("no", "errNickname");
+      if (!f.age14.checked || !f.terms.checked || !f.privacy.checked) return setMsg("no", "errAgree");
+      const { error } = await Account.completeSignup({ p_full_name: fullName, p_nickname: nickname, p_lang: f.lang.value,
+        p_age14: true, p_terms_version: TERMS_VERSION });
+      if (error) return setMsg("no", errorKey(error));
+      f.reset(); close();   // 프로필을 다시 불러오며 고른 언어가 화면에 적용됨 ("profile" 이벤트)
+      return;
+    }
     const { error } = await Account.updateProfile({ full_name: fullName });
     if (error) return setMsg("no", errorKey(error));
     show("account", { kind: "ok", key: "msgSaved" });
+  },
+  // 내 계정 → 회원 정보 변경: 바뀐 칸만 저장. 사용 언어를 바꿨으면 화면 언어도 바로 바꿈 (언어별 페이지는 그 언어 주소로 이동)
+  async profile(f) {
+    const changes = profileChanges();
+    if (!Object.keys(changes).length) return;
+    if ("full_name" in changes && (!changes.full_name || changes.full_name.length > NAME_MAX)) return setMsg("no", "errFullName");
+    if ("nickname" in changes && (!changes.nickname || changes.nickname.length > NICK_MAX)) return setMsg("no", "errNickname");
+    const { error } = await Account.updateProfile(changes);
+    if (error) return setMsg("no", errorKey(error));
+    show("account", { kind: "ok", key: "msgSaved" });
+    if (changes.preferred_lang && changes.preferred_lang !== lang()) setLang(changes.preferred_lang);
   },
   async reset(f) {
     const email = f.email.value.trim();
@@ -325,7 +448,11 @@ export function initAuthDialog() {
 
   // 계정 복구 창을 닫으면(✕, Esc) 탈퇴를 그대로 두고 로그아웃.
   // dialog의 "close" 이벤트 대신 각 동작에서 처리: 창을 빠르게 닫았다 열면 Chrome이 close 이벤트를 빠뜨리는 경우가 있었음
-  const declineRestore = () => { if (view === "restore" && Account.profile && Account.profile.deleted_at) Account.signOut(); };
+  // 소셜 로그인 첫 방문에서 동의하지 않고 창을 닫아도 같은 방식으로 로그아웃 (동의 전에는 계정을 쓰지 않음)
+  const declineRestore = () => {
+    if (view === "restore" && Account.profile && Account.profile.deleted_at) Account.signOut();
+    if (view === "complete" && Account.needsConsent()) Account.signOut();
+  };
   dlg().addEventListener("cancel", declineRestore);
   dlg().querySelector(".auth-close button").addEventListener("click", declineRestore);
   // 가운데 창(로그인·회원가입 등)은 ✕나 Esc로만 닫힘. 바깥(어두운 배경)을 눌러도 닫지 않음 (2026-11-07 사용자 결정):
@@ -348,8 +475,25 @@ export function initAuthDialog() {
     f.addEventListener("submit", e => { e.preventDefault(); busy(f, () => SUBMIT[f.dataset.view](f)); });
   });
   form("delete").addEventListener("input", deleteReady);
+  form("profile").addEventListener("input", profileReady);
+  form("profile").addEventListener("change", profileReady);   // 언어 고르기(select)
   dlg().addEventListener("input", e => { if (e.target.name === "password" || e.target.name === "password2") pwMatch(); });
   onLangChange(pwMatch);
+
+  $("resendBtn").onclick = resend;
+  dlg().querySelectorAll("[data-provider]").forEach(b => {
+    b.onclick = async () => {
+      if (needClient()) return;
+      const { error } = await Account.signInWithProvider(b.dataset.provider, here());
+      if (error) setMsg("no", errorKey(error));   // 성공하면 그 회사 로그인 화면으로 이동해서 여기로 안 옴
+    };
+  });
+  // 소셜 로그인에서 돌아왔는데 실패한 경우 (주소 뒤에 error_description이 붙어 옴) → 로그인 창에 안내
+  const back = new URLSearchParams(location.hash.slice(1) || location.search);
+  if (back.get("error_description")) {
+    open("login", { kind: "no", key: "errOauth" });
+    history.replaceState(null, "", location.pathname);
+  }
 
   $("logoutBtn").onclick = async () => { await Account.signOut(); close(); };
   $("menuReview").onclick = () => { close(); hooks.startReview(); };
@@ -370,6 +514,8 @@ export function initAuthDialog() {
     $("authTitle").textContent = t(TITLES[view]);
     setMsg(msg.kind, msg.key, msg.vars);
     deleteReady();
+    drawResend();
+    if (view === "complete") $("completeNote").textContent = t($("completeNote").dataset.i18n);
     render();
   });
   render();

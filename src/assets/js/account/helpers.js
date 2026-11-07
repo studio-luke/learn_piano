@@ -37,6 +37,9 @@ export function langForTimeZone(tz) {
   return "en";
 }
 
+/** 소셜 로그인으로 처음 들어와 아직 14세 확인·약관 동의를 안 한 회원인지 (DB의 complete_signup으로 채워짐) */
+export const needsConsent = p => !!p && (!p.age14_confirmed || !p.terms_version);
+
 /** 프로필에서 비어 있는 필수 항목 목록 */
 export const missingFields = p => REQUIRED.filter(k => !p || p[k] == null || String(p[k]).trim() === "");
 

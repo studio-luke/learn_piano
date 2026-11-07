@@ -8,4 +8,7 @@
 export const CONFIG = {
   supabaseUrl: "https://joxtekvxbivcvreyjhrv.supabase.co",
   supabaseKey: "sb_publishable_R-IxJhURzrREQIdFC7hvhg_NHCritIT",
+  // 로그인 창에 보여줄 소셜 로그인 버튼 (순서대로). 쓸 수 있는 값: "google", "kakao", "apple"
+  // Supabase 대시보드(Authentication → Sign In / Providers)에서 그 회사를 켠 뒤에만 넣을 것 — 켜기 전에 넣으면 눌렀을 때 오류
+  oauthProviders: [],
 };

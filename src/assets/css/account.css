@@ -17,6 +17,8 @@ dialog.auth::backdrop { background: rgba(40,25,15,.45); }
 .auth-msg.no { background: var(--warn-soft); color: var(--warn); }
 /* 회원 탈퇴 경고 */
 .auth-warn { margin: 0; font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+/* 회원 탈퇴 확인 문구: 따라 써야 할 부분(문구 파일의 <b>…</b>)만 경고색 바탕으로 감싸 어디부터 어디까지인지 보이게 */
+.delete-type b { color: var(--warn); background: var(--warn-soft); padding: 1px 6px; border-radius: 6px; font-weight: 700; white-space: nowrap; }
 
 /* 입력 칸 */
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
@@ -29,6 +31,8 @@ dialog.auth::backdrop { background: rgba(40,25,15,.45); }
 /* 글자 크기 16px: 이보다 작으면 아이폰이 칸을 누를 때 화면을 확대함 */
 .field input, .field select { font-size: 16px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
 .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+/* 바꿀 수 없는 칸(회원 정보 변경의 이메일): 회색 바탕으로 입력칸이 아님을 보여줌 */
+.field input[readonly] { background: var(--sunken); color: var(--muted); }
 /* 비밀번호 칸 + 오른쪽 안의 눈 버튼 */
 .pw-wrap { position: relative; display: flex; }
 .pw-wrap input { width: 100%; padding-right: 46px; }
@@ -48,5 +52,21 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .menu-item:hover:not(:disabled) { color: var(--accent); }
 .menu-item:disabled { color: var(--muted); cursor: default; }
 .menu-item .chev { color: var(--muted); }
+/* 두 번째 묶음의 위쪽 선은 빼기 — 앞 묶음 마지막 항목의 아래 선과 겹쳐 선이 두 줄로 보였음 */
+.side-menu + .side-menu { border-top: none; }
+/* 사이드바 메뉴 묶음 제목 ("계정 설정") */
+.side-head { margin: 18px 0 0; padding: 0 4px 6px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+/* 인증 메일 다시 보내기 (안내 문구 바로 아래) */
+.resend-btn { display: block; margin: -4px 0 12px; padding: 2px 0; }
+.resend-btn:disabled { color: var(--muted); cursor: default; }
+/* 소셜 로그인: "또는" 구분선 + 회사별 버튼 (색은 각 회사 안내: 구글 흰색, 카카오 노랑 #FEE500, 애플 검정) */
+.auth-or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin-top: 4px; }
+.auth-or::before, .auth-or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.social { display: flex; flex-direction: column; gap: 8px; }
+.social-btn { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; }
+.btn.social-btn.google, .btn.social-btn.google:hover:not(:disabled) { background: #fff; color: #1f1f1f; border-color: #dadce0; }
+.btn.social-btn.kakao, .btn.social-btn.kakao:hover:not(:disabled) { background: #FEE500; color: rgba(0,0,0,.85); border-color: #FEE500; }
+.btn.social-btn.apple, .btn.social-btn.apple:hover:not(:disabled) { background: #000; color: #fff; border-color: #000; }
+.social-btn:hover:not(:disabled) { filter: brightness(.96); }
 .badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-align: center; margin-left: auto; }
 .badge:empty { display: none; }

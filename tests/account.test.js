@@ -56,6 +56,13 @@ test("errorKey maps Supabase errors to messages", () => {
   assert.strictEqual(Account.errorKey({ code: "unexpected_failure", status: 500, message: "Database error saving new user" }), "errGeneric");
 });
 
+test("needsConsent: a social sign-in has to agree before the account is used", () => {
+  assert.strictEqual(Account.needsConsent({ age14_confirmed: false, terms_version: null }), true);
+  assert.strictEqual(Account.needsConsent({ age14_confirmed: true, terms_version: null }), true);
+  assert.strictEqual(Account.needsConsent({ age14_confirmed: true, terms_version: "2026-11-05" }), false);
+  assert.strictEqual(Account.needsConsent(null), false);
+});
+
 test("missingFields: members without a required field are asked to fill it in", () => {
   assert.deepStrictEqual(Account.missingFields({ full_name: null, nickname: "a" }), ["full_name"]);
   assert.deepStrictEqual(Account.missingFields({ full_name: "  " }), ["full_name"]);

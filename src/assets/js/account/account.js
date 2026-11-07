@@ -6,7 +6,7 @@
 //   "change"     로그인/로그아웃, 프로필이 바뀜 → 머리글 버튼 등 다시 그리기
 //   "profile"    로그인한 회원의 프로필을 다 불러옴(탈퇴 유예 중이 아님) → 출제 설정·언어 적용
 //   "restore"    탈퇴 신청 후 7일 안에 로그인함 → 계정 복구 창
-//   "complete"   필수 항목이 비어 있음 → 정보 추가 입력 창
+//   "complete"   필수 항목이 비어 있음, 또는 소셜 로그인 첫 방문이라 동의가 필요함 → 정보 추가 입력 창
 //   "recovery"   비밀번호 재설정 메일의 링크로 들어옴 → 새 비밀번호 창
 //   "signedOut"  로그아웃됨
 //
@@ -15,13 +15,13 @@
 import { CONFIG } from "../config.js";
 import { Engine } from "../core/engine.js";
 import { localDay } from "../stats/data.js";
-import { isPublicKey, missingFields, syncable } from "./helpers.js";
+import { isPublicKey, missingFields, needsConsent, syncable } from "./helpers.js";
 
 // supabase-js는 회원 기능이 켜져 있을 때만 CDN에서 불러와요. integrity(SRI)는 그 파일 내용이 바뀌면 거부하게 하는 지문.
 // 버전을 올리면 두 값을 같이 바꿀 것 (지문: https://www.srihash.org 또는 openssl dgst -sha384 -binary | openssl base64 -A)
 const SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
 const SDK_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
-const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at";
+const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at, age14_confirmed, terms_version";
 
 /** 회원 기능이 켜져 있는지 (config.js에 주소와 공개 키가 있을 때) */
 export const configured = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey) && isPublicKey(CONFIG.supabaseKey);
@@ -53,6 +53,8 @@ async function loadProfile() {
   emit("change");
   // 탈퇴 신청 후 7일 안: 다른 걸 동기화하기 전에 복구할지 먼저 물어봄
   if (profile.deleted_at) return emit("restore");
+  // 소셜 로그인 첫 방문: 동의 전에는 출제 설정·언어(임시값 en)를 적용하지 않고 정보 입력 창만 띄움
+  if (needsConsent(profile)) return emit("complete");
   emit("profile", profile);
   if (missingFields(profile).length) emit("complete");
 }
@@ -67,8 +69,10 @@ export const Account = {
   get profile() { return profile; },
   get ready() { return ready; },
   get client() { return sb; },
-  /** 로그인했고 탈퇴 유예 중이 아님 → 기록·설정 동기화를 함 */
-  active: () => !!(user && profile && !profile.deleted_at),
+  /** 로그인했고 탈퇴 유예 중이 아니며 동의도 마침 → 기록·설정 동기화를 함 */
+  active: () => !!(user && profile && !profile.deleted_at && !needsConsent(profile)),
+  /** 동의가 필요한 소셜 로그인 첫 방문인지 */
+  needsConsent: () => needsConsent(profile),
   isAdmin: () => !!(profile && profile.role === "admin"),
 
   /** 페이지가 열릴 때 한 번: SDK를 불러오고 로그인 상태를 지켜봄 */
@@ -92,6 +96,16 @@ export const Account = {
   // ---------- 로그인·가입·비밀번호 (결과는 { data, error } 그대로 돌려줌) ----------
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
   signUp: (email, password, data, redirectTo) => sb.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo, data } }),
+  /** 가입 인증 메일 다시 보내기 (같은 주소는 Supabase가 60초에 한 번만 보냄) */
+  resendSignup: (email, redirectTo) => sb.auth.resend({ type: "signup", email, options: { emailRedirectTo: redirectTo } }),
+  /** 소셜 로그인 (google, kakao, apple …): 그 회사 로그인 화면으로 갔다가 redirectTo로 돌아옴 */
+  signInWithProvider: (provider, redirectTo) => sb.auth.signInWithOAuth({ provider, options: { redirectTo } }),
+  /** 소셜 로그인 첫 방문: 성명·닉네임·언어 + 14세 확인·약관 동의를 저장(DB 함수)하고 프로필을 다시 불러옴 */
+  async completeSignup(fields) {
+    const res = await sb.rpc("complete_signup", fields);
+    if (!res.error) await loadProfile();
+    return res;
+  },
   resetPassword: (email, redirectTo) => sb.auth.resetPasswordForEmail(email, { redirectTo }),
   updatePassword: password => sb.auth.updateUser({ password }),
   /** 현재 비밀번호 확인: 그 비밀번호로 다시 로그인해 봄 (틀려도 지금 로그인은 유지됨 — supabase-js 코드로 확인) */
