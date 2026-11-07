@@ -145,6 +145,15 @@ export const Account = {
     avatarCache = null;
     return Account.updateProfile({ avatar_version: null });
   },
+  // ---------- 본인 확인 질문 (DB 함수, supabase/schema.sql "password-check question") ----------
+  /** 내 질문 { question, custom_text } (답은 DB에도 해시로만 있어서 못 가져옴) */
+  myRecovery: () => sb.rpc("my_recovery"),
+  /** 질문·답 바꾸기 (회원 정보 변경) */
+  setRecovery: (question, custom, answer) => sb.rpc("set_recovery", { p_question: question, p_custom: custom || null, p_answer: answer }),
+  /** 비밀번호 찾기 1단계: 그 이메일의 질문 (가입 안 된 이메일이면 DB가 가짜 질문을 줌) */
+  resetQuestion: email => sb.rpc("reset_question", { p_email: email }),
+  /** 비밀번호 찾기 2단계: 답이 맞는지 → { ok, wrong(최근 1시간 틀린 횟수) }. 1시간에 5번 틀리면 오류 too_many */
+  checkResetAnswer: (email, answer) => sb.rpc("check_reset_answer", { p_email: email, p_answer: answer }),
   resetPassword: (email, redirectTo) => sb.auth.resetPasswordForEmail(email, { redirectTo }),
   updatePassword: password => sb.auth.updateUser({ password }),
   /** 현재 비밀번호 확인: 그 비밀번호로 다시 로그인해 봄 (틀려도 지금 로그인은 유지됨 — supabase-js 코드로 확인) */

@@ -15,7 +15,7 @@ import { drawAvatar, squareJpeg } from "./avatar.js";
 // 사이드바 모양으로 여는 화면들
 const SIDE = new Set(["account", "profile", "changepw"]);
 // 화면마다 제목 문구 키
-const TITLES = { login: "viewLogin", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw", profile: "viewProfile",
+const TITLES = { login: "viewLogin", join: "viewSignup", signup: "viewSignup", reset: "viewReset", newpw: "viewNewpw", changepw: "viewChangepw", profile: "viewProfile",
   account: "viewAccount", complete: "viewComplete", restore: "viewRestore", delete: "deleteAcct" };
 
 // 비밀번호 칸 오른쪽의 눈 모양 버튼 (누르고 있는 동안 비밀번호가 보임)
@@ -35,8 +35,25 @@ const SOCIAL_ICONS = {
 const SOCIAL_KEYS = { google: "withGoogle", kakao: "withKakao", apple: "withApple" };
 const PROVIDER_NAMES = { google: "nameGoogle", kakao: "nameKakao", apple: "nameApple" };
 const PROVIDERS = (CONFIG.oauthProviders || []).filter(p => SOCIAL_ICONS[p]);
-const SOCIAL = PROVIDERS.length ? `<div class="auth-or" data-i18n="orDivider"></div><div class="social">${PROVIDERS.map(p =>
-  `<button type="button" class="btn social-btn ${p}" data-provider="${p}">${SOCIAL_ICONS[p]}<span data-i18n="${SOCIAL_KEYS[p]}"></span></button>`).join("")}</div>` : "";
+const SOCIAL_BTNS = PROVIDERS.map(p =>
+  `<button type="button" class="btn social-btn ${p}" data-provider="${p}">${SOCIAL_ICONS[p]}<span data-i18n="${SOCIAL_KEYS[p]}"></span></button>`).join("");
+// 로그인 화면 아래: "또는" + 소셜 버튼
+const SOCIAL = PROVIDERS.length ? `<div class="auth-or" data-i18n="orDivider"></div><div class="social">${SOCIAL_BTNS}</div>` : "";
+const EMAIL_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 6.5 12 13l8.5-6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+// 본인 확인 질문 (2026-11-07 사용자 결정, 직접 입력한 질문은 50자까지): 고른 질문 키는 DB와 i18n의 rq_… 키가 같음. 맨 끝은 항상 "직접 입력하기..."
+// 비밀번호 찾기에서 재설정 메일을 보내기 전에 물어봐요. 답은 DB에 해시로만 저장 (띄어쓰기·대소문자 무시)
+const RQ_PRESETS = ["teacher6", "friend", "pet", "town", "concert", "academy"];
+const RQ_OPTIONS = `<option value="" disabled selected data-i18n="rqPick"></option>${RQ_PRESETS.map(k =>
+  `<option value="${k}" data-i18n="rq_${k}"></option>`).join("")}<option value="custom" data-i18n="rqCustom"></option>`;
+const RECOVERY = hint => `
+    <label class="field"><span data-i18n="rqLabel"></span><select name="rq">${RQ_OPTIONS}</select></label>
+    <label class="field rq-custom" hidden><span data-i18n="rqCustomLabel"></span><input type="text" name="rqText" maxlength="50" autocomplete="off"></label>
+    <label class="field"><span class="field-head"><span data-i18n="raLabel"></span><span class="field-note" data-i18n="raNote"></span></span><input type="text" name="ra" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false"><small data-i18n="${hint}"></small></label>`;
+/** 질문 키 → 화면 문구 (직접 입력한 질문은 그대로, 기존 회원의 기본 질문은 등록 안내) */
+const rqText = (q, custom) => q === "custom" ? custom || "" : q === "default" ? t("rqDefault") : t("rq_" + q);
+// "직접 입력하기..."를 고르면 질문 입력 칸을 보여줌
+function toggleCustom(f) { f.querySelector(".rq-custom").hidden = f.rq.value !== "custom"; }
+
 // 처음 가입할 때 받는 동의 (이메일 가입 화면, 소셜 로그인 첫 방문의 정보 입력 화면)
 const CONSENT = `
     <label class="check"><input type="checkbox" name="age14" required><span data-i18n="agreeAge"></span></label>
@@ -57,9 +74,19 @@ const MARKUP = `
     <label class="field"><span data-i18n="email"></span><input type="email" name="email" autocomplete="email" required></label>
     ${pw("password", "current-password", "password")}
     <button class="btn primary" type="submit" data-i18n="login"></button>
-    <div class="auth-links"><button type="button" class="linkbtn" data-go="signup" data-i18n="goSignup"></button><button type="button" class="linkbtn" data-go="reset" data-i18n="goReset"></button></div>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="join" data-i18n="goSignup"></button><button type="button" class="linkbtn" data-go="reset" data-i18n="goReset"></button></div>
     ${SOCIAL}
   </form>
+
+  <!-- 회원가입 첫 화면: 가입 방법 고르기. [이메일로 가입하기] → 아래 signup 폼, 소셜 버튼 → 그 회사 로그인 (2026-11-07 사용자 결정)
+       소셜 로그인이 하나도 켜져 있지 않으면 이 화면을 건너뛰고 바로 signup 폼 (open 참고) -->
+  <div class="auth-form" data-view="join" hidden>
+    <div class="social">
+      <button type="button" class="btn social-btn email" data-go="signup">${EMAIL_ICON}<span data-i18n="joinEmail"></span></button>
+      ${SOCIAL_BTNS}
+    </div>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="goLogin"></button></div>
+  </div>
 
   <form class="auth-form" data-view="signup" novalidate hidden>
     <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
@@ -68,16 +95,23 @@ const MARKUP = `
     ${pw("password", "new-password", "password", PW_HINT)}
     ${pw("password2", "new-password", "passwordConfirm")}
     <label class="field"><span data-i18n="prefLang"></span><select name="lang" id="signupLang">${LANG_OPTIONS}</select><small data-i18n="prefLangHint"></small></label>
+    ${RECOVERY("raHint")}
     ${CONSENT}
     <button class="btn primary" type="submit" data-i18n="doSignup"></button>
-    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="goLogin"></button></div>
-    ${SOCIAL}
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="join" data-i18n="otherJoin"></button><button type="button" class="linkbtn" data-go="login" data-i18n="goLogin"></button></div>
   </form>
 
+  <!-- 비밀번호 찾기: 1) 이메일 → [다음] → 2) 그 이메일의 본인 확인 질문이 보이고 답을 맞히면 재설정 메일 발송
+       (가입 안 된 이메일에도 가짜 질문이 떠서 가입 여부를 알 수 없음 — DB reset_question) -->
   <form class="auth-form" data-view="reset" novalidate hidden>
+    <p class="auth-note" data-i18n="resetNote"></p>
     <label class="field"><span data-i18n="email"></span><input type="email" name="email" autocomplete="email" required></label>
-    <button class="btn primary" type="submit" data-i18n="doReset"></button>
-    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="backLogin"></button></div>
+    <div class="auth-form" id="resetStep2" hidden>
+      <div class="field"><span data-i18n="rqLabel"></span><p class="reset-question" id="resetQuestion"></p></div>
+      <label class="field"><span data-i18n="raLabel"></span><input type="text" name="ra" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+    </div>
+    <button class="btn primary" type="submit" id="resetSubmit"></button>
+    <div class="auth-links"><button type="button" class="linkbtn" data-go="login" data-i18n="backLogin"></button><button type="button" class="linkbtn" id="resetOther" data-i18n="otherEmail" hidden></button></div>
   </form>
 
   <form class="auth-form" data-view="newpw" novalidate hidden>
@@ -105,6 +139,8 @@ const MARKUP = `
     <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
     <label class="field"><span data-i18n="nickname"></span><input type="text" name="nickname" autocomplete="nickname" maxlength="${NICK_MAX}" required><small data-i18n="nicknameHint"></small></label>
     <label class="field"><span data-i18n="prefLang"></span><select name="lang">${LANG_OPTIONS}</select><small data-i18n="prefLangHint"></small></label>
+    <!-- 본인 확인 질문: 비밀번호가 있는 회원만 (소셜 로그인 회원은 비밀번호 찾기를 안 씀) -->
+    <div class="auth-form" id="profileRecovery" hidden>${RECOVERY("raProfileHint")}</div>
     <button class="btn primary" type="submit" id="profileSave" disabled data-i18n="doSave"></button>
     <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount"></button></div>
   </form>
@@ -184,6 +220,7 @@ export const hooks = { startReview: () => { location.href = `${pageUrl(ROUTES.tr
 /** 창을 열고 화면 v를 보여줌 */
 export function open(v, message) {
   const d = dlg();
+  if (v === "join" && !PROVIDERS.length) v = "signup";   // 고를 방법이 이메일뿐이면 바로 가입 폼
   // 사이드바와 가운데 창은 같은 요소라, 모양이 바뀌면 닫았다가 다시 엶
   if (d.open && d.classList.contains("side") !== SIDE.has(v)) d.close();
   show(v, message);
@@ -201,11 +238,13 @@ function show(v, message) {
     let tz = "";
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { /* 시간대를 모르면 영어 */ }
     $("signupLang").value = langForTimeZone(tz);
+    toggleCustom(form("signup"));
   }
   if (v === "complete") fillComplete();
   hideResend();
   if (v === "delete") { form("delete").reset(); $("deletePwField").hidden = !Account.hasPassword(); deleteReady(); }
   if (v === "profile") fillProfile();
+  if (v === "reset") resetStep(1);
   // 앞 화면에서 보이게 해 둔 비밀번호가 다음 화면에서도 보이면 안 됨
   dlg().querySelectorAll(".pw-wrap input").forEach(i => { i.type = "password"; });
   dlg().querySelectorAll(".pw-eye").forEach(b => b.classList.remove("on"));
@@ -333,6 +372,20 @@ function fillProfile() {
   f.lang.value = p.preferred_lang || lang();
   drawProfileAvatar();
   profileReady();
+  loadMyRecovery();
+}
+
+// ---------- 비밀번호 찾기 단계 ----------
+let resetQ = null;   // 2단계에서 보여주는 질문 { question, custom_text }, 1단계면 null
+function resetStep(n, quiet) {
+  const f = form("reset");
+  if (n === 1) { resetQ = null; f.ra.value = ""; }
+  f.email.readOnly = n === 2;
+  $("resetStep2").hidden = n !== 2;
+  $("resetOther").hidden = n !== 2;
+  $("resetSubmit").textContent = t(n === 2 ? "doReset" : "doNext");
+  $("resetQuestion").textContent = resetQ ? rqText(resetQ.question, resetQ.custom_text) : "";
+  if (n === 2 && !quiet) { setMsg("", ""); f.ra.focus(); }
 }
 // 바뀐 칸만 { 열 이름: 새 값 }으로 (앞뒤 빈칸은 무시하고 비교)
 function profileChanges() {
@@ -342,9 +395,33 @@ function profileChanges() {
   if (f.lang.value !== p.preferred_lang) out.preferred_lang = f.lang.value;
   return out;
 }
+// 본인 확인 질문 (회원 정보 변경): 지금 질문을 불러와 칸에 맞춰 둠. 답은 비워 두고, 바꿀 때만 입력
+let myRecovery = null;   // { question, custom_text } — 불러오기 전이면 null
+async function loadMyRecovery() {
+  const box = $("profileRecovery"), f = form("profile");
+  myRecovery = null;
+  box.hidden = !Account.hasPassword();
+  if (box.hidden) return;
+  f.rq.value = ""; f.rqText.value = ""; f.ra.value = ""; toggleCustom(f);
+  const { data } = await Account.myRecovery();
+  myRecovery = data || { question: "default", custom_text: null };
+  f.rq.value = myRecovery.question === "default" ? "" : myRecovery.question;
+  f.rqText.value = myRecovery.custom_text || "";
+  toggleCustom(f);
+  profileReady();
+}
+// 질문이나 답을 바꿨으면 { question, custom, answer }, 아니면 null
+function recoveryChange() {
+  const f = form("profile");
+  if (!myRecovery || $("profileRecovery").hidden) return null;
+  const q = f.rq.value, custom = q === "custom" ? f.rqText.value.trim() : "";
+  const sameQ = q === (myRecovery.question === "default" ? "" : myRecovery.question) && custom === (myRecovery.question === "custom" ? myRecovery.custom_text || "" : "");
+  return sameQ && !f.ra.value.trim() ? null : { question: q, custom, answer: f.ra.value };
+}
+
 // 저장 버튼: 하나라도 바뀌었을 때만 켜짐
 function profileReady() {
-  $("profileSave").disabled = !Object.keys(profileChanges()).length && pendingAvatar === undefined;
+  $("profileSave").disabled = !Object.keys(profileChanges()).length && pendingAvatar === undefined && !recoveryChange();
 }
 
 // 비밀번호 확인 칸 제목 옆 표시: 확인 칸에 뭔가 썼을 때만, 두 칸이 같으면 초록 "일치합니다", 다르면 주황 "일치하지 않습니다"
@@ -414,10 +491,14 @@ const SUBMIT = {
     if (password.length < PW_MIN) return setMsg("no", "errPwShort");
     if (f.password2.value !== password) return setMsg("no", "errPwMismatch");
     // 동의 확인은 DB(handle_new_user 트리거)도 다시 검사함 — 여기는 편의용
+    if (!f.rq.value || (f.rq.value === "custom" && !f.rqText.value.trim())) return setMsg("no", "errRecoveryQ");
+    if (!f.ra.value.trim()) return setMsg("no", "errRecoveryA");
     if (!f.age14.checked || !f.terms.checked || !f.privacy.checked) return setMsg("no", "errAgree");
     if (needClient()) return;
+    // 확인 답은 가입 정보와 함께 보내고, DB(handle_new_user)가 해시로 바꿔 저장한 뒤 원문은 바로 지움
     const { data, error } = await Account.signUp(email, password,
-      { nickname, full_name: fullName, preferred_lang: chosenLang, age14: true, terms_version: TERMS_VERSION }, here());
+      { nickname, full_name: fullName, preferred_lang: chosenLang, age14: true, terms_version: TERMS_VERSION,
+        recovery_q: f.rq.value, recovery_q_text: f.rq.value === "custom" ? f.rqText.value.trim() : null, recovery_a: f.ra.value }, here());
     if (error) return setMsg("no", errorKey(error));
     f.reset();
     // 이메일 인증을 켜 두어서 보통 세션이 없음 (이미 가입된 주소도 같은 안내 — 가입 여부를 알려주지 않으려고)
@@ -444,15 +525,26 @@ const SUBMIT = {
   },
   // 내 계정 → 회원 정보 변경: 바뀐 칸만 저장. 사용 언어를 바꿨으면 화면 언어도 바로 바꿈 (언어별 페이지는 그 언어 주소로 이동)
   async profile(f) {
-    const changes = profileChanges();
-    if (!Object.keys(changes).length && pendingAvatar === undefined) return;
+    const changes = profileChanges(), rc = recoveryChange();
+    if (!Object.keys(changes).length && pendingAvatar === undefined && !rc) return;
     if ("full_name" in changes && (!changes.full_name || changes.full_name.length > NAME_MAX)) return setMsg("no", "errFullName");
     if ("nickname" in changes && (!changes.nickname || changes.nickname.length > NICK_MAX)) return setMsg("no", "errNickname");
+    // 본인 확인 질문이 아직 없는 기존 회원('default'): 다른 칸만 고쳐도 질문·답을 먼저 등록해야 저장됨 (2026-11-07 사용자 결정)
+    const mustSet = !$("profileRecovery").hidden && myRecovery && myRecovery.question === "default";
+    const f2 = form("profile");
+    if (mustSet && (!f2.rq.value || (f2.rq.value === "custom" && !f2.rqText.value.trim()))) return setMsg("no", "errRecoveryQ");
+    if (mustSet && !f2.ra.value.trim()) return setMsg("no", "errRecoveryA");
+    if (rc && (!rc.question || (rc.question === "custom" && !rc.custom))) return setMsg("no", "errRecoveryQ");
+    if (rc && !rc.answer.trim()) return setMsg("no", "errRecoveryA");   // 질문을 바꾸면 답도 새로
     // 사진 먼저 (실패하면 다른 칸도 저장하지 않고 그대로 둠)
     if (pendingAvatar !== undefined) {
       const res = pendingAvatar ? await Account.uploadAvatar(pendingAvatar.blob) : await Account.removeAvatar();
       if (res.error) return setMsg("no", errorKey(res.error));
       pendingAvatar = undefined;
+    }
+    if (rc) {
+      const { error } = await Account.setRecovery(rc.question, rc.custom, rc.answer);
+      if (error) return setMsg("no", errorKey(error));
     }
     if (Object.keys(changes).length) {
       const { error } = await Account.updateProfile(changes);
@@ -465,6 +557,18 @@ const SUBMIT = {
     const email = f.email.value.trim();
     if (!validEmail(email)) return setMsg("no", "errEmail");
     if (needClient()) return;
+    if (resetQ === null) {
+      // 1단계: 질문 불러오기
+      const { data, error } = await Account.resetQuestion(email);
+      if (error) return setMsg("no", errorKey(error));
+      resetQ = data;
+      return resetStep(2);
+    }
+    // 2단계: 답 확인 → 맞으면 재설정 메일
+    if (!f.ra.value.trim()) return setMsg("no", "errRecoveryA");
+    const check = await Account.checkResetAnswer(email, f.ra.value);
+    if (check.error) return setMsg("no", /too_many/.test(check.error.message || "") ? "errTooMany" : errorKey(check.error));
+    if (!check.data.ok) return setMsg("no", "errAnswer", { n: check.data.wrong });   // "(n/5회)"
     const { error } = await Account.resetPassword(email, here());
     if (error) return setMsg("no", errorKey(error));
     f.reset(); show("login", { kind: "ok", key: "msgResetSent" });
@@ -554,6 +658,8 @@ export function initAuthDialog() {
   $("avatarPick").onclick = () => $("avatarFile").click();
   $("avatarFile").onchange = e => pickAvatar(e.target.files[0]);
   $("avatarRemove").onclick = removeAvatar;
+  dlg().addEventListener("change", e => { if (e.target.name === "rq") toggleCustom(e.target.form); });
+  $("resetOther").onclick = () => { form("reset").email.value = ""; resetStep(1); form("reset").email.focus(); };
   dlg().addEventListener("input", e => { if (e.target.name === "password" || e.target.name === "password2") pwMatch(); });
   onLangChange(pwMatch);
 
@@ -592,6 +698,7 @@ export function initAuthDialog() {
     setMsg(msg.kind, msg.key, msg.vars);
     deleteReady();
     drawResend();
+    if (view === "reset") resetStep(resetQ ? 2 : 1, true);   // 언어만 바뀜: 입력·안내는 그대로
     if (view === "complete") $("completeNote").textContent = t($("completeNote").dataset.i18n);
     render();
   });

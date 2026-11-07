@@ -90,6 +90,159 @@ drop policy if exists "avatars: remove own" on storage.objects;
 create policy "avatars: remove own" on storage.objects for delete to authenticated
   using (bucket_id = 'avatars' and name = (select auth.uid())::text || '.jpg');
 
+-- ---------- identity question (본인 확인 질문, 2026-11-07) ----------
+-- Asked on "forgot password" before the reset e-mail is sent, so a stranger cannot send reset mails to anyone
+-- from the site. The reset itself still needs the link in the e-mail. Questions are keys the site translates
+-- ('custom' = the member's own words). Members from before this feature have 'default' (a message asking them
+-- to register one; answer 1234). Answers are compared without spaces and case, stored only as bcrypt hashes.
+-- These tables have no policies: the browser reaches them only through the functions below.
+create table if not exists public.recovery (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  question text not null,
+  custom_text text check (char_length(custom_text) <= 50),
+  answer_hash text not null,
+  updated_at timestamptz not null default now()
+);
+-- 직접 입력한 질문은 50자까지 (char_length는 한글도 1자로 셈). 예전에 100자로 만든 표도 맞춤
+alter table public.recovery drop constraint if exists recovery_custom_text_check;
+alter table public.recovery add constraint recovery_custom_text_check check (char_length(custom_text) <= 50);
+alter table public.recovery enable row level security;
+revoke all on public.recovery from anon, authenticated;
+-- wrong answers, per e-mail (kept as a keyed hash, never the address), for the 5-per-hour limit
+create table if not exists public.recovery_attempts (
+  email_key text not null,
+  at timestamptz not null default now()
+);
+create index if not exists recovery_attempts_key on public.recovery_attempts (email_key, at);
+alter table public.recovery_attempts enable row level security;
+revoke all on public.recovery_attempts from anon, authenticated;
+-- server-only secret for the keyed hashes (decoy questions, attempt keys). Made once, never leaves the DB.
+create table if not exists public.app_secrets (name text primary key, value bytea not null);
+alter table public.app_secrets enable row level security;
+revoke all on public.app_secrets from anon, authenticated;
+insert into public.app_secrets (name, value) values ('recovery', extensions.gen_random_bytes(32)) on conflict (name) do nothing;
+
+-- the preset questions (same keys as rq_… in the site's i18n files)
+create or replace function public.recovery_presets()
+returns text[] language sql immutable set search_path = '' as $$
+  select array['teacher6', 'friend', 'pet', 'town', 'concert', 'academy']
+$$;
+-- answers match without spaces and case: " Seoul " = "seoul"
+create or replace function public.norm_answer(a text)
+returns text language sql immutable set search_path = '' as $$
+  select lower(regexp_replace(coalesce(a, ''), '\s', '', 'g'))
+$$;
+-- keyed hash of an e-mail address (same address → same value, not computable without the secret)
+create or replace function public.recovery_key(p_email text)
+returns bytea language sql stable security definer set search_path = '' as $$
+  select extensions.hmac(convert_to(lower(trim(coalesce(p_email, ''))), 'UTF8'), (select value from public.app_secrets where name = 'recovery'), 'sha256')
+$$;
+revoke execute on function public.recovery_key(text) from public, anon, authenticated;
+
+-- members from before this feature: default question, answer 1234
+insert into public.recovery (user_id, question, answer_hash)
+select p.id, 'default', extensions.crypt('1234', extensions.gen_salt('bf'))
+from public.profiles p
+where not exists (select 1 from public.recovery r where r.user_id = p.id);
+
+-- the member's own question (회원 정보 변경), never the answer
+create or replace function public.my_recovery()
+returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('question', question, 'custom_text', custom_text) from public.recovery where user_id = auth.uid()
+$$;
+revoke execute on function public.my_recovery() from public, anon;
+grant execute on function public.my_recovery() to authenticated;
+
+-- change the question / answer (회원 정보 변경)
+create or replace function public.set_recovery(p_question text, p_custom text, p_answer text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  if not (p_question = any (public.recovery_presets() || array['custom']))
+     or (p_question = 'custom' and coalesce(trim(p_custom), '') = '') or char_length(coalesce(trim(p_custom), '')) > 50 then
+    raise exception 'recovery_question';
+  end if;
+  if public.norm_answer(p_answer) = '' or char_length(p_answer) > 100 then
+    raise exception 'recovery_answer';
+  end if;
+  insert into public.recovery (user_id, question, custom_text, answer_hash, updated_at)
+  values (auth.uid(), p_question, case when p_question = 'custom' then trim(p_custom) end,
+          extensions.crypt(public.norm_answer(p_answer), extensions.gen_salt('bf')), now())
+  on conflict (user_id) do update set question = excluded.question, custom_text = excluded.custom_text,
+    answer_hash = excluded.answer_hash, updated_at = now();
+end;
+$$;
+revoke execute on function public.set_recovery(text, text, text) from public, anon;
+grant execute on function public.set_recovery(text, text, text) to authenticated;
+
+-- the member that "forgot password" is about: has a password (e-mail sign-up) and a question
+create or replace function public.recovery_target(p_email text)
+returns public.recovery language sql stable security definer set search_path = '' as $$
+  select r.* from auth.users u join public.recovery r on r.user_id = u.id
+  where lower(u.email) = lower(trim(coalesce(p_email, '')))
+    and coalesce(u.raw_app_meta_data -> 'providers', '["email"]'::jsonb) ? 'email'
+  limit 1
+$$;
+revoke execute on function public.recovery_target(text) from public, anon, authenticated;
+
+-- the decoy for an address that is not a member: always the same one for the same address
+create or replace function public.recovery_decoy(p_email text)
+returns text language sql stable security definer set search_path = '' as $$
+  select (public.recovery_presets() || array['default'])[get_byte(public.recovery_key(p_email), 0) % 7 + 1]
+$$;
+revoke execute on function public.recovery_decoy(text) from public, anon, authenticated;
+
+-- "forgot password", step 1: the question to show. Members and non-members both get one, so nobody can tell
+-- from this whether an address has an account.
+create or replace function public.reset_question(p_email text)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  r public.recovery;
+begin
+  r := public.recovery_target(p_email);
+  if r.user_id is not null then
+    return jsonb_build_object('question', r.question, 'custom_text', r.custom_text);
+  end if;
+  return jsonb_build_object('question', public.recovery_decoy(p_email), 'custom_text', null);
+end;
+$$;
+revoke execute on function public.reset_question(text) from public;
+grant execute on function public.reset_question(text) to anon, authenticated;
+
+-- "forgot password", step 2: is the answer right? (then the site asks Supabase for the reset e-mail).
+-- Returns { ok, wrong } — wrong = wrong answers for this address in the last hour, shown as "(n/5회)".
+-- 5 wrong answers per address per hour, then 'too_many'. For a decoy only the default's 1234 "matches",
+-- and Supabase sends nothing to an address without an account — the same "sent" message either way.
+drop function if exists public.check_reset_answer(text, text);   -- returned boolean before the wrong count
+create or replace function public.check_reset_answer(p_email text, p_answer text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  k text := encode(public.recovery_key(p_email), 'hex');
+  r public.recovery;
+  ok boolean;
+begin
+  delete from public.recovery_attempts where at < now() - interval '1 day';
+  if (select count(*) from public.recovery_attempts where email_key = k and at > now() - interval '1 hour') >= 5 then
+    raise exception 'too_many';
+  end if;
+  r := public.recovery_target(p_email);
+  if r.user_id is not null then
+    ok := extensions.crypt(public.norm_answer(p_answer), r.answer_hash) = r.answer_hash;
+  else
+    ok := public.recovery_decoy(p_email) = 'default' and public.norm_answer(p_answer) = '1234';
+  end if;
+  if not ok then
+    insert into public.recovery_attempts (email_key) values (k);
+  end if;
+  return jsonb_build_object('ok', ok,
+    'wrong', (select count(*) from public.recovery_attempts where email_key = k and at > now() - interval '1 hour'));
+end;
+$$;
+revoke execute on function public.check_reset_answer(text, text) from public;
+grant execute on function public.check_reset_answer(text, text) to anon, authenticated;
+
 -- ---------- sign-up: create the profile, enforce age and consent ----------
 -- Sign-up sends nickname / full_name / preferred_lang / age14 / terms_version as user metadata (src/account.js).
 -- A sign-up without the 14+ confirmation or without agreeing to the terms is rejected here,
@@ -131,6 +284,21 @@ begin
     true,
     meta ->> 'terms_version'
   );
+  -- password-check question for "forgot password" (see below). Only the hash is kept, and the plain answer is
+  -- removed from the user metadata right away. A sign-up from an older page without the fields gets the
+  -- default question (answer 1234) like members who joined before this existed.
+  if meta ->> 'recovery_q' = any (public.recovery_presets() || array['custom'])
+     and coalesce(trim(meta ->> 'recovery_a'), '') <> ''
+     and (meta ->> 'recovery_q' <> 'custom' or coalesce(trim(meta ->> 'recovery_q_text'), '') <> '') then
+    insert into public.recovery (user_id, question, custom_text, answer_hash)
+    values (new.id, meta ->> 'recovery_q',
+            case when meta ->> 'recovery_q' = 'custom' then left(trim(meta ->> 'recovery_q_text'), 50) end,
+            extensions.crypt(public.norm_answer(meta ->> 'recovery_a'), extensions.gen_salt('bf')));
+  else
+    insert into public.recovery (user_id, question, answer_hash)
+    values (new.id, 'default', extensions.crypt('1234', extensions.gen_salt('bf')));
+  end if;
+  update auth.users set raw_user_meta_data = raw_user_meta_data - 'recovery_a' where id = new.id;
   return new;
 end;
 $$;

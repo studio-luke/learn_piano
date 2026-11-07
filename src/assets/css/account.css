@@ -23,6 +23,10 @@ dialog.auth::backdrop { background: rgba(40,25,15,.45); }
 /* 입력 칸 */
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
 .field small { color: var(--muted); font-weight: 400; font-size: 12px; }
+/* 칸 제목 옆 작은 안내 (본인 확인 답변의 "암호화되어 저장…") */
+.field-note { font-size: 12px; font-weight: 400; color: var(--muted); }
+/* 비밀번호 찾기 2단계: 그 이메일의 질문 (읽기만) */
+.reset-question { margin: 0; padding: 9px 12px; border-radius: 10px; background: var(--sunken); font-size: 14px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
 /* 칸 제목 줄: 제목 + (비밀번호 확인 칸이면) 오른쪽 옆에 일치 여부 */
 .field-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .pw-match { font-size: 12px; font-weight: 600; }
@@ -73,6 +77,9 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .btn.social-btn.kakao, .btn.social-btn.kakao:hover:not(:disabled) { background: #FEE500; color: rgba(0,0,0,.85); border-color: #FEE500; }
 .btn.social-btn.apple, .btn.social-btn.apple:hover:not(:disabled) { background: #000; color: #fff; border-color: #000; }
 .social-btn:hover:not(:disabled) { filter: brightness(.96); }
+/* 가입 방법 고르기의 [이메일로 가입하기]: 사이트 기본 버튼 모양 + 같은 크기·정렬 */
+.btn.social-btn.email { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.btn.social-btn.email:hover:not(:disabled) { background: var(--sunken); filter: none; }
 .badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-align: center; margin-left: auto; }
 .badge:empty { display: none; }
 
