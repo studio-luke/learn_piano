@@ -55,6 +55,8 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .menu-item:hover:not(:disabled) { color: var(--accent); }
 .menu-item:disabled { color: var(--muted); cursor: default; }
 .menu-item .chev { color: var(--muted); }
+/* 메뉴 자리에 들어가는 안내 한 줄 (소셜 로그인 회원의 비밀번호 안내) */
+.menu-note { margin: 0; padding: 13px 4px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); line-height: 1.5; }
 /* 두 번째 묶음의 위쪽 선은 빼기 — 앞 묶음 마지막 항목의 아래 선과 겹쳐 선이 두 줄로 보였음 */
 .side-menu + .side-menu { border-top: none; }
 /* 사이드바 메뉴 묶음 제목 ("계정 설정") */

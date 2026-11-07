@@ -74,6 +74,19 @@ export const Account = {
   get client() { return sb; },
   /** 로그인했고 탈퇴 유예 중이 아니며 동의도 마침 → 기록·설정 동기화를 함 */
   active: () => !!(user && profile && !profile.deleted_at && !needsConsent(profile)),
+  /**
+   * 비밀번호로 로그인할 수 있는 회원인지 (이메일로 가입했거나, 소셜 계정에 이메일 가입을 연결한 경우).
+   * 구글·카카오로만 가입한 회원은 비밀번호가 없어서 탈퇴 때 비밀번호를 묻지 않고, 비밀번호 변경 메뉴를 숨김
+   */
+  hasPassword() {
+    const m = (user && user.app_metadata) || {};
+    return (m.providers || [m.provider]).includes("email");
+  },
+  /** 소셜 로그인 회사 이름 (google, kakao …). 이메일 가입 회원은 null */
+  socialProvider() {
+    const m = (user && user.app_metadata) || {};
+    return (m.providers || [m.provider]).find(p => p && p !== "email") || null;
+  },
   /** 동의가 필요한 소셜 로그인 첫 방문인지 */
   needsConsent: () => needsConsent(profile),
   isAdmin: () => !!(profile && profile.role === "admin"),

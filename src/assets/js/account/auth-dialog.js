@@ -33,6 +33,7 @@ const SOCIAL_ICONS = {
   apple: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.86-.76-1.47.02-2.83.86-3.59 2.17-1.53 2.66-.39 6.6 1.1 8.76.73 1.06 1.6 2.24 2.73 2.2 1.1-.04 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.23 1.18-2.42 1.2-2.48-.03-.01-2.3-.88-2.32-3.5zM14.2 6.13c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.64-1.05 1.67-.92 2.66.97.08 1.96-.49 2.56-1.21z"/></svg>`,
 };
 const SOCIAL_KEYS = { google: "withGoogle", kakao: "withKakao", apple: "withApple" };
+const PROVIDER_NAMES = { google: "nameGoogle", kakao: "nameKakao", apple: "nameApple" };
 const PROVIDERS = (CONFIG.oauthProviders || []).filter(p => SOCIAL_ICONS[p]);
 const SOCIAL = PROVIDERS.length ? `<div class="auth-or" data-i18n="orDivider"></div><div class="social">${PROVIDERS.map(p =>
   `<button type="button" class="btn social-btn ${p}" data-provider="${p}">${SOCIAL_ICONS[p]}<span data-i18n="${SOCIAL_KEYS[p]}"></span></button>`).join("")}</div>` : "";
@@ -118,7 +119,8 @@ const MARKUP = `
 
   <form class="auth-form" data-view="delete" novalidate hidden>
     <p class="auth-warn" data-i18n="deleteConfirm"></p>
-    ${pw("current", "current-password", "currentPassword")}
+    <!-- 비밀번호 확인: 소셜 로그인으로만 가입한 회원은 비밀번호가 없어서 숨기고 확인 문구만 받음 -->
+    <div class="auth-form" id="deletePwField">${pw("current", "current-password", "currentPassword")}</div>
     <label class="field"><span class="delete-type" data-i18n="deleteTypeHTML"></span><input type="text" name="phrase" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>
     <button class="btn danger" type="submit" id="deleteSubmit" disabled data-i18n="deleteAcct"></button>
     <div class="auth-links"><button type="button" class="linkbtn" data-go="account" data-i18n="backAccount"></button></div>
@@ -156,7 +158,9 @@ const MARKUP = `
     <nav class="side-menu" aria-labelledby="acctSettingsHead">
       <h3 class="side-head" id="acctSettingsHead" data-i18n="acctSettings"></h3>
       <button class="menu-item" type="button" data-go="profile"><span data-i18n="menuProfile"></span><span class="chev" aria-hidden="true">›</span></button>
-      <button class="menu-item" type="button" data-go="changepw"><span data-i18n="changePw"></span><span class="chev" aria-hidden="true">›</span></button>
+      <button class="menu-item" type="button" id="menuChangepw" data-go="changepw"><span data-i18n="changePw"></span><span class="chev" aria-hidden="true">›</span></button>
+      <!-- 소셜 로그인으로만 가입한 회원: 비밀번호가 없으므로 변경 메뉴 대신 어느 계정으로 로그인하는지 안내 -->
+      <p class="menu-note" id="acctSocialNote" hidden></p>
       <button class="menu-item" type="button" id="logoutBtn"><span data-i18n="logout"></span></button>
     </nav>
     <p class="auth-note" data-i18n="syncNote"></p>
@@ -200,7 +204,7 @@ function show(v, message) {
   }
   if (v === "complete") fillComplete();
   hideResend();
-  if (v === "delete") { form("delete").reset(); deleteReady(); }
+  if (v === "delete") { form("delete").reset(); $("deletePwField").hidden = !Account.hasPassword(); deleteReady(); }
   if (v === "profile") fillProfile();
   // 앞 화면에서 보이게 해 둔 비밀번호가 다음 화면에서도 보이면 안 됨
   dlg().querySelectorAll(".pw-wrap input").forEach(i => { i.type = "password"; });
@@ -234,6 +238,11 @@ function render() {
     if (user) drawAvatar($("accountAvatar"), Account.avatarUrl(), name);
   }
   $("acctName").textContent = name;
+  // 비밀번호 변경 메뉴 ↔ 소셜 로그인 안내 ("카카오 계정으로 로그인한 회원이에요")
+  const social = user && !Account.hasPassword() ? Account.socialProvider() : null;
+  $("menuChangepw").hidden = !!social;
+  $("acctSocialNote").hidden = !social;
+  $("acctSocialNote").textContent = social ? t("socialAccountNote", { provider: PROVIDER_NAMES[social] ? t(PROVIDER_NAMES[social]) : social }) : "";
   drawAvatar($("acctAvatar"), Account.avatarUrl(), name);
   $("acctFullName").textContent = profile && profile.full_name ? profile.full_name : "";
   $("acctEmail").textContent = user ? user.email : "";
@@ -352,7 +361,7 @@ function pwMatch() {
 // 회원 탈퇴 버튼: 비밀번호를 넣고 확인 문구를 정확히 똑같이 썼을 때만 켜짐
 function deleteReady() {
   const f = form("delete");
-  $("deleteSubmit").disabled = !(f.current.value && f.phrase.value === t("deletePhrase"));
+  $("deleteSubmit").disabled = !((f.current.value || !Account.hasPassword()) && f.phrase.value === t("deletePhrase"));
 }
 
 // 눈 버튼: 마우스를 올리고 있는 동안, 또는 손가락·키로 누르고 있는 동안만 비밀번호를 보여줌
@@ -484,8 +493,11 @@ const SUBMIT = {
   // 회원 탈퇴: 비밀번호 확인 → 7일 유예 시작 → 로그아웃
   async delete(f) {
     if (f.phrase.value !== t("deletePhrase")) return;
-    const check = await Account.verifyPassword(f.current.value);
-    if (check.error) return setMsg("no", check.error.code === "invalid_credentials" ? "errCurrentPw" : errorKey(check.error));
+    // 비밀번호가 있는 회원만 비밀번호 확인 (소셜 로그인 회원은 로그인 상태 + 확인 문구로 진행)
+    if (Account.hasPassword()) {
+      const check = await Account.verifyPassword(f.current.value);
+      if (check.error) return setMsg("no", check.error.code === "invalid_credentials" ? "errCurrentPw" : errorKey(check.error));
+    }
     // 프로필 사진은 탈퇴 신청 때 바로 지움 (사진은 누구나 주소로 볼 수 있는 저장소라 7일을 기다리지 않음)
     if (Account.profile && Account.profile.avatar_version) await Account.removeAvatar();
     const { data, error } = await Account.requestDeletion();
