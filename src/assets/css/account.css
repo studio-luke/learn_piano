@@ -77,9 +77,23 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .btn.social-btn.kakao, .btn.social-btn.kakao:hover:not(:disabled) { background: #FEE500; color: rgba(0,0,0,.85); border-color: #FEE500; }
 .btn.social-btn.apple, .btn.social-btn.apple:hover:not(:disabled) { background: #000; color: #fff; border-color: #000; }
 .social-btn:hover:not(:disabled) { filter: brightness(.96); }
-/* 구글 공식 버튼 자리: 그려지면(.gsi-ready) 예전 방식 버튼을 숨김. 구글 버튼은 최대 400px라 가운데 정렬 */
+/* 구글 공식 버튼 자리 (account/google.js): 구글 버튼이 그려지기 전에는 같은 크기의 빈 칸에 로딩 아이콘,
+   그려지면(.gsi-ready) 구글 버튼, 구글 스크립트를 못 불러오면(.gsi-failed) 예전 방식 버튼(꽉 찬 폭)
+   (2026-11-07: 예전 방식 버튼을 먼저 보여줬더니 폭이 줄어든 버튼이 보였다가 바뀌어 어색했음 → 로딩 아이콘으로) */
+.gsi-slot > .social-btn { width: 100%; }
+.gsi-slot:not(.gsi-failed) > .social-btn { display: none; }
 .gsi-slot .gsi-target { display: flex; justify-content: center; min-height: 0; }
-.gsi-slot.gsi-ready > .social-btn { display: none; }
+.gsi-slot:not(.gsi-ready) .gsi-target { display: none; }
+.gsi-spin { height: 40px; border: 1px solid var(--line); border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.gsi-slot.gsi-ready .gsi-spin, .gsi-slot.gsi-failed .gsi-spin { display: none; }
+/* 빙글빙글 아이콘: 0.15초 안에 구글 버튼이 나오면 아예 안 보이게 살짝 늦게 나타남 */
+.gsi-spin span { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: gsi-spin .8s linear infinite, gsi-fade .2s ease-out .15s both; }
+@keyframes gsi-spin { to { transform: rotate(360deg); } }
+@keyframes gsi-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gsi-spin span { animation: gsi-fade .2s ease-out .15s both; } }
+/* 다크 모드에서 구글 버튼(iframe) 주위가 흰 띠로 칠해지는 문제: 페이지는 color-scheme: dark, 구글 버튼은 light라
+   브라우저가 iframe 바탕을 불투명하게 칠함 → iframe을 light로 맞춰 바탕을 투명하게 */
+.gsi-target, .gsi-target iframe { color-scheme: light; }
 /* 가입 방법 고르기의 [이메일로 가입하기]: 사이트 기본 버튼 모양 + 같은 크기·정렬 */
 .btn.social-btn.email { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .btn.social-btn.email:hover:not(:disabled) { background: var(--sunken); filter: none; }

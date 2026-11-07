@@ -32,6 +32,14 @@ function load() {
   return loading;
 }
 
+/**
+ * 구글 스크립트를 미리 불러 둠 (로그인하지 않은 방문자, 페이지가 한가할 때 — auth-dialog.js).
+ * 로그인 창을 열 때 스크립트를 받기 시작하면 버튼이 늦게 나와서, 미리 받아 두면 창을 열자마자 구글 버튼이 보임
+ */
+export function preloadGoogle() {
+  if (googleOn) load().catch(() => {});
+}
+
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
@@ -44,7 +52,11 @@ async function sha256Hex(text) {
  */
 export async function renderGoogle(slots, locale, onCredential) {
   if (!googleOn || !slots.length) return;
-  try { await load(); } catch (e) { console.warn("구글 로그인 스크립트를 불러오지 못했어요 — 예전 방식 버튼을 씀", e); return; }
+  try { await load(); } catch (e) {
+    console.warn("구글 로그인 스크립트를 불러오지 못했어요 — 예전 방식 버튼을 씀", e);
+    slots.forEach(slot => slot.classList.add("gsi-failed"));   // CSS가 로딩 아이콘 대신 예전 방식 버튼을 보여줌
+    return;
+  }
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   rawNonce = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "");
   const nonce = rawNonce;
@@ -63,6 +75,7 @@ export async function renderGoogle(slots, locale, onCredential) {
       type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "rectangular",
       logo_alignment: "center", width, locale: GSI_LOCALE[locale] || "en",
     });
-    slot.classList.add("gsi-ready");   // CSS가 예전 방식 버튼을 숨김
+    slot.classList.remove("gsi-failed");
+    slot.classList.add("gsi-ready");   // 구글은 처음부터 요청한 폭으로 그려서 바로 보여줌 (CSS가 로딩 아이콘을 숨김)
   });
 }

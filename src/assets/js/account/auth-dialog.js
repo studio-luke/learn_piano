@@ -11,7 +11,7 @@ import { $ } from "../common/dom.js";
 import { ROUTES, pageUrl } from "../common/sitemap.js";
 import { CONFIG } from "../config.js";
 import { drawAvatar, squareJpeg } from "./avatar.js";
-import { googleOn, renderGoogle } from "./google.js";
+import { googleOn, preloadGoogle, renderGoogle } from "./google.js";
 
 // 사이드바 모양으로 여는 화면들
 const SIDE = new Set(["account", "profile", "changepw"]);
@@ -39,7 +39,7 @@ const PROVIDERS = (CONFIG.oauthProviders || []).filter(p => SOCIAL_ICONS[p]);
 const SOCIAL_BTN = p => `<button type="button" class="btn social-btn ${p}" data-provider="${p}">${SOCIAL_ICONS[p]}<span data-i18n="${SOCIAL_KEYS[p]}"></span></button>`;
 // 구글은 googleClientId가 있으면 구글 공식 버튼(google.js)을 .gsi-target에 그리고, 그게 되면 예전 방식 버튼은 숨김
 const SOCIAL_BTNS = PROVIDERS.map(p => p === "google" && googleOn
-  ? `<div class="gsi-slot">${SOCIAL_BTN(p)}<div class="gsi-target"></div></div>` : SOCIAL_BTN(p)).join("");
+  ? `<div class="gsi-slot">${SOCIAL_BTN(p)}<div class="gsi-spin" aria-hidden="true"><span></span></div><div class="gsi-target"></div></div>` : SOCIAL_BTN(p)).join("");
 // 로그인 화면 아래: "또는" + 소셜 버튼
 const SOCIAL = PROVIDERS.length ? `<div class="auth-or" data-i18n="orDivider"></div><div class="social">${SOCIAL_BTNS}</div>` : "";
 const EMAIL_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 6.5 12 13l8.5-6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
@@ -703,6 +703,17 @@ export function initAuthDialog() {
   $("restoreLogoutBtn").onclick = async () => { await Account.signOut(); close(); };
 
   Account.on("change", render);
+  // 로그인하지 않은 방문자: 페이지가 한가해지면 구글 로그인 스크립트를 미리 받아 둠 (로그인 창을 열자마자 구글 버튼이 보이게)
+  if (googleOn) {
+    let preloaded = false;
+    const maybePreload = () => {
+      if (preloaded || !Account.ready || Account.user) return;
+      preloaded = true;
+      (window.requestIdleCallback || (fn => setTimeout(fn, 1500)))(preloadGoogle);
+    };
+    Account.on("change", maybePreload);
+    maybePreload();
+  }
   Account.on("restore", () => open("restore"));
   Account.on("complete", () => open("complete"));
   Account.on("recovery", () => open("newpw"));
