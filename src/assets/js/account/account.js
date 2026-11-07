@@ -21,7 +21,10 @@ import { isPublicKey, missingFields, needsConsent, syncable } from "./helpers.js
 // 버전을 올리면 두 값을 같이 바꿀 것 (지문: https://www.srihash.org 또는 openssl dgst -sha384 -binary | openssl base64 -A)
 const SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
 const SDK_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
-const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at, age14_confirmed, terms_version";
+const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at, age14_confirmed, terms_version, avatar_version";
+// 프로필 사진: Storage의 avatars 버킷, 파일 이름은 "<회원 id>.jpg" (supabase/schema.sql의 권한과 같게)
+const AVATAR_BUCKET = "avatars";
+let avatarCache = null;   // 방금 올린 내 사진 (주소가 반영되기 전에도 바로 보이게 이 기기에서만 씀)
 
 /** 회원 기능이 켜져 있는지 (config.js에 주소와 공개 키가 있을 때) */
 export const configured = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey) && isPublicKey(CONFIG.supabaseKey);
@@ -105,6 +108,29 @@ export const Account = {
     const res = await sb.rpc("complete_signup", fields);
     if (!res.error) await loadProfile();
     return res;
+  },
+  /**
+   * 프로필 사진 주소. 사진이 없으면 null (화면은 닉네임 첫 글자를 보여줌).
+   * p, id를 주면 다른 회원(선생님 화면의 학생)의 사진, 안 주면 내 사진
+   */
+  avatarUrl(p = profile, id = user && user.id) {
+    if (!p || !p.avatar_version || !id) return null;
+    if (avatarCache && user && id === user.id) return avatarCache;
+    return `${CONFIG.supabaseUrl}/storage/v1/object/public/${AVATAR_BUCKET}/${id}.jpg?v=${p.avatar_version}`;
+  },
+  /** 프로필 사진 올리기 (blob = 256×256 JPEG, avatar.js의 squareJpeg가 만듦) → 번호를 바꿔 새 사진이 보이게 */
+  async uploadAvatar(blob) {
+    const up = await sb.storage.from(AVATAR_BUCKET).upload(`${user.id}.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
+    if (up.error) return up;
+    avatarCache = URL.createObjectURL(blob);
+    return Account.updateProfile({ avatar_version: Date.now() });
+  },
+  /** 프로필 사진 지우기 → 닉네임 첫 글자로 돌아감 */
+  async removeAvatar() {
+    const rm = await sb.storage.from(AVATAR_BUCKET).remove([`${user.id}.jpg`]);
+    if (rm.error) return rm;
+    avatarCache = null;
+    return Account.updateProfile({ avatar_version: null });
   },
   resetPassword: (email, redirectTo) => sb.auth.resetPasswordForEmail(email, { redirectTo }),
   updatePassword: password => sb.auth.updateUser({ password }),

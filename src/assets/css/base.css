@@ -90,6 +90,9 @@ button { cursor: pointer; }
 .account-btn { font-size: 12px; font-weight: 600; color: var(--accent-ink); background: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 4px 12px; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-btn:hover { filter: brightness(1.06); }
 .account-btn.signed-in { background: var(--surface); color: var(--ink); border-color: var(--line); }
+/* 로그인 뒤: 왼쪽에 작은 프로필 사진(또는 닉네임 첫 글자) + 닉네임 (account.css .avatar) */
+.account-btn.signed-in { display: inline-flex; align-items: center; gap: 6px; padding-left: 4px; }
+.account-btn.signed-in #accountName { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .account-btn.signed-in:hover { background: var(--sunken); filter: none; }
 
 /* ---------- 버튼 ---------- */

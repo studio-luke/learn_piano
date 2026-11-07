@@ -50,7 +50,7 @@ function headerHTML({ stats, back }) {
         <span class="stat"><span data-i18n="streak"></span> <b id="stStreak">0</b></span>
       </div>` : ""}
       ${LANG_SELECT}
-      <button class="account-btn" id="accountBtn" type="button" hidden><span id="accountLogin" data-i18n="login"></span><span id="accountName" hidden></span></button>
+      <button class="account-btn" id="accountBtn" type="button" hidden><span id="accountLogin" data-i18n="login"></span><span class="avatar avatar-xs" id="accountAvatar" aria-hidden="true" hidden></span><span id="accountName" hidden></span></button>
     </div>`;
 }
 

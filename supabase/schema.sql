@@ -28,6 +28,10 @@ alter table public.profiles alter column full_name set not null;
 alter table public.profiles alter column preferred_lang set not null;
 -- 2026-10-27: account deletion grace period — null means active, a time means "asked to leave at"
 alter table public.profiles add column if not exists deleted_at timestamptz;
+-- 2026-11-07: profile photo (optional). null = no photo (the site shows the nickname's first letter).
+-- The photo itself is the file avatars/<user id>.jpg in Storage (below); this number only changes when a new photo
+-- is saved, so browsers do not keep showing the old one. A number, not a URL, so nobody can point it at another site.
+alter table public.profiles add column if not exists avatar_version bigint;
 
 alter table public.profiles enable row level security;
 
@@ -51,7 +55,7 @@ create policy "profiles: update own" on public.profiles
 -- the browser may read profiles and change only these columns — never role or consent fields
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
-grant update (nickname, settings, full_name, preferred_lang) on public.profiles to authenticated;
+grant update (nickname, settings, full_name, preferred_lang, avatar_version) on public.profiles to authenticated;
 
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql set search_path = '' as $$
@@ -63,6 +67,28 @@ $$;
 drop trigger if exists profiles_touch_updated_at on public.profiles;
 create trigger profiles_touch_updated_at before update on public.profiles
   for each row execute function public.touch_updated_at();
+
+-- ---------- profile photos (Storage bucket "avatars") ----------
+-- Public bucket: anyone with the address can see a photo (the address contains the random user id).
+-- Each member can write only their own file, avatars/<user id>.jpg. The site shrinks photos to 256×256 JPEG,
+-- so 200 KB is plenty. On account deletion the site removes the file before marking the account.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 204800, array['image/jpeg'])
+on conflict (id) do update set public = true, file_size_limit = 204800, allowed_mime_types = array['image/jpeg'];
+
+drop policy if exists "avatars: read own" on storage.objects;
+create policy "avatars: read own" on storage.objects for select to authenticated
+  using (bucket_id = 'avatars' and name = (select auth.uid())::text || '.jpg');
+drop policy if exists "avatars: add own" on storage.objects;
+create policy "avatars: add own" on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and name = (select auth.uid())::text || '.jpg');
+drop policy if exists "avatars: replace own" on storage.objects;
+create policy "avatars: replace own" on storage.objects for update to authenticated
+  using (bucket_id = 'avatars' and name = (select auth.uid())::text || '.jpg')
+  with check (bucket_id = 'avatars' and name = (select auth.uid())::text || '.jpg');
+drop policy if exists "avatars: remove own" on storage.objects;
+create policy "avatars: remove own" on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and name = (select auth.uid())::text || '.jpg');
 
 -- ---------- sign-up: create the profile, enforce age and consent ----------
 -- Sign-up sends nickname / full_name / preferred_lang / age14 / terms_version as user metadata (src/account.js).

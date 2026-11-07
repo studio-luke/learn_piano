@@ -44,6 +44,9 @@ dialog.auth.side { margin: 0 0 0 auto; width: min(380px, 100vw); max-width: 100v
 dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 @keyframes side-in { from { transform: translateX(48px); opacity: 0; } }
 @media (max-width: 420px) { dialog.auth.side { border-radius: 0; border-left: none; } }   /* 폰에서는 화면 전체 */
+/* 내 계정 맨 위: 프로필 사진 + 닉네임·성명·이메일 */
+.acct-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.acct-head .acct-who { min-width: 0; overflow-wrap: anywhere; }
 .acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
 .acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
 .side-menu { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
@@ -70,3 +73,18 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .social-btn:hover:not(:disabled) { filter: brightness(.96); }
 .badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-align: center; margin-left: auto; }
 .badge:empty { display: none; }
+
+/* ===== 프로필 사진 (account/avatar.js) =====
+   사진이 없으면 닉네임 첫 글자를 포인트 색 동그라미에. 크기는 --size 하나로 정하고 글자 크기는 그 비율 */
+.avatar { --size: 40px; width: var(--size); height: var(--size); flex: none; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: calc(var(--size) * 0.44); line-height: 1; user-select: none; }
+.avatar.has-photo { background: var(--sunken); }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-xs { --size: 22px; }
+.avatar-md { --size: 48px; }
+.avatar-lg { --size: 72px; }
+/* 회원 정보 변경 맨 위: 큰 사진 + 사진 선택 / 기본 이미지로 */
+.avatar-edit { display: flex; align-items: center; gap: 14px; }
+.avatar-actions { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.avatar-label { font-size: 13px; font-weight: 500; }
+.avatar-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.avatar-actions small { color: var(--muted); font-size: 12px; }

@@ -10,6 +10,7 @@ import { t, lang, locale, setLang, applyI18n, onLangChange } from "../i18n/index
 import { $ } from "../common/dom.js";
 import { ROUTES, pageUrl } from "../common/sitemap.js";
 import { CONFIG } from "../config.js";
+import { drawAvatar, squareJpeg } from "./avatar.js";
 
 // 사이드바 모양으로 여는 화면들
 const SIDE = new Set(["account", "profile", "changepw"]);
@@ -86,6 +87,19 @@ const MARKUP = `
 
   <!-- 회원 정보 변경: 지금 정보를 채워 두고, 하나라도 바뀌었을 때만 저장 버튼이 켜짐 (profileReady). 이메일은 보기만 -->
   <form class="auth-form" data-view="profile" novalidate hidden>
+    <!-- 프로필 사진: 고르면 미리보기만 바뀌고, 저장을 눌러야 올라감 (pendingAvatar) -->
+    <div class="avatar-edit">
+      <span class="avatar avatar-lg" id="profileAvatar" aria-hidden="true"></span>
+      <div class="avatar-actions">
+        <span class="avatar-label" data-i18n="avatar"></span>
+        <div class="avatar-btns">
+          <button type="button" class="mini-btn" id="avatarPick" data-i18n="avatarPick"></button>
+          <button type="button" class="linkbtn" id="avatarRemove" data-i18n="avatarRemove"></button>
+        </div>
+        <input type="file" id="avatarFile" accept="image/*" hidden>
+        <small data-i18n="avatarHint"></small>
+      </div>
+    </div>
     <label class="field"><span data-i18n="email"></span><input type="email" name="email" readonly tabindex="-1"><small data-i18n="emailFixedHint"></small></label>
     <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
     <label class="field"><span data-i18n="nickname"></span><input type="text" name="nickname" autocomplete="nickname" maxlength="${NICK_MAX}" required><small data-i18n="nicknameHint"></small></label>
@@ -129,7 +143,10 @@ const MARKUP = `
   </form>
 
   <div class="auth-form" data-view="account" hidden>
-    <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
+    <div class="acct-head">
+      <span class="avatar avatar-md" id="acctAvatar" aria-hidden="true"></span>
+      <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
+    </div>
     <nav class="side-menu">
       <a class="menu-item" id="menuMy" href="${pageUrl(ROUTES.mypage)}"><span data-i18n="menuMy"></span><span class="chev" aria-hidden="true">›</span></a>
       <a class="menu-item" id="menuStudents" href="${pageUrl(ROUTES.teacher)}" hidden><span data-i18n="menuStudents"></span><span class="chev" aria-hidden="true">›</span></a>
@@ -213,8 +230,11 @@ function render() {
     $("accountLogin").hidden = !!user;
     $("accountName").hidden = !user;
     $("accountName").textContent = name;
+    $("accountAvatar").hidden = !user;
+    if (user) drawAvatar($("accountAvatar"), Account.avatarUrl(), name);
   }
   $("acctName").textContent = name;
+  drawAvatar($("acctAvatar"), Account.avatarUrl(), name);
   $("acctFullName").textContent = profile && profile.full_name ? profile.full_name : "";
   $("acctEmail").textContent = user ? user.email : "";
   $("menuStudents").hidden = !Account.isAdmin();
@@ -265,13 +285,44 @@ async function resend() {
   setMsg(error ? "no" : "ok", error ? errorKey(error) : "msgResent");
 }
 
+// 회원 정보 변경 화면의 사진: undefined = 그대로, { blob, url } = 새로 고른 사진, null = 지우기(닉네임 첫 글자로)
+let pendingAvatar;
+// 사진 미리보기 + "기본 이미지로" 버튼 (지금 보이는 게 사진일 때만)
+function drawProfileAvatar() {
+  const url = pendingAvatar === undefined ? Account.avatarUrl() : pendingAvatar && pendingAvatar.url;
+  drawAvatar($("profileAvatar"), url, form("profile").nickname.value || (Account.profile && Account.profile.nickname));
+  $("avatarRemove").hidden = !url;
+}
+async function pickAvatar(file) {
+  if (!file) return;
+  try {
+    const blob = await squareJpeg(file);
+    if (pendingAvatar && pendingAvatar.url) URL.revokeObjectURL(pendingAvatar.url);
+    pendingAvatar = { blob, url: URL.createObjectURL(blob) };
+    setMsg("", "");
+  } catch (e) {
+    setMsg("no", "errAvatar");   // 이미지가 아니거나 브라우저가 못 여는 형식(일부 HEIC 등)
+  }
+  drawProfileAvatar();
+  profileReady();
+}
+function removeAvatar() {
+  // 저장된 사진이 있으면 지우기로, 방금 고른 사진뿐이면 고르기 전으로
+  pendingAvatar = Account.profile && Account.profile.avatar_version ? null : undefined;
+  drawProfileAvatar();
+  profileReady();
+}
+
 // 회원 정보 변경 화면: 지금 계정 정보로 칸을 채움 (열 때마다 — 저장하지 않고 나갔다 오면 원래 값으로)
 function fillProfile() {
   const f = form("profile"), p = Account.profile || {};
+  pendingAvatar = undefined;
+  $("avatarFile").value = "";
   f.email.value = Account.user ? Account.user.email : "";
   f.fullName.value = p.full_name || "";
   f.nickname.value = p.nickname || "";
   f.lang.value = p.preferred_lang || lang();
+  drawProfileAvatar();
   profileReady();
 }
 // 바뀐 칸만 { 열 이름: 새 값 }으로 (앞뒤 빈칸은 무시하고 비교)
@@ -284,7 +335,7 @@ function profileChanges() {
 }
 // 저장 버튼: 하나라도 바뀌었을 때만 켜짐
 function profileReady() {
-  $("profileSave").disabled = !Object.keys(profileChanges()).length;
+  $("profileSave").disabled = !Object.keys(profileChanges()).length && pendingAvatar === undefined;
 }
 
 // 비밀번호 확인 칸 제목 옆 표시: 확인 칸에 뭔가 썼을 때만, 두 칸이 같으면 초록 "일치합니다", 다르면 주황 "일치하지 않습니다"
@@ -385,11 +436,19 @@ const SUBMIT = {
   // 내 계정 → 회원 정보 변경: 바뀐 칸만 저장. 사용 언어를 바꿨으면 화면 언어도 바로 바꿈 (언어별 페이지는 그 언어 주소로 이동)
   async profile(f) {
     const changes = profileChanges();
-    if (!Object.keys(changes).length) return;
+    if (!Object.keys(changes).length && pendingAvatar === undefined) return;
     if ("full_name" in changes && (!changes.full_name || changes.full_name.length > NAME_MAX)) return setMsg("no", "errFullName");
     if ("nickname" in changes && (!changes.nickname || changes.nickname.length > NICK_MAX)) return setMsg("no", "errNickname");
-    const { error } = await Account.updateProfile(changes);
-    if (error) return setMsg("no", errorKey(error));
+    // 사진 먼저 (실패하면 다른 칸도 저장하지 않고 그대로 둠)
+    if (pendingAvatar !== undefined) {
+      const res = pendingAvatar ? await Account.uploadAvatar(pendingAvatar.blob) : await Account.removeAvatar();
+      if (res.error) return setMsg("no", errorKey(res.error));
+      pendingAvatar = undefined;
+    }
+    if (Object.keys(changes).length) {
+      const { error } = await Account.updateProfile(changes);
+      if (error) return setMsg("no", errorKey(error));
+    }
     show("account", { kind: "ok", key: "msgSaved" });
     if (changes.preferred_lang && changes.preferred_lang !== lang()) setLang(changes.preferred_lang);
   },
@@ -427,6 +486,8 @@ const SUBMIT = {
     if (f.phrase.value !== t("deletePhrase")) return;
     const check = await Account.verifyPassword(f.current.value);
     if (check.error) return setMsg("no", check.error.code === "invalid_credentials" ? "errCurrentPw" : errorKey(check.error));
+    // 프로필 사진은 탈퇴 신청 때 바로 지움 (사진은 누구나 주소로 볼 수 있는 저장소라 7일을 기다리지 않음)
+    if (Account.profile && Account.profile.avatar_version) await Account.removeAvatar();
     const { data, error } = await Account.requestDeletion();
     if (error) return setMsg("no", errorKey(error));
     f.reset();
@@ -477,6 +538,10 @@ export function initAuthDialog() {
   form("delete").addEventListener("input", deleteReady);
   form("profile").addEventListener("input", profileReady);
   form("profile").addEventListener("change", profileReady);   // 언어 고르기(select)
+  form("profile").nickname.addEventListener("input", drawProfileAvatar);   // 사진이 없으면 첫 글자가 따라 바뀜
+  $("avatarPick").onclick = () => $("avatarFile").click();
+  $("avatarFile").onchange = e => pickAvatar(e.target.files[0]);
+  $("avatarRemove").onclick = removeAvatar;
   dlg().addEventListener("input", e => { if (e.target.name === "password" || e.target.name === "password2") pwMatch(); });
   onLangChange(pwMatch);
 

@@ -37,6 +37,16 @@ export function langForTimeZone(tz) {
   return "en";
 }
 
+/** 프로필 사진이 없을 때 대신 보여줄 글자: 닉네임의 첫 글자 (영문은 대문자). 이모지·결합 문자도 한 글자로 */
+export function avatarInitial(nickname) {
+  const s = String(nickname || "").trim();
+  if (!s) return "?";
+  const first = typeof Intl !== "undefined" && Intl.Segmenter
+    ? new Intl.Segmenter().segment(s)[Symbol.iterator]().next().value.segment
+    : Array.from(s)[0];
+  return first.toUpperCase();
+}
+
 /** 소셜 로그인으로 처음 들어와 아직 14세 확인·약관 동의를 안 한 회원인지 (DB의 complete_signup으로 채워짐) */
 export const needsConsent = p => !!p && (!p.age14_confirmed || !p.terms_version);
 

@@ -56,6 +56,13 @@ test("errorKey maps Supabase errors to messages", () => {
   assert.strictEqual(Account.errorKey({ code: "unexpected_failure", status: 500, message: "Database error saving new user" }), "errGeneric");
 });
 
+test("avatarInitial: the first letter of the nickname stands in for a missing photo", () => {
+  assert.strictEqual(Account.avatarInitial("선생님"), "선");
+  assert.strictEqual(Account.avatarInitial("  alex "), "A");
+  assert.strictEqual(Account.avatarInitial("👩‍🎤 rock"), "👩‍🎤");
+  assert.strictEqual(Account.avatarInitial(""), "?");
+});
+
 test("needsConsent: a social sign-in has to agree before the account is used", () => {
   assert.strictEqual(Account.needsConsent({ age14_confirmed: false, terms_version: null }), true);
   assert.strictEqual(Account.needsConsent({ age14_confirmed: true, terms_version: null }), true);
