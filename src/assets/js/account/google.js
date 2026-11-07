@@ -1,0 +1,68 @@
+// ===== Google 로그인 — 구글 공식 버튼을 우리 사이트에서 직접 띄우기 (Google Identity Services) =====
+// 왜: 예전 방식(signInWithOAuth)은 구글 → Supabase 서버 → 우리 사이트로 돌아와서, 구글 동의 화면에
+//     "joxtek….supabase.co 서비스로 로그인"이 보였어요. 이 방식은 구글 팝업이 우리 사이트(chordoven.com) 위에서 열리고,
+//     받은 증표(ID 토큰)를 Supabase에 넘겨 로그인해요(signInWithIdToken) → 동의 화면에 chordoven.com이 보임. (2026-11-07 사용자 결정)
+//
+// config.js의 googleClientId(공개용 클라이언트 ID)가 있을 때만 켜져요. 없거나, 구글 스크립트를 못 불러오면(네트워크 차단 등)
+// 화면에 있는 예전 방식 버튼이 그대로 남아서 로그인은 계속 돼요.
+// 버튼 모양은 구글이 정해요(구글 정책상 이 방식은 구글이 그린 버튼만 쓸 수 있음).
+import { CONFIG } from "../config.js";
+
+const CLIENT_ID = CONFIG.googleClientId || "";
+const SCRIPT = "https://accounts.google.com/gsi/client";
+const LOAD_MS = 10000;
+// 구글 버튼의 언어 이름
+const GSI_LOCALE = { ko: "ko", en: "en", ja: "ja", zh: "zh_CN" };
+
+export const googleOn = !!CLIENT_ID;
+let loading = null;
+let rawNonce = "";   // 이번 로그인용 일회용 값. 구글에는 해시를 주고, Supabase에는 원래 값을 줘서 같은 요청인지 확인
+
+function load() {
+  if (!loading) loading = Promise.race([
+    new Promise((resolve, reject) => {
+      if (window.google && window.google.accounts && window.google.accounts.id) return resolve();
+      const s = document.createElement("script");
+      s.src = SCRIPT; s.async = true;
+      s.onload = resolve; s.onerror = () => reject(new Error("gsi"));
+      document.head.appendChild(s);
+    }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("gsi timeout")), LOAD_MS)),
+  ]).catch(e => { loading = null; throw e; });
+  return loading;
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * 구글 버튼을 slots(각 .gsi-slot 요소)에 그림. 성공하면 각 슬롯의 예전 방식 버튼을 숨김.
+ * onCredential(idToken, nonce)는 사용자가 구글 계정을 고르면 불림 → Account.signInWithGoogleToken으로 로그인
+ * 로그인 창을 열 때마다·언어를 바꿀 때마다 다시 불러도 됨 (일회용 값도 새로 만듦)
+ */
+export async function renderGoogle(slots, locale, onCredential) {
+  if (!googleOn || !slots.length) return;
+  try { await load(); } catch (e) { console.warn("구글 로그인 스크립트를 불러오지 못했어요 — 예전 방식 버튼을 씀", e); return; }
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  rawNonce = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "");
+  const nonce = rawNonce;
+  window.google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    nonce: await sha256Hex(nonce),
+    callback: r => onCredential(r.credential, nonce),
+    auto_select: false,
+    itp_support: true,
+  });
+  slots.forEach(slot => {
+    const target = slot.querySelector(".gsi-target");
+    const width = Math.min(400, Math.max(200, Math.round(slot.clientWidth || 320)));
+    target.textContent = "";
+    window.google.accounts.id.renderButton(target, {
+      type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "rectangular",
+      logo_alignment: "center", width, locale: GSI_LOCALE[locale] || "en",
+    });
+    slot.classList.add("gsi-ready");   // CSS가 예전 방식 버튼을 숨김
+  });
+}

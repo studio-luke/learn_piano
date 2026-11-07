@@ -77,6 +77,9 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .btn.social-btn.kakao, .btn.social-btn.kakao:hover:not(:disabled) { background: #FEE500; color: rgba(0,0,0,.85); border-color: #FEE500; }
 .btn.social-btn.apple, .btn.social-btn.apple:hover:not(:disabled) { background: #000; color: #fff; border-color: #000; }
 .social-btn:hover:not(:disabled) { filter: brightness(.96); }
+/* 구글 공식 버튼 자리: 그려지면(.gsi-ready) 예전 방식 버튼을 숨김. 구글 버튼은 최대 400px라 가운데 정렬 */
+.gsi-slot .gsi-target { display: flex; justify-content: center; min-height: 0; }
+.gsi-slot.gsi-ready > .social-btn { display: none; }
 /* 가입 방법 고르기의 [이메일로 가입하기]: 사이트 기본 버튼 모양 + 같은 크기·정렬 */
 .btn.social-btn.email { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .btn.social-btn.email:hover:not(:disabled) { background: var(--sunken); filter: none; }

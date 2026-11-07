@@ -116,6 +116,8 @@ export const Account = {
   resendSignup: (email, redirectTo) => sb.auth.resend({ type: "signup", email, options: { emailRedirectTo: redirectTo } }),
   /** 소셜 로그인 (google, kakao, apple …): 그 회사 로그인 화면으로 갔다가 redirectTo로 돌아옴 */
   signInWithProvider: (provider, redirectTo) => sb.auth.signInWithOAuth({ provider, options: { redirectTo } }),
+  /** 구글 공식 버튼(google.js)에서 받은 ID 토큰으로 로그인. nonce = 구글에 해시를 준 일회용 값의 원래 값 */
+  signInWithGoogleToken: (token, nonce) => sb.auth.signInWithIdToken({ provider: "google", token, nonce }),
   /** 소셜 로그인 첫 방문: 성명·닉네임·언어 + 14세 확인·약관 동의를 저장(DB 함수)하고 프로필을 다시 불러옴 */
   async completeSignup(fields) {
     const res = await sb.rpc("complete_signup", fields);

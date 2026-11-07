@@ -11,4 +11,7 @@ export const CONFIG = {
   // 로그인 창에 보여줄 소셜 로그인 버튼 (순서대로). 쓸 수 있는 값: "google", "kakao", "apple"
   // Supabase 대시보드(Authentication → Sign In / Providers)에서 그 회사를 켠 뒤에만 넣을 것 — 켜기 전에 넣으면 눌렀을 때 오류
   oauthProviders: ["google"],
+  // 구글 로그인을 구글 공식 버튼으로 직접 연결 (동의 화면에 chordoven.com이 보이게, account/google.js).
+  // 구글 클라우드 콘솔 → 클라이언트의 "클라이언트 ID"(…apps.googleusercontent.com, 공개용). 비워 두면 예전 방식(supabase.co 경유)
+  googleClientId: "743670935659-dtf17s8s9f9gm7n7t92vc8g2onvthplr.apps.googleusercontent.com",
 };
