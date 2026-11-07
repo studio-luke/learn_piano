@@ -1,5 +1,6 @@
 // ===== 연습 — 타이머 =====
-// 켜면 "다음 문제부터" 문제가 나온 순간부터 맞힐 때까지의 시간을 재요 (최대 5분). 학생의 이해도를 더 정확히 보려고.
+// 켜면 바로 새 문제가 나오고, 그 문제부터 문제가 나온 순간부터 맞힐 때까지의 시간을 재요 (최대 5분). 학생의 이해도를 더 정확히 보려고.
+// (2026-11-07 사용자 결정: 예전에는 "다음 문제부터" 쟀음 → 켜는 즉시 새 문제로 바꾸고 바로 시작. 새 문제는 quiz.js timerHooks.changed가 냄)
 //
 // 규칙 (사용자 결정 2026-11-06, 자세한 내용은 chordoven-spec.md "타이머")
 //   - 켜는 조건: 코드 종류 5가지 이상, 옵션 B를 쓰면 베이스 7개 이상 (비슷한 쉬운 문제만 반복해 시간을 줄이는 것 방지)
@@ -21,7 +22,7 @@ export const MIN_TYPES = 5, MIN_BASES = 7;
 /**
  * 타이머 상태.
  *   on   켜져 있는지
- *   cur  지금 문제의 시간 기록 (켠 뒤 다음 문제부터 생김, 없으면 null)
+ *   cur  지금 문제의 시간 기록 (켜면 바로 나오는 새 문제부터 생김, 문제가 없으면 null)
  *        { start, last(마지막 입력 시각), first(첫 결과: null=아직, true=정답, false=오답), sent(기록을 보냈는지),
  *          end(멈춘 시간 ms), snap(문제 시작 때의 정답/시도 숫자 — 연결이 끊기면 되돌리려고) }
  */
@@ -45,7 +46,7 @@ export const timerSettings = review => ({
 
 let hooks = {};
 
-/** 다음 문제부터 잴 준비: 새 문제가 나올 때마다 quiz.js가 부름. snap = 그때의 정답/시도 숫자 */
+/** 시간 재기 시작: 새 문제가 나올 때마다 quiz.js가 부름 (타이머가 꺼져 있으면 재지 않음). snap = 그때의 정답/시도 숫자 */
 export function startTiming(hasQuestion, snap) {
   timer.cur = timer.on && hasQuestion ? { start: Date.now(), last: Date.now(), first: null, sent: false, end: null, snap } : null;
   renderTimer();
@@ -70,12 +71,11 @@ export function renderTimer() {
   const el = $("timerText");
   let text = "";
   if (timer.on) {
-    if (!c) text = t("timerNext");   // 켠 직후: 지금 문제는 재지 않음
-    else { const sec = Math.floor(elapsed() / 1000); text = `⏱ ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; }
+    if (c) { const sec = Math.floor(elapsed() / 1000); text = `⏱ ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; }
   }
   el.textContent = text;
   el.classList.toggle("wait", !c);
-  el.hidden = !timer.on || (c && S.timerShow === false);
+  el.hidden = !timer.on || !c || S.timerShow === false;
   // 폰 세로에서는 안내 문구 옆 대신 버튼 안에 지난 시간을 보여줌 (CSS가 둘 중 하나만 보이게 함)
   $("timerBtnTime").textContent = timer.on && c && S.timerShow !== false ? text.replace("⏱ ", "") : "";
 }

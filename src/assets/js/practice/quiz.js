@@ -105,9 +105,36 @@ export function renderReview() {
 /** 출제 설정 잠금: 다시 풀기 중이거나 타이머가 켜져 있으면 */
 export function renderLock() { setLocked(review ? "lockNote" : timer.on ? "lockTimer" : null); }
 
+// ---------- 타이머를 켤 때 3·2·1 (2026-11-07 사용자 결정: 첫 문제 전에 마음의 준비 시간) ----------
+// 코드가 나오는 자리에 3 → 2 → 1을 1초씩 보여준 뒤 새 문제를 내고, 그때부터 시간을 재요.
+// 세는 동안은 문제가 없어서 채점·정답 확인·다음 문제가 동작하지 않고, 타이머를 끄면 세기를 멈추고 바로 새 문제(시간 없이).
+let countdown = null;   // { n: 남은 숫자, id: setInterval 번호 } 또는 null
+const COUNT_FROM = 3;
+function startCountdown() {
+  stopCountdown();
+  selected.clear();
+  Object.assign(state, { q: null, err: null, answer: new Set(), good: new Set(), locked: false, attempted: false, skip: false, fb: null });
+  $("btnCheck").disabled = true; $("btnReveal").disabled = true;
+  renderFeedback();
+  setView({ q: null, answer: state.answer, good: state.good });
+  countdown = { n: COUNT_FROM, id: setInterval(() => {
+    countdown.n--;
+    if (countdown.n > 0) return renderPrompt();
+    stopCountdown();
+    newQuestion();   // 이때부터 시간 재기 (startTiming)
+  }, 1000) };
+  renderPrompt();
+}
+function stopCountdown() {
+  if (!countdown) return;
+  clearInterval(countdown.id);
+  countdown = null;
+}
+
 // ---------- 문제 내기와 화면 ----------
 
 export function newQuestion() {
+  if (countdown) return;   // 3·2·1 세는 중에는 다음 문제(N·→·버튼) 무시
   skipTimed();     // 타이머 중 넘김 → 오답
   settleTimed();   // 남은 오답 기록 보내기
   let q = review && nextReview();
@@ -139,6 +166,15 @@ function symbolHTML(q) {
 }
 export function renderPrompt() {
   const sym = $("symbol");
+  sym.classList.toggle("count", !!countdown);
+  if (countdown) {
+    sym.textContent = String(countdown.n); sym.removeAttribute("aria-label"); sym.classList.remove("empty");
+    $("hint").textContent = t("timerReady");
+    // 숫자가 바뀔 때마다 톡 튀어나오는 효과를 처음부터 다시
+    sym.classList.remove("pop"); void sym.offsetWidth; sym.classList.add("pop");
+    return;
+  }
+  sym.classList.remove("pop");
   if (state.err) {
     sym.textContent = t(state.err); sym.removeAttribute("aria-label"); sym.classList.add("empty"); $("hint").textContent = "";
   } else if (state.q) {
@@ -231,6 +267,9 @@ export const timerHooks = {
   },
   changed(on, msgKey) {
     renderLock();
+    // 켜면 지금 문제는 버리고(타이머가 꺼져 있을 때 나온 문제라 기록 없음) 3·2·1 뒤 새 문제 → 그 문제부터 시간 재기
+    if (on) startCountdown();
+    else if (countdown) { stopCountdown(); newQuestion(); }   // 세는 도중에 끔 → 바로 새 문제 (시간 없이)
     if (msgKey) setFeedback("no", () => t(msgKey) + (state.locked && state.q ? ` ${answerLine(state.q)}` : ""));
   },
   // 5분 동안 입력 없음: 오답·5분으로 기록, 정답을 보여주고 타이머 끔

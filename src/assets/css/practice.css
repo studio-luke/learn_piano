@@ -10,6 +10,11 @@
 .prompt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-block: 6px 2px; }
 .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
 .symbol { font-family: var(--font-display); font-size: clamp(52px, 11vw, 92px); line-height: 1.05; letter-spacing: 0.01em; min-height: 1.1em; word-break: break-word; }
+/* 타이머를 켤 때 3·2·1: 포인트 색, 숫자가 바뀔 때마다 톡 튀어나옴 (quiz.js startCountdown) */
+.symbol.count { color: var(--accent); font-variant-numeric: tabular-nums; }
+.symbol.count.pop { animation: count-pop .45s ease-out; }
+@keyframes count-pop { from { transform: scale(1.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .symbol.count.pop { animation: none; } }
 .symbol.empty { font-size: 22px; font-family: var(--font-body); color: var(--muted); min-height: auto; padding-block: 24px; }
 /* 괄호 안 항목이 2개 이상이면 재즈 차트처럼 세로로 쌓음 (높은 텐션이 위) */
 .symbol .stack { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 0.03em; margin-block: 0.2em; }
