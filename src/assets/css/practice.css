@@ -113,7 +113,7 @@
 .group { display: flex; flex-direction: column; gap: 8px; }
 .group-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .opt { display: flex; flex-direction: column; gap: 8px; }
-.tag { font-size: 11px; font-weight: 700; color: var(--accent); margin-right: 4px; }   /* 옵션 글자 B C D E */
+/* (2026-11-08: 옵션 앞의 B C D E 글자는 화면에서 뺌 — 이 글자는 개발할 때 우리끼리 부르는 이름으로만 씀) */
 .sub { margin-left: 26px; display: flex; flex-direction: column; gap: 8px; }
 .bases { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .bases .chip span { min-width: 0; width: 100%; padding: 5px 2px; font-size: 13px; }
