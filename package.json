@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node tools/serve.js",
     "build": "node tools/build.js",
-    "test": "node --test tests/engine.test.js tests/account.test.js tests/build.test.js",
+    "test": "node --test tests/engine.test.js tests/naming.test.js tests/account.test.js tests/build.test.js",
     "audit": "node tools/build.js && node tests/layout-audit.js"
   },
   "devDependencies": {

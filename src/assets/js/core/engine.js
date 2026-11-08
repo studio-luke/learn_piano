@@ -155,7 +155,9 @@ function makeLabel(type, tens, alt, useSym, rnd) {
 
 // 근음·코드 종류·텐션으로 구성음 만들기. 악보에서 쓰지 않을 철자가 나오면 null
 //   required  반드시 눌러야 하는 음, optional  눌러도 안 눌러도 되는 음, anyOf  이 중 하나 이상(7alt)
-function buildTones(type, root, tens, alt, s) {
+//   loose     true면 철자를 따지지 않음 (코드 추론하기에서 사용자가 쓴 답의 구성음을 셀 때 — G♭dim7처럼
+//             겹변화표가 여러 개 나오는 이름도 같은 건반이면 정답이라서)
+function buildTones(type, root, tens, alt, s, loose = false) {
   const replaces5 = tens.includes("#5") || tens.includes("b5");
   const tenDegs = new Set(tens.map(t => TEN[t][1]));
   const tones = [];
@@ -185,8 +187,8 @@ function buildTones(type, root, tens, alt, s) {
     }
   }
   // 악보에서 쓰지 않는 철자(3중 변화표, 겹변화표 2개 이상)는 출제하지 않음
-  if (tones.some(t => Math.abs(t.a) > 2)) return null;
-  if (tones.filter(t => Math.abs(t.a) === 2).length >= 2) return null;
+  if (!loose && tones.some(t => Math.abs(t.a) > 2)) return null;
+  if (!loose && tones.filter(t => Math.abs(t.a) === 2).length >= 2) return null;
   // 보이는 이름: 옵션 E면 원래 철자(C♭ E♯ A𝄫 F𝄪) 그대로, 아니면 쉬운 이름으로 바꿈
   for (const t of tones) {
     const odd = (t.l === 0 || t.l === 3) && t.a === -1 || (t.l === 2 || t.l === 6) && t.a === 1;   // C♭ F♭ E♯ B♯
@@ -227,7 +229,7 @@ function rebuild(sp, s) {
 
 /**
  * 출제 설정 s로 문제 하나 만들기.
- * @param s           출제 설정 (types, optB, bases, optC, cMax, optD, optE)
+ * @param s           출제 설정 (types, optB, bases, optC, cMax, optD, optE, noAlt — 코드 추론하기는 7alt를 내지 않음)
  * @param rnd         난수 함수 (테스트에서 고정값을 넣을 수 있게)
  * @param prev        바로 앞 문제 (문제 객체) — 같은 베이스(건반 기준: C♯과 D♭은 같은 베이스)가 연달아 나오지 않게.
  *                    출제할 베이스가 하나뿐이면(옵션 B로 하나만 고름) 어쩔 수 없이 같은 베이스 (사용자 결정 2026-11-06)
@@ -248,7 +250,7 @@ function generate(s, rnd = Math.random, prev = null) {
 
     let tens = [], alt = false;
     if (s.optC && type.seventh) {
-      if (type.id === "dom7" && rnd() < 0.1) alt = true;   // 도미넌트 7의 약 10%는 7alt
+      if (type.id === "dom7" && !s.noAlt && rnd() < 0.1) alt = true;   // 도미넌트 7의 약 10%는 7alt (코드 추론하기는 noAlt — 7alt 없음)
       else tens = chooseTensions(type, Math.min(s.cMax, type.maxTen || 9), rnd);
       // 도미넌트 계열: ♭13을 ♯5로, ♯11을 ♭5로 반쯤 바꿔 씀 (♯11과 ♭13이 함께 있으면 그대로)
       if (type.dominant && !alt) {
@@ -300,5 +302,11 @@ function voicing(q) {
   return [...new Set(out)].sort((a, b) => a - b);
 }
 
-export const Engine = { TYPES, BY_ID, PC_NAMES, TEN, WHITE, generate, rebuild, spec, quality, grade, voicing, tenText, spellTone, simpleName };
+/**
+ * 철자를 따지지 않고 구성음 만들기 (코드 추론하기에서 사용자가 쓴 답을 판정할 때).
+ * @returns { tones, required, optional, anyOf } — 7alt는 없음
+ */
+const tonesFor = (typeId, root, tens) => buildTones(BY_ID[typeId], root, tens, false, { optE: true }, true);
+
+export const Engine = { TYPES, BY_ID, PC_NAMES, TEN, TEN_ORDER, WHITE, NAT, LET, generate, rebuild, spec, quality, grade, voicing, tenText, spellTone, simpleName, tonesFor, pcOf };
 export default Engine;
