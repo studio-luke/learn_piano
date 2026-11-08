@@ -349,6 +349,7 @@ export default {
   wrongExtra: "Doesn't belong",
   wrongBass: "The lowest note must be the root.",
   orWord: "or",
+  modeTabsAria: "Choose a practice",
   ctxCut: "Cut",
   ctxCopy: "Copy",
   ctxDelete: "Delete",

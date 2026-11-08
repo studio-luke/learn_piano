@@ -349,6 +349,7 @@ export default {
   wrongExtra: "入らない音",
   wrongBass: "一番下の音がルートでなければなりません。",
   orWord: "または",
+  modeTabsAria: "練習を選ぶ",
   ctxCut: "切り取り",
   ctxCopy: "コピー",
   ctxDelete: "削除",

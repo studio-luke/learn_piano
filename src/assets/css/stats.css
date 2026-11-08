@@ -122,3 +122,10 @@
   .st-table th, .st-table td { padding-inline: 4px; }
   .st-card { padding: 14px 12px; }
 }
+
+/* ---------- 연습 탭 [랜덤 코드 연습 | 코드 추론하기] (stats/view.js modeTabsHTML, 4-3) ---------- */
+.st-modes { display: flex; gap: 4px; padding: 4px; background: var(--sunken); border-radius: 12px; width: max-content; max-width: 100%; margin-bottom: 4px; }
+.st-mode { border: none; background: none; color: var(--muted); font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 9px; white-space: nowrap; }
+.st-mode:hover { color: var(--ink); }
+.st-mode[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40,20,10,.15); }
+@media (max-width: 420px) { .st-modes { width: 100%; } .st-mode { flex: 1; padding-inline: 8px; font-size: 13px; } }

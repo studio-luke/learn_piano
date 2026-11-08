@@ -349,6 +349,7 @@ export default {
   wrongExtra: "不属于该和弦的音",
   wrongBass: "最低音必须是根音。",
   orWord: "或",
+  modeTabsAria: "选择练习",
   ctxCut: "剪切",
   ctxCopy: "复制",
   ctxDelete: "删除",

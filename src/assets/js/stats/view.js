@@ -83,6 +83,24 @@ export function tablesHTML(data) {
 }
 
 /** 틀린 문제 목록 (●는 다시 풀기에서 처음 채점에 맞힌 횟수, 2번이면 목록에서 빠짐). withButton: 다시 풀기 버튼 */
+// ---------- 연습 탭 [랜덤 코드 연습 | 코드 추론하기] (4-3, 2026-11-08) ----------
+// 마이페이지·학생 목록·학생 기록이 함께 써요. 고른 탭은 주소 ?mode=name에 남겨서 새로고침·뒤로 가기·링크 공유 때 그대로.
+// 메뉴로 들어오면(주소에 mode가 없으면) 랜덤 코드 연습부터. "play"·"name"은 DB practice_log.mode와 같은 값
+export const MODES = ["play", "name"];
+/** 주소의 ?mode → 지금 고른 연습 */
+export const currentMode = () => (new URLSearchParams(location.search).get("mode") === "name" ? "name" : "play");
+/** 고른 연습을 주소에 남김 (기록을 새로 쌓지 않고 지금 주소만 바꿈) */
+export function setModeInUrl(mode) {
+  const u = new URL(location.href);
+  if (mode === "name") u.searchParams.set("mode", "name"); else u.searchParams.delete("mode");
+  history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+}
+/** 탭 버튼 줄 */
+export const modeTabsHTML = mode => `<div class="st-modes" role="tablist" aria-label="${esc(t("modeTabsAria"))}">${MODES.map(m =>
+  `<button type="button" role="tab" class="st-mode" data-mode="${m}" aria-selected="${m === mode}">${esc(t(m === "name" ? "navNameTrainer" : "navTrainer"))}</button>`).join("")}</div>`;
+/** 탭을 눌렀으면 그 연습("play" | "name"), 아니면 null */
+export const modeClicked = e => { const b = e.target.closest(".st-mode"); return b ? b.dataset.mode : null; };
+
 export function reviewHTML(data, withButton) {
   const rv = data.review || [];
   const chips = rv.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${chordHTML(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");

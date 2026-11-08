@@ -350,6 +350,7 @@ export default {
   wrongExtra: "들어갈 수 없는 음",
   wrongBass: "맨 아래 음이 근음이어야 해요.",
   orWord: "또는",
+  modeTabsAria: "연습 고르기",
   ctxCut: "잘라내기",
   ctxCopy: "복사",
   ctxDelete: "삭제",

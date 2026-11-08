@@ -6,12 +6,13 @@
 //   4. 연습량 그래프 + 코드 종류·베이스·텐션 표 (기간 선택)
 //   5. 최근 푼 문제 50개 (날짜·코드·종류·결과·걸린 시간)
 //   6. 틀린 문제 목록
-// 데이터: practice_summary(기간별) + student_overview(이 화면 전용, 관리자만).
+// 맨 위 탭으로 어느 연습을 볼지 골라요 (4-3, 2026-11-08 — 주소 ?mode=name). 힌트를 쓴 문제는 최근 문제에 "힌트" 표.
+// 데이터: practice_summary(기간별) + student_overview(이 화면 전용, 관리자만) — 둘 다 p_mode로 연습 구분.
 import { startPage } from "../common/layout.js";
 import { Account } from "../account/account.js";
 import { t, locale, onLangChange } from "../i18n/index.js";
 import { $, esc, chordHTML } from "../common/dom.js";
-import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, card, dateText, sec, typeName, rootName, tensionName } from "../stats/view.js";
+import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, card, dateText, sec, typeName, rootName, tensionName, currentMode, setModeInUrl, modeTabsHTML, modeClicked } from "../stats/view.js";
 import { localDay, buckets, rootRows, tensionRows, weakest, pct, WEAK_MIN } from "../stats/data.js";
 import { Engine } from "../core/engine.js";
 import { gateHTML, wireGate } from "../stats/gate.js";
@@ -22,18 +23,21 @@ const body = $("statsBody");
 const uid = new URLSearchParams(location.search).get("id");
 const picker = new PeriodPicker();
 let data = null, ov = null, loading = false, failed = false, seq = 0;
+let mode = currentMode();   // 고른 연습 "play" | "name"
+let ovMode = null;          // ov가 어느 연습의 것인지 (탭을 바꾸면 새로 받되, 받는 동안은 예전 것을 흐리게 보여줌)
 
 async function load() {
   loading = true; failed = false;
   render();
   const n = ++seq;
   const { range, custom } = picker;
-  // 학생 정보·약점·습관(ov)은 기간과 상관없어서 처음 한 번만 받음
-  const [res, ovRes] = await Promise.all([Account.summary(uid, range, custom), ov ? { data: ov } : Account.overview(uid)]);
+  // 학생 정보·약점·습관(ov)은 기간과 상관없어서 연습마다 한 번만 받음 (탭을 바꾸면 다시)
+  const want = mode;
+  const [res, ovRes] = await Promise.all([Account.summary(uid, range, custom, want), ov && ovMode === want ? { data: ov } : Account.overview(uid, want)]);
   if (n !== seq) return;
   loading = false;
   if (res.error || ovRes.error || !ovRes.data || !ovRes.data.nickname) failed = true;
-  else { data = { ...res.data, range, custom }; ov = ovRes.data; }
+  else { data = { ...res.data, range, custom }; ov = ovRes.data; ovMode = want; }
   render();
 }
 
@@ -71,7 +75,7 @@ function render() {
     </div><div class="st-week"><span>${esc(t("habitWeek"))}</span>${dots}</div></section>`;
 
   const recentRows = (ov.recent || []).map(r => `<tr><td class="num st-dim">${esc(dateText(r.d, { month: "numeric", day: "numeric" }))}</td>
-    <td class="st-type">${chordHTML(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}</td><td class="st-dim">${chordHTML(typeName(r.q))}</td>
+    <td class="st-type">${chordHTML(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}${r.hint ? ` <span class="st-tag">${esc(t("hintBtn"))}</span>` : ""}</td><td class="st-dim">${chordHTML(typeName(r.q))}</td>
     <td><span class="st-res ${r.first ? "ok" : "no"}">${esc(t(r.first ? "sCorrect" : "sWrong"))}</span></td>
     <td class="num st-dim">${r.ms != null ? esc(sec(r.ms)) : ""}</td></tr>`).join("");
   const recent = `<section class="st-card"><h3>${esc(t("recentH"))}</h3>${recentRows ? `<div class="st-scroll"><table class="st-table">
@@ -79,7 +83,7 @@ function render() {
     <tbody>${recentRows}</tbody></table></div>` : `<p class="st-empty">${esc(t("noData"))}</p>`}</section>`;
 
   const tables = tablesHTML(data);
-  body.innerHTML = `${who}
+  body.innerHTML = `${who}${modeTabsHTML(mode)}
     <div class="st-two st-top">${weak}${habit}</div>
     <section class="st-card st-line"><div class="st-stats">${totalsHTML(data)}</div></section>
     <section class="st-card"><div class="st-head"><h3>${esc(t("byDayH"))}</h3>${picker.html(data.firstDay, data.practiceDays)}</div>
@@ -92,7 +96,9 @@ wireGate(body);
 body.addEventListener("click", e => {
   const action = picker.click(e);
   if (action === "load") return load();
-  if (action === "render") render();
+  if (action === "render") return render();
+  const m = modeClicked(e);
+  if (m && m !== mode) { mode = m; setModeInUrl(m); load(); }   // 탭을 바꿈: 기간은 그대로, 그 연습의 기록을 새로
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && picker.escape()) render(); });
 onLangChange(render);
