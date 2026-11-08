@@ -32,6 +32,9 @@ alter table public.profiles add column if not exists deleted_at timestamptz;
 -- The photo itself is the file avatars/<user id>.jpg in Storage (below); this number only changes when a new photo
 -- is saved, so browsers do not keep showing the old one. A number, not a URL, so nobody can point it at another site.
 alter table public.profiles add column if not exists avatar_version bigint;
+-- 2026-11-08: practice settings of 코드 추론하기 (/trainer/chords-name/), kept apart from the random-chord trainer's
+-- because the two pages offer different options (settings = 랜덤 코드 연습, name_settings = 코드 추론하기)
+alter table public.profiles add column if not exists name_settings jsonb;
 
 alter table public.profiles enable row level security;
 
@@ -55,7 +58,7 @@ create policy "profiles: update own" on public.profiles
 -- the browser may read profiles and change only these columns — never role or consent fields
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
-grant update (nickname, settings, full_name, preferred_lang, avatar_version) on public.profiles to authenticated;
+grant update (nickname, settings, name_settings, full_name, preferred_lang, avatar_version) on public.profiles to authenticated;
 
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql set search_path = '' as $$
@@ -453,24 +456,52 @@ alter table public.timer_sessions add column if not exists abandoned integer not
 create index if not exists timer_sessions_user on public.timer_sessions (user_id, started_at);
 alter table public.practice_log add column if not exists timer_session bigint references public.timer_sessions (id) on delete set null;
 
+-- 2026-11-08: two practices share these tables. mode = which page the question came from:
+--   'play' 랜덤 코드 연습 (/trainer/chords/ — see the chord, press the keys; every row before this date)
+--   'name' 코드 추론하기 (/trainer/chords-name/ — see the keys and the staff, type the chord name)
+-- hinted = the 힌트 button was used (코드 추론하기 only for now; false for every older row). A hinted right answer
+-- still counts as right and its time counts in the averages (user decision) — the flag is there to be shown.
+alter table public.practice_log add column if not exists mode text not null default 'play' check (mode in ('play', 'name'));
+alter table public.practice_log add column if not exists hinted boolean not null default false;
+create index if not exists practice_log_user_mode_day on public.practice_log (user_id, mode, day);
+alter table public.timer_sessions add column if not exists mode text not null default 'play' check (mode in ('play', 'name'));
+
+-- running totals per account and practice (mode, see practice_log) — 머리글 정답/시도·연속 are counted per practice
 create table if not exists public.practice_stats (
-  user_id uuid primary key references public.profiles (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  mode text not null default 'play' check (mode in ('play', 'name')),
   total integer not null default 0,
   first_correct integer not null default 0,
   streak integer not null default 0,
   best_streak integer not null default 0,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (user_id, mode)
 );
 
 create table if not exists public.review_queue (
   user_id uuid not null references public.profiles (id) on delete cascade,
+  mode text not null default 'play' check (mode in ('play', 'name')),   -- each practice has its own 틀린 문제 list
   symbol text not null,
   quality text not null,
   spec jsonb not null,                   -- what the trainer needs to ask the same question again
   hits smallint not null default 0,      -- first-try right answers in review mode
   added_at timestamptz not null default now(),
-  primary key (user_id, symbol)
+  primary key (user_id, mode, symbol)
 );
+
+-- 2026-11-08: tables made before the mode column — add it (every existing row is 'play') and widen the key
+alter table public.practice_stats add column if not exists mode text not null default 'play' check (mode in ('play', 'name'));
+alter table public.review_queue add column if not exists mode text not null default 'play' check (mode in ('play', 'name'));
+do $$ begin
+  if (select array_length(conkey, 1) from pg_constraint where conrelid = 'public.practice_stats'::regclass and contype = 'p') = 1 then
+    alter table public.practice_stats drop constraint practice_stats_pkey;
+    alter table public.practice_stats add constraint practice_stats_pkey primary key (user_id, mode);
+  end if;
+  if (select array_length(conkey, 1) from pg_constraint where conrelid = 'public.review_queue'::regclass and contype = 'p') = 2 then
+    alter table public.review_queue drop constraint review_queue_pkey;
+    alter table public.review_queue add constraint review_queue_pkey primary key (user_id, mode, symbol);
+  end if;
+end $$;
 
 alter table public.practice_log enable row level security;
 alter table public.timer_sessions enable row level security;
@@ -498,10 +529,14 @@ grant select on public.practice_log, public.practice_stats, public.review_queue,
 -- More than 1,000 questions a day are ignored, so a script cannot pile up records.
 drop function if exists public.record_attempt(text, text, boolean, date, boolean, jsonb);            -- before p_ms
 drop function if exists public.record_attempt(text, text, boolean, date, boolean, jsonb, integer);   -- before p_session
+drop function if exists public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint);   -- before p_mode / p_hint
 -- p_ms / p_session: time and timer session when the timer was on. A time is kept only with the user's own session
 -- that is still on (or ended in the last 2 minutes — the last record may arrive after the timer was turned off).
+-- p_mode: which practice ('play' 랜덤 코드 연습 / 'name' 코드 추론하기, 2026-11-08); the timer session must be of the same
+-- practice. p_hint: the 힌트 button was used.
 create or replace function public.record_attempt(p_quality text, p_symbol text, p_first boolean, p_day date,
-  p_review boolean default false, p_spec jsonb default null, p_ms integer default null, p_session bigint default null)
+  p_review boolean default false, p_spec jsonb default null, p_ms integer default null, p_session bigint default null,
+  p_mode text default 'play', p_hint boolean default false)
 returns void language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
@@ -515,26 +550,30 @@ begin
   end if;
   -- the time counts only with the user's own timer session, and (outside 틀린 문제 다시 풀기) only for a question
   -- the session's settings could have asked — so a doctored page cannot time easy chords outside the saved settings
+  if coalesce(p_mode, '') not in ('play', 'name') then
+    raise exception 'bad mode';
+  end if;
   select id into sess from public.timer_sessions
-    where id = p_session and user_id = uid and (ended_at is null or ended_at > now() - interval '2 minutes')
-      and (coalesce(p_review, false) or public.fits_settings(settings, p_quality, p_symbol));
+    where id = p_session and user_id = uid and mode = p_mode and (ended_at is null or ended_at > now() - interval '2 minutes')
+      and (coalesce(p_review, false) or public.fits_settings(settings, p_quality, p_symbol, p_mode));
   if p_day is null or p_day not between current_date - 1 and current_date + 1 then
     raise exception 'bad day';
   end if;
   if p_first is null or coalesce(p_quality, '') !~ '^[A-Za-z0-9]{1,8}$' or char_length(coalesce(p_symbol, '')) not between 1 and 40
-     or (p_spec is not null and pg_column_size(p_spec) > 600) or (p_ms is not null and p_ms not between 0 and 300000) then
+     or (p_spec is not null and pg_column_size(p_spec) > 800) or (p_ms is not null and p_ms not between 0 and 300000) then
     raise exception 'bad record';
   end if;
   if (select count(*) from public.practice_log where user_id = uid and day = p_day) >= 1000 then
     return;
   end if;
 
-  insert into public.practice_log (user_id, day, quality, symbol, first_try, review, duration_ms, timer_session)
-    values (uid, p_day, p_quality, p_symbol, p_first, coalesce(p_review, false), case when sess is null then null else p_ms end, sess);
+  insert into public.practice_log (user_id, day, quality, symbol, first_try, review, duration_ms, timer_session, mode, hinted)
+    values (uid, p_day, p_quality, p_symbol, p_first, coalesce(p_review, false), case when sess is null then null else p_ms end, sess,
+      p_mode, coalesce(p_hint, false));
 
-  insert into public.practice_stats as s (user_id, total, first_correct, streak, best_streak)
-    values (uid, 1, p_first::int, p_first::int, p_first::int)
-  on conflict (user_id) do update set
+  insert into public.practice_stats as s (user_id, mode, total, first_correct, streak, best_streak)
+    values (uid, p_mode, 1, p_first::int, p_first::int, p_first::int)
+  on conflict (user_id, mode) do update set
     total = s.total + 1,
     first_correct = s.first_correct + p_first::int,
     streak = case when p_first then s.streak + 1 else 0 end,
@@ -543,21 +582,23 @@ begin
 
   if coalesce(p_review, false) then
     if p_first then
-      update public.review_queue set hits = hits + 1 where user_id = uid and symbol = p_symbol;
-      delete from public.review_queue where user_id = uid and symbol = p_symbol and hits >= 2;
+      update public.review_queue set hits = hits + 1 where user_id = uid and mode = p_mode and symbol = p_symbol;
+      delete from public.review_queue where user_id = uid and mode = p_mode and symbol = p_symbol and hits >= 2;
     end if;
   elsif not p_first and p_spec is not null then
-    insert into public.review_queue (user_id, symbol, quality, spec) values (uid, p_symbol, p_quality, p_spec)
-    on conflict (user_id, symbol) do update set spec = excluded.spec, hits = 0, added_at = now();
+    insert into public.review_queue (user_id, mode, symbol, quality, spec) values (uid, p_mode, p_symbol, p_quality, p_spec)
+    on conflict (user_id, mode, symbol) do update set spec = excluded.spec, hits = 0, added_at = now();
   end if;
 end;
 $$;
-revoke execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint) from public, anon;
-grant execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint) to authenticated;
+revoke execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint, text, boolean) from public, anon;
+grant execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint, text, boolean) to authenticated;
 
 -- timer on: checks the rule (5+ chord types; with option B, 7+ roots — user decision 2026-11-06) and opens a session.
 -- A session left open (page closed with the timer on) is closed first.
-create or replace function public.start_timer_session(p_settings jsonb)
+drop function if exists public.start_timer_session(jsonb);   -- before p_mode (2026-11-08)
+-- p_mode: which practice the timer is for ('play' / 'name'). Turning a timer on closes any open session of either practice.
+create or replace function public.start_timer_session(p_settings jsonb, p_mode text default 'play')
 returns bigint language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
@@ -565,6 +606,9 @@ declare
 begin
   if uid is null then
     raise exception 'not signed in';
+  end if;
+  if coalesce(p_mode, '') not in ('play', 'name') then
+    raise exception 'bad mode';
   end if;
   if p_settings is null or jsonb_typeof(p_settings -> 'types') <> 'array' or pg_column_size(p_settings) > 2000 then
     raise exception 'bad settings';
@@ -577,12 +621,12 @@ begin
     raise exception 'timer needs 7 roots';
   end if;
   update public.timer_sessions set ended_at = now() where user_id = uid and ended_at is null;
-  insert into public.timer_sessions (user_id, settings) values (uid, p_settings) returning id into sid;
+  insert into public.timer_sessions (user_id, settings, mode) values (uid, p_settings, p_mode) returning id into sid;
   return sid;
 end;
 $$;
-revoke execute on function public.start_timer_session(jsonb) from public, anon;
-grant execute on function public.start_timer_session(jsonb) to authenticated;
+revoke execute on function public.start_timer_session(jsonb, text) from public, anon;
+grant execute on function public.start_timer_session(jsonb, text) to authenticated;
 
 -- timer off (or page closed): end time and how many timed questions were abandoned
 drop function if exists public.end_timer_session(bigint);   -- before p_abandoned
@@ -626,7 +670,10 @@ $$;
 -- could the practice settings of a timer session have asked this question?
 -- chord type chosen; root among the chosen ones (option B); tensions only with option C and at most cMax of them
 -- (tension chords and 7alt count their own number); C♭ E♯ A♯ D♯ G♯ B♯ F♭ roots only with option E.
-create or replace function public.fits_settings(st jsonb, quality text, symbol text)
+-- 코드 추론하기 (p_mode 'name', 2026-11-08): with option E off it still spells some black-key roots the other way
+-- (D♭m → C♯m, so the staff needs no F♭), so C♯ D♯ G♭ G♯ A♯ are allowed there too.
+drop function if exists public.fits_settings(jsonb, text, text);   -- before p_mode
+create or replace function public.fits_settings(st jsonb, quality text, symbol text, p_mode text default 'play')
 returns boolean language sql immutable set search_path = '' as $$
   select coalesce(
     (st -> 'types') ? (case when quality = '7alt' then 'dom7' else quality end)
@@ -634,7 +681,8 @@ returns boolean language sql immutable set search_path = '' as $$
     and (case when quality = '7alt' then coalesce((st ->> 'optC')::boolean, false)
          else cardinality(public.chord_tensions(quality, symbol)) - (case when quality in ('M9', 'm9', 'dom9', 'M13', 'dom13', 'm11') then 1 else 0 end)
            <= (case when coalesce((st ->> 'optC')::boolean, false) then coalesce((st ->> 'cMax')::int, 1) else 0 end) end)
-    and (coalesce((st ->> 'optE')::boolean, false) or public.chord_root(symbol) in ('C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B')),
+    and (coalesce((st ->> 'optE')::boolean, false) or public.chord_root(symbol) in ('C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B')
+         or (p_mode = 'name' and public.chord_root(symbol) in ('C♯', 'D♯', 'G♭', 'G♯', 'A♯'))),
     false);
 $$;
 
@@ -644,8 +692,10 @@ $$;
 -- practiceDays = every date with practice (all time), marked with a dot on that calendar.
 -- A student may ask only for their own; the admin for anyone.
 drop function if exists public.practice_summary(uuid, text, date);   -- before the custom range was added
+drop function if exists public.practice_summary(uuid, text, date, date, date);   -- before p_mode (2026-11-08)
+-- p_mode: which practice ('play' 랜덤 코드 연습 / 'name' 코드 추론하기) — the two are shown on separate tabs
 create or replace function public.practice_summary(p_user uuid, p_range text, p_today date,
-  p_from date default null, p_to date default null)
+  p_from date default null, p_to date default null, p_mode text default 'play')
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
   today date := p_today;
@@ -671,42 +721,43 @@ begin
   return jsonb_build_object(
     'since', since,
     'until', until,
-    'firstDay', (select min(day) from public.practice_log where user_id = p_user),
+    'firstDay', (select min(day) from public.practice_log where user_id = p_user and mode = p_mode),
     'practiceDays', coalesce((select jsonb_agg(d order by d) from (
-      select distinct day as d from public.practice_log where user_id = p_user) pd), '[]'::jsonb),
+      select distinct day as d from public.practice_log where user_id = p_user and mode = p_mode) pd), '[]'::jsonb),
     'totals', (select jsonb_build_object('total', total, 'first', first_correct, 'streak', streak, 'best', best_streak)
-      from public.practice_stats where user_id = p_user),
+      from public.practice_stats where user_id = p_user and mode = p_mode),
     -- average time per question (all time), over the questions that have a time
     -- review (틀린 문제 다시 풀기) times are kept but left out of every average: those few questions repeat
     'time', (select jsonb_build_object('ms', round(avg(duration_ms) filter (where not review)), 't', count(duration_ms) filter (where not review))
-      from public.practice_log where user_id = p_user),
+      from public.practice_log where user_id = p_user and mode = p_mode),
     -- per row: n questions, ok right first try, ms average time, t questions with a time
     'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok, 'ms', ms, 't', tc)) from (
       select quality, count(*) as n, count(*) filter (where first_try) as ok, round(avg(duration_ms) filter (where not review)) as ms, count(duration_ms) filter (where not review) as tc
-      from public.practice_log where user_id = p_user and day between since and until group by quality) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and mode = p_mode and day between since and until group by quality) x), '[]'::jsonb),
     'byRoot', coalesce((select jsonb_agg(jsonb_build_object('r', r, 'n', n, 'ok', ok, 'ms', ms, 't', tc)) from (
       select public.chord_root(symbol) as r, count(*) as n, count(*) filter (where first_try) as ok, round(avg(duration_ms) filter (where not review)) as ms, count(duration_ms) filter (where not review) as tc
-      from public.practice_log where user_id = p_user and day between since and until group by 1) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and mode = p_mode and day between since and until group by 1) x), '[]'::jsonb),
     -- per chord type and tension (M7's 9 apart from m7's 9); src/stats.js folds M9 / 13 … into their seventh chord
     'byTension', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'x', x, 'n', n, 'ok', ok, 'ms', ms, 't', tc)) from (
       select quality, x, count(*) as n, count(*) filter (where first_try) as ok, round(avg(duration_ms) filter (where not review)) as ms, count(duration_ms) filter (where not review) as tc
       from public.practice_log, unnest(public.chord_tensions(quality, symbol)) as x
-      where user_id = p_user and day between since and until group by quality, x) x), '[]'::jsonb),
+      where user_id = p_user and mode = p_mode and day between since and until group by quality, x) x), '[]'::jsonb),
     'byDay', coalesce((select jsonb_agg(jsonb_build_object('d', d, 'n', n, 'ok', ok) order by d) from (
       select case when monthly then date_trunc('month', day)::date else day end as d,
         count(*) as n, count(*) filter (where first_try) as ok
-      from public.practice_log where user_id = p_user and day between since and until group by 1) y), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and mode = p_mode and day between since and until group by 1) y), '[]'::jsonb),
     'review', coalesce((select jsonb_agg(jsonb_build_object('symbol', symbol, 'q', quality, 'hits', hits) order by added_at)
-      from public.review_queue where user_id = p_user), '[]'::jsonb)
+      from public.review_queue where user_id = p_user and mode = p_mode), '[]'::jsonb)
   );
 end;
 $$;
-revoke execute on function public.practice_summary(uuid, text, date, date, date) from public, anon;
-grant execute on function public.practice_summary(uuid, text, date, date, date) to authenticated;
+revoke execute on function public.practice_summary(uuid, text, date, date, date, text) from public, anon;
+grant execute on function public.practice_summary(uuid, text, date, date, date, text) to authenticated;
 
 -- extra numbers for the teacher's view of one student (admin only): all-time results per chord type,
 -- per root and per tension (for 약점), practice habits, and the 50 latest questions
-create or replace function public.student_overview(p_user uuid, p_today date)
+drop function if exists public.student_overview(uuid, date);   -- before p_mode (2026-11-08)
+create or replace function public.student_overview(p_user uuid, p_today date, p_mode text default 'play')
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
   today date := p_today;
@@ -721,44 +772,46 @@ begin
     'nickname', (select nickname from public.profiles where id = p_user),
     'full_name', (select full_name from public.profiles where id = p_user),
     'joined', (select created_at from public.profiles where id = p_user),
-    'sessions', (select count(*) from public.timer_sessions where user_id = p_user),
-    'abandoned', (select coalesce(sum(abandoned), 0) from public.timer_sessions where user_id = p_user),
+    'sessions', (select count(*) from public.timer_sessions where user_id = p_user and mode = p_mode),
+    'abandoned', (select coalesce(sum(abandoned), 0) from public.timer_sessions where user_id = p_user and mode = p_mode),
     'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok)) from (
       select quality, count(*) as n, count(*) filter (where first_try) as ok
-      from public.practice_log where user_id = p_user group by quality) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and mode = p_mode group by quality) x), '[]'::jsonb),
     'byRoot', coalesce((select jsonb_agg(jsonb_build_object('r', r, 'n', n, 'ok', ok)) from (
       select public.chord_root(symbol) as r, count(*) as n, count(*) filter (where first_try) as ok
-      from public.practice_log where user_id = p_user group by 1) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and mode = p_mode group by 1) x), '[]'::jsonb),
     'byTension', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'x', x, 'n', n, 'ok', ok)) from (
       select quality, x, count(*) as n, count(*) filter (where first_try) as ok
       from public.practice_log, unnest(public.chord_tensions(quality, symbol)) as x
-      where user_id = p_user group by quality, x) x), '[]'::jsonb),
-    'days', (select count(distinct day) from public.practice_log where user_id = p_user),
-    'lastDay', (select max(day) from public.practice_log where user_id = p_user),
+      where user_id = p_user and mode = p_mode group by quality, x) x), '[]'::jsonb),
+    'days', (select count(distinct day) from public.practice_log where user_id = p_user and mode = p_mode),
+    'lastDay', (select max(day) from public.practice_log where user_id = p_user and mode = p_mode),
     'week', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'n', n) order by day) from (
       select day, count(*) as n from public.practice_log
-      where user_id = p_user and day between today - 6 and today group by day) w), '[]'::jsonb),
-    'recent', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'first', first_try, 'review', review, 'ms', duration_ms) order by id desc) from (
-      select id, day, symbol, quality, first_try, review, duration_ms from public.practice_log
-      where user_id = p_user order by id desc limit 50) r), '[]'::jsonb)
+      where user_id = p_user and mode = p_mode and day between today - 6 and today group by day) w), '[]'::jsonb),
+    'recent', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'first', first_try, 'review', review, 'ms', duration_ms, 'hint', hinted) order by id desc) from (
+      select id, day, symbol, quality, first_try, review, duration_ms, hinted from public.practice_log
+      where user_id = p_user and mode = p_mode order by id desc limit 50) r), '[]'::jsonb)
   );
 end;
 $$;
-revoke execute on function public.student_overview(uuid, date) from public, anon;
-grant execute on function public.student_overview(uuid, date) to authenticated;
+revoke execute on function public.student_overview(uuid, date, text) from public, anon;
+grant execute on function public.student_overview(uuid, date, text) to authenticated;
 
 -- the admin's student list (empty for everyone else)
-create or replace function public.student_list()
+-- p_mode: which practice's numbers ('play' / 'name', 2026-11-08)
+drop function if exists public.student_list();   -- before p_mode
+create or replace function public.student_list(p_mode text default 'play')
 returns table (id uuid, nickname text, full_name text, total integer, first_correct integer, last_day date)
 language sql stable security definer set search_path = '' as $$
   select p.id, p.nickname, p.full_name, coalesce(s.total, 0), coalesce(s.first_correct, 0),
-    (select max(l.day) from public.practice_log l where l.user_id = p.id)
-  from public.profiles p left join public.practice_stats s on s.user_id = p.id
+    (select max(l.day) from public.practice_log l where l.user_id = p.id and l.mode = p_mode)
+  from public.profiles p left join public.practice_stats s on s.user_id = p.id and s.mode = p_mode
   where public.is_admin() and p.role = 'student' and p.deleted_at is null
   order by p.nickname;
 $$;
-revoke execute on function public.student_list() from public, anon;
-grant execute on function public.student_list() to authenticated;
+revoke execute on function public.student_list(text) from public, anon;
+grant execute on function public.student_list(text) to authenticated;
 
 -- ---------- make the site owner admin (run separately, after signing up with your own e-mail) ----------
 -- update public.profiles set role = 'admin'

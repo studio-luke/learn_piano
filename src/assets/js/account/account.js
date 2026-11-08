@@ -62,7 +62,7 @@ async function loadProfile() {
   if (missingFields(profile).length) emit("complete");
 }
 
-let pushTimer;
+const pushTimers = {};   // 계정에 설정을 올리기 전 기다리는 타이머 (칸별: settings, name_settings)
 const timer = { promise: null, id: null, abandoned: 0 };   // 타이머 세션 (아래 timerStarted)
 
 export const Account = {
@@ -180,18 +180,25 @@ export const Account = {
     return res;
   },
   /** 출제 설정이 바뀔 때마다 부름 → 1.2초 동안 더 안 바뀌면 계정에 저장 */
-  settingsChanged(settings) {
+  /**
+   * 출제 설정이 바뀜 → 1.2초 뒤 계정에 저장.
+   * @param column  "settings"(랜덤 코드 연습) | "name_settings"(코드 추론하기 — 옵션이 달라서 따로, 2026-11-08)
+   */
+  settingsChanged(settings, column = "settings") {
     if (!Account.active()) return;
-    clearTimeout(pushTimer);
-    pushTimer = setTimeout(() => Account.updateProfile({ settings: syncable(settings) }), 1200);
+    clearTimeout(pushTimers[column]);
+    pushTimers[column] = setTimeout(() => Account.updateProfile({ [column]: syncable(settings) }), 1200);
   },
   /** 화면 언어를 바꿨을 때 계정의 사용 언어도 바꿈. 저장이 끝날 때까지 기다릴 수 있게 Promise를 돌려줌 */
   langChanged(lang) { if (Account.active() && profile.preferred_lang !== lang) return Account.updateProfile({ preferred_lang: lang }); },
 
   // ---------- 연습 기록 ----------
-  /** 계정의 누적 기록 (머리글 정답/시도·연속). 로그인·새로고침 때만 불러와 화면 값을 바꿈 */
-  async loadTotals() {
-    const { data, error } = await sb.from("practice_stats").select("total, first_correct, streak").eq("user_id", user.id).maybeSingle();
+  // mode: 어떤 연습인지 — "play" 랜덤 코드 연습(기본값, 예전 기록 모두) | "name" 코드 추론하기 (2026-11-08)
+  // 기록·누적 숫자·틀린 문제 목록·타이머 세션·통계가 연습별로 따로예요 (supabase/schema.sql practice_log.mode).
+
+  /** 계정의 누적 기록 (머리글 정답/시도·연속, 연습별). 로그인·새로고침 때만 불러와 화면 값을 바꿈 */
+  async loadTotals(mode = "play") {
+    const { data, error } = await sb.from("practice_stats").select("total, first_correct, streak").eq("user_id", user.id).eq("mode", mode).maybeSingle();
     if (error) { console.warn("practice stats", error); return null; }
     return { total: data ? data.total : 0, first: data ? data.first_correct : 0, streak: data ? data.streak : 0 };
   },
@@ -202,12 +209,14 @@ export const Account = {
    * @param first   처음 채점에서 맞혔는지 (정답) — false면 오답
    * @param review  틀린 문제 다시 풀기 중이었는지
    * @param ms      타이머가 켜져 있을 때 맞히기까지 걸린 시간(ms), 없으면 null
+   * @param opt     { mode: "play" | "name", hint: 힌트를 봤는지, spec: 다시 풀기용 정보(없으면 engine의 spec — 코드 추론하기는 음 배치까지) }
    */
-  record(q, first, review, ms = null) {
+  record(q, first, review, ms = null, opt = {}) {
     if (!Account.active()) return;
     const args = {
       p_quality: Engine.quality(q), p_symbol: q.symbol, p_first: first, p_day: localDay(),
-      p_review: !!review, p_spec: first || review ? null : Engine.spec(q), p_ms: ms, p_session: null,
+      p_review: !!review, p_spec: first || review ? null : (opt.spec || Engine.spec(q)), p_ms: ms, p_session: null,
+      p_mode: opt.mode || "play", p_hint: !!opt.hint,
     };
     const send = () => sb.rpc("record_attempt", args).then(({ error }) => { if (error) console.warn("record", error); });
     // 시간이 있는 기록은 타이머 세션 번호와 함께 보냄 (DB는 유효한 세션이 있을 때만 시간을 저장).
@@ -220,10 +229,10 @@ export const Account = {
   // 타이머를 켤 때마다 그때의 출제 설정을 timer_sessions에 저장해요(DB가 켜는 조건도 다시 검사).
   // "중단된 문제"(시간을 재던 문제가 결과 없이 사라짐: 문제 도중 타이머 끄기, 연결 끊김, 페이지 닫기)는 세어 두었다가
   // 세션을 끝낼 때 함께 보내요. 선생님 화면에서 일부러 중단하는지 볼 수 있게.
-  timerStarted(settings) {
+  timerStarted(settings, mode = "play") {
     timer.abandoned = 0; timer.id = null;
     timer.promise = Account.active()
-      ? sb.rpc("start_timer_session", { p_settings: settings }).then(({ data, error }) => {
+      ? sb.rpc("start_timer_session", { p_settings: settings, p_mode: mode }).then(({ data, error }) => {
         if (error) { console.warn("timer session", error); return null; }
         timer.id = data;
         return data;
@@ -250,25 +259,25 @@ export const Account = {
   },
 
   // ---------- 틀린 문제 ----------
-  async reviewItems() {
+  async reviewItems(mode = "play") {
     if (!Account.active()) return null;
-    const { data, error } = await sb.from("review_queue").select("symbol, spec, hits").eq("user_id", user.id).order("added_at");
+    const { data, error } = await sb.from("review_queue").select("symbol, spec, hits").eq("user_id", user.id).eq("mode", mode).order("added_at");
     if (error) { console.warn("review", error); return null; }
     return data;
   },
-  async reviewCount() {
+  async reviewCount(mode = "play") {
     if (!Account.active()) return 0;
-    const { count } = await sb.from("review_queue").select("symbol", { count: "exact", head: true }).eq("user_id", user.id);
+    const { count } = await sb.from("review_queue").select("symbol", { count: "exact", head: true }).eq("user_id", user.id).eq("mode", mode);
     return count || 0;
   },
 
   // ---------- 통계 (마이페이지·선생님 화면) ----------
-  /** 기간별 통계. range: "7d" | "30d" | "1y" | "custom"(custom = { from, to }) */
-  summary: (uid, range, custom) => sb.rpc("practice_summary", {
-    p_user: uid, p_range: range, p_today: localDay(), p_from: custom ? custom.from : null, p_to: custom ? custom.to : null,
+  /** 기간별 통계 (연습별). range: "7d" | "30d" | "1y" | "custom"(custom = { from, to }) */
+  summary: (uid, range, custom, mode = "play") => sb.rpc("practice_summary", {
+    p_user: uid, p_range: range, p_today: localDay(), p_from: custom ? custom.from : null, p_to: custom ? custom.to : null, p_mode: mode,
   }),
-  /** 선생님 화면 전용: 약점·연습 습관·최근 문제 (관리자만, DB가 확인) */
-  overview: uid => sb.rpc("student_overview", { p_user: uid, p_today: localDay() }),
-  /** 학생 목록 (관리자만) */
-  students: () => sb.rpc("student_list"),
+  /** 선생님 화면 전용: 약점·연습 습관·최근 문제 (관리자만, DB가 확인, 연습별) */
+  overview: (uid, mode = "play") => sb.rpc("student_overview", { p_user: uid, p_today: localDay(), p_mode: mode }),
+  /** 학생 목록 (관리자만, 숫자는 연습별) */
+  students: (mode = "play") => sb.rpc("student_list", { p_mode: mode }),
 };

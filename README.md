@@ -86,7 +86,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
 
 supabase/schema.sql   DB 표·권한(RLS)·함수. Supabase SQL Editor에서 실행 (다시 실행해도 안전)
 dist/                 빌드 결과 = 실제 사이트 (자동 생성, git에 안 올림)
-tests/                engine.test.js, naming.test.js, account.test.js, build.test.js (npm test), layout-audit.js (npm run audit)
+tests/                engine.test.js, naming.test.js, schema.test.js, account.test.js, build.test.js (npm test), layout-audit.js (npm run audit)
 tools/build.js        사이트 만들기: 언어별 페이지·입구·sitemap.xml (언어별 페이지 목록 PAGES, 사이트 주소 SITE)
 tools/serve.js        로컬 서버 (npm run dev — 빌드 후 dist/를 사이트처럼 보여주고 src/ 변경을 지켜봄, 레이아웃 검사도 사용)
 package.json          npm 명령 (dev, build, test, audit)
