@@ -47,6 +47,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
   teacher/index.html, student.html   선생님 — 학생 목록·학생 기록
   terms.html  privacy.html  이용약관·개인정보처리방침
   favicon.svg  favicon-32.png  apple-touch-icon.png   파비콘 (오븐 창 속 8분음표. svg가 원본)
+  assets/sounds/piano/   피아노 녹음 14개 (C·D♯·F♯·A, C3~D♯6 — practice/audio.js가 재생)
   assets/css/
     base.css        공통: 색·글꼴 토큰(테마, 다크 모드), 머리글·바닥글, ☰ 왼쪽 메뉴, 도움말(?), 버튼·체크박스·알림
     home.css        홈: 소개, 학습 메뉴 카드
@@ -73,7 +74,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     account/helpers.js      회원 기능의 작은 규칙 (오류 문구, 공개 키 확인 등 — 테스트용으로 분리)
     practice/settings.js    출제 설정 상태와 카드, 설정 잠금
     practice/keyboard.js    건반 그리기와 마우스·터치·키보드 입력
-    practice/audio.js       피아노 소리 (Web Audio로 합성, 소리 파일 없음)
+    practice/audio.js       피아노 소리 (녹음 파일 재생, 받기 전에는 합성음)
     practice/timer.js       타이머 (시계, 버튼, 도움말, 5분 규칙)
     practice/quiz.js        문제 흐름: 출제 → 채점 → 기록, 틀린 문제 다시 풀기
     stats/data.js           통계 계산 (기간, 그래프 칸, 표 묶기 — 순수 함수)
@@ -115,7 +116,7 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 ## 기술 메모
 
 - 빌드는 언어별 HTML만 만들고 JS는 그대로: 브라우저가 `<script type="module">`로 JS 파일을 직접 불러와요. 외부 라이브러리는 회원 기능용 supabase-js 하나(CDN, 버전 고정 + SRI 지문)
-- 소리: Web Audio API로 직접 합성. 브라우저 정책상 첫 터치 뒤부터 소리가 남
+- 소리: 실제 피아노 녹음(Salamander Grand Piano, `src/assets/sounds/piano/`)을 Web Audio API로 재생. 녹음은 단3도마다 하나라 사이 음은 재생 속도로 맞추고, 파일은 페이지를 열 때 받기 시작하고, 첫 소리는 녹음이 준비될 때까지 잠깐 기다림(최대 3초, 못 받으면 합성음). 브라우저 정책상 첫 터치 뒤부터 소리가 남
 - 폰트: Google Fonts(DM Serif Display, IBM Plex Sans KR, Noto Music). 불러오지 못하면 시스템 폰트
 - 저장: 이 기기에는 localStorage(`chordoven.settings.v2`, `chordoven.lang`, `chordoven.rotateTip`), 로그인하면 출제 설정·연습 기록이 계정(Supabase)에도. "키보드로 건반 입력"은 기기별
 - 권한: DB가 지켜요(행 수준 보안 RLS). 브라우저는 자기 기록만 읽고, 쓰기는 정해진 DB 함수로만. 화면의 검사는 편의용
@@ -148,6 +149,10 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - [ ] 화성학 이론 학습 페이지
 - [ ] 코드 진행 만들기 실습 페이지 (키를 선택하면 쓸 수 있는 코드 목록 보여주고(다이아토닉, 세컨더리 도미넌트 등 분리) 고르기, 코드 당 1~4박 여부에 따라 조정 가능하게 해야함)
 - [ ] '내 음악 실력 테스트' 페이지
+
+## 사용한 자료
+
+- 피아노 소리: [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) — Alexander Holm, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 14개 음만 골라 mp3로 사용(Tone.js가 배포하는 변환본)
 
 ## 문의
 

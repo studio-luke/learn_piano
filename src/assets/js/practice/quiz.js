@@ -114,6 +114,7 @@ let countdown = null;   // { n: 남은 숫자, id: setInterval 번호 } 또는 n
 const COUNT_FROM = 3;
 function startCountdown() {
   stopCountdown();
+  Sound.stopAll();   // 문제가 바뀌면 울리던 소리를 모두 멈춤 (2026-11-09 사용자 요청)
   selected.clear();
   Object.assign(state, { q: null, err: null, answer: new Set(), good: new Set(), locked: false, attempted: false, skip: false, fb: null });
   $("btnCheck").disabled = true; $("btnReveal").disabled = true;
@@ -142,6 +143,7 @@ export function newQuestion() {
   let q = review && nextReview();
   if (review && !q) return stopReview(true);   // 다시 풀기를 다 끝냄
   if (!q) q = Engine.generate(S, Math.random, state.q);   // 바로 앞 문제와 같은 베이스는 피함
+  Sound.stopAll();   // 다음 문제로 넘어가면 울리던 소리를 모두 멈춤 (2026-11-09 사용자 요청)
   selected.clear();
   Object.assign(state, { answer: new Set(), good: new Set(), locked: false, attempted: false, skip: false, fb: null });
   $("btnCheck").disabled = !!q.error; $("btnReveal").disabled = !!q.error;

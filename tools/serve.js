@@ -18,7 +18,7 @@ import { build, SRC, DIST } from "./build.js";
 const ROOT = DIST;   // 사이트 = dist/ (빌드 결과)
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
-  ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".ico": "image/x-icon",
+  ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".ico": "image/x-icon", ".mp3": "audio/mpeg",
 };
 // 숨김 파일(.DS_Store 등)은 보내지 않음
 const PRIVATE = /\/\./;

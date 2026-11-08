@@ -314,6 +314,7 @@ export default {
   aboutFor: "<p>For anyone who wants to learn <b>chords and harmony theory</b>, and anyone who wants to study music <b>in spare moments, like on the commute</b>.</p><p>Also for <b>music teachers</b> who want to give their students practice homework and keep track of it.</p>",
   aboutContactH: "Contact",
   aboutContact: "Questions about the service, lessons or working together are always welcome.",
+  aboutCredits: 'Piano sound: Salamander Grand Piano (Alexander Holm, <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>) — a subset of notes is used',
 
   // 언어별 페이지의 언어 이름(입구 페이지 링크)과 검색 결과에 나오는 제목·설명 (tools/build.js가 HTML에 넣음)
   langName: "English",
@@ -360,6 +361,6 @@ export default {
   reviewNone: "There are no missed questions to retry.",
   hintBtn: "Hint",
   hintRoots: "Possible roots",
-  keysDisplayOnly: "This keyboard only shows the question. Type the chord name with the keypad below.",
+  keysQuestionOnly: "You can only listen to the keys selected in the question.",
   nextPlain: "Next",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
 };

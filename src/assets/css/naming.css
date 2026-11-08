@@ -28,6 +28,7 @@
 /* ---------- 건반 (F3–D6, 흰 건반 20개, 보기만 함) ---------- */
 /* 사용자가 누르지 않으니 랜덤 코드 연습보다 낮게 (사용자 요청 2026-11-08) */
 .keyboard.wide { height: clamp(84px, 13vw, 130px); cursor: default; }
+.keyboard.wide .key.sel, .keyboard.wide .key.bad { cursor: pointer; }   /* 문제로 눌린 건반은 눌러서 소리를 들을 수 있음 */
 .keyboard.wide .key.black { width: calc(100% / var(--whites, 20) * 0.66); }
 .keyboard.wide .key { font-size: 10px; }
 .keyboard.wide .key.white { padding-bottom: 5px; }

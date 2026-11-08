@@ -1,6 +1,6 @@
 // ===== 코드 추론하기 (trainer/chords-name/index.html) — 시작점 =====
 // 각 부분을 만들고 서로 연결해요. 규칙은 core/naming.js, 문제 흐름·기록·다시 풀기는 naming/quiz.js.
-//   naming/settings.js  출제 설정 카드     naming/keys.js   건반(보기만)     naming/keypad.js  코드 입력 키패드
+//   naming/settings.js  출제 설정 카드     naming/keys.js   건반(문제 표시·눌린 음 듣기)     naming/keypad.js  코드 입력 키패드
 //   naming/staff.js     오선지 악보(SVG)    naming/quiz.js   문제 흐름·기록·다시 풀기
 //   practice/audio.js   피아노 소리, practice/timer.js 타이머 (둘 다 랜덤 코드 연습과 함께 씀)
 // 그리고 키보드 단축키, 회원 기능(계정 설정·누적 기록·다시 풀기)과의 연결을 여기서 해요.
@@ -25,7 +25,9 @@ startPage({ title: "navNameTrainer", stats: true });
 
 // ---------- 출제 설정·건반·입력·버튼 ----------
 initSettings(newQuestion);
-initKeys();
+// 건반: 문제로 눌린 건반은 그 음을 들려주고, 안 눌린 건반은 알림만 (2026-11-09 사용자 요청).
+// 누른 것은 타이머의 "5분 무입력" 판정에서 입력으로 셈 — practice/timer.js가 화면 어디든 누르면 입력으로 치므로 따로 할 일 없음
+initKeys((m, pressed) => pressed ? Sound.note(m) : toast(t("keysQuestionOnly"), 2000));
 initKeypad(answerChanged);
 $("btnCheck").onclick = submit;
 $("btnReveal").onclick = reveal;
@@ -33,8 +35,6 @@ $("btnNext").onclick = tryNext;
 $("padHint").onclick = showHint;
 $("btnListen").onclick = () => { if (state.q) Sound.chord(state.q.notes.map(n => n.midi), false); };
 $("optLabels").onchange = e => { S.labels = e.target.checked; save(); draw(); };
-// 건반은 문제 표시 전용: 누르면 알림만 (2026-11-08 사용자 결정 — 흰 건반을 회색으로 칠하던 방식 대신)
-$("keyboard").addEventListener("pointerdown", () => toast(t("keysDisplayOnly"), 2000));
 
 // ---------- 키보드 단축키 (사용자 결정 2026-11-08) ----------
 // 글자 키는 모두 코드 입력이라(G7, Cmin7) 랜덤 코드 연습의 G·N은 쓰지 않음.

@@ -314,6 +314,7 @@ export default {
   aboutFor: "<p>推荐给想学习<b>和弦与和声理论</b>的人，以及想<b>利用通勤等零碎时间</b>学习音乐的人。</p><p>也推荐给想给学生布置练习作业并进行管理的<b>音乐老师</b>。</p>",
   aboutContactH: "联系我们",
   aboutContact: "关于服务使用、课程或合作的任何问题，欢迎随时联系。",
+  aboutCredits: '钢琴音色：Salamander Grand Piano（Alexander Holm，<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>）— 仅使用部分音',
 
   // 언어별 페이지의 언어 이름(입구 페이지 링크)과 검색 결과에 나오는 제목·설명 (tools/build.js가 HTML에 넣음)
   langName: "简体中文",
@@ -360,6 +361,6 @@ export default {
   reviewNone: "没有需要重做的错题。",
   hintBtn: "提示",
   hintRoots: "可能的根音",
-  keysDisplayOnly: "这个键盘只用来显示题目。请用下方的按键输入和弦名称。",
+  keysQuestionOnly: "只能试听题目中选中的琴键。",
   nextPlain: "下一题",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
 };

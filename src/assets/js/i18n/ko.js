@@ -315,6 +315,7 @@ export default {
   aboutFor: "<p><b>코드와 화성학 이론</b>을 배우고 싶으신 분, <b>출퇴근 길 등에 틈틈이</b> 음악 공부를 하고 싶은 분에게 추천해요.</p><p>또한 학생에게 음악 연습 숙제를 내고 관리하고 싶으신 <b>음악 선생님</b>께 추천해요.</p>",
   aboutContactH: "문의",
   aboutContact: "서비스 이용, 수업, 제휴 등 궁금한 점이 있으면 편하게 연락 주세요.",
+  aboutCredits: '피아노 소리: Salamander Grand Piano (Alexander Holm, <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>) — 일부 음만 골라 사용',
 
   // 언어별 페이지의 언어 이름(입구 페이지 링크)과 검색 결과에 나오는 제목·설명 (tools/build.js가 HTML에 넣음)
   langName: "한국어",
@@ -361,6 +362,6 @@ export default {
   reviewNone: "다시 풀 틀린 문제가 없어요.",
   hintBtn: "힌트",
   hintRoots: "근음 후보",
-  keysDisplayOnly: "이 건반은 문제를 보여주기만 해요. 아래 키패드로 코드 이름을 입력해 주세요.",
+  keysQuestionOnly: "문제에서 선택된 건반만 소리를 들어볼 수 있어요.",
   nextPlain: "다음 문제",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
 };

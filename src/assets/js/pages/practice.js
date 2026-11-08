@@ -22,7 +22,10 @@ startPage({ stats: true });
 
 // ---------- 출제 설정·건반·작은 옵션 ----------
 initSettings(newQuestion);
-const kb = initKeyboard((m, on) => { if (on && S.sound) Sound.note(m); keysChanged(); });
+// 건반을 누르면 그 음, 선택을 풀면 울리던 그 음을 멈춤 (2026-11-09 사용자 요청)
+const kb = initKeyboard((m, on) => { if (on) { if (S.sound) Sound.note(m); } else Sound.stop(m); keysChanged(); });
+/** 건반 선택 모두 해제 ([지우기]·Esc·Backspace) — 해제하는 음의 소리도 멈춤 */
+const clearKeys = () => { for (const m of selected) Sound.stop(m); selected.clear(); renderKeys(); };
 const syncToggles = () => {
   $("optLabels").checked = S.labels; $("optSound").checked = S.sound; $("optKbd").checked = S.kbd;
   setKeyLabels(S.labels, !!S.kbd && IS_PC);
@@ -35,7 +38,7 @@ $("optKbd").onchange = e => { S.kbd = e.target.checked; S.kbdTouched = true; syn
 $("btnCheck").onclick = check;
 $("btnReveal").onclick = reveal;
 $("btnNext").onclick = tryNext;   // 건반이 눌려 있으면 막고 안내
-$("btnClear").onclick = () => { selected.clear(); renderKeys(); };
+$("btnClear").onclick = clearKeys;
 $("btnPlaySel").onclick = () => { if (selected.size) Sound.chord(selected, false); };
 $("reviewStop").onclick = () => stopReview(false);
 
@@ -59,7 +62,7 @@ document.addEventListener("keydown", e => {
   } else if (e.code === "Space") {
     if (onPianoKey || onToggle) return;
     e.preventDefault(); if (selected.size) Sound.chord(selected, false);
-  } else if (e.code === "Escape" || e.code === "Backspace") { e.preventDefault(); selected.clear(); renderKeys(); }
+  } else if (e.code === "Escape" || e.code === "Backspace") { e.preventDefault(); clearKeys(); }
   else if (e.code === "KeyN" || e.code === "ArrowRight") { e.preventDefault(); tryNext(); }
   else if (e.code === "KeyG") { e.preventDefault(); reveal(); }
   else if (S.kbd && IS_PC && e.code in CODE_TO_MIDI) {

@@ -314,6 +314,7 @@ export default {
   aboutFor: "<p><b>コードや和声学の理論</b>を学びたい方、<b>通勤・通学の途中などすきま時間に</b>音楽の勉強をしたい方におすすめです。</p><p>また、生徒に練習の宿題を出して管理したい<b>音楽の先生</b>にもおすすめです。</p>",
   aboutContactH: "お問い合わせ",
   aboutContact: "サービスの利用、レッスン、提携などについて、お気軽にご連絡ください。",
+  aboutCredits: 'ピアノの音: Salamander Grand Piano (Alexander Holm, <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>) — 一部の音のみ使用',
 
   // 언어별 페이지의 언어 이름(입구 페이지 링크)과 검색 결과에 나오는 제목·설명 (tools/build.js가 HTML에 넣음)
   langName: "日本語",
@@ -360,6 +361,6 @@ export default {
   reviewNone: "解き直す問題はありません。",
   hintBtn: "ヒント",
   hintRoots: "ルート候補",
-  keysDisplayOnly: "この鍵盤は問題を表示するだけです。下のキーパッドでコード名を入力してください。",
+  keysQuestionOnly: "問題で選ばれた鍵盤だけ音を聴くことができます。",
   nextPlain: "次の問題",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
 };

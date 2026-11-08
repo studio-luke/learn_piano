@@ -132,6 +132,7 @@ let countdown = null;   // { n: 남은 숫자, id: setInterval 번호 } 또는 n
 const COUNT_FROM = 3;
 function startCountdown() {
   stopCountdown();
+  Sound.stopAll();   // 문제가 바뀌면 울리던 소리를 모두 멈춤 (2026-11-09 사용자 요청)
   Object.assign(state, { q: null, err: null, locked: false, attempted: false, skip: false, bad: new Set(), good: false, hinted: false, fb: null });
   clearAnswer(); setPadEnabled(false);
   $("btnCheck").disabled = true; $("btnReveal").disabled = true; $("btnListen").disabled = true; $("padHint").disabled = true;
@@ -215,6 +216,7 @@ export function newQuestion() {
   let q = review && nextReview();
   if (review && !q) return stopReview(true);   // 다시 풀기를 다 끝냄
   if (!q) q = Naming.generate(S, Math.random, state.q);   // 바로 앞 문제와 같은 근음은 피함
+  Sound.stopAll();   // 다음 문제로 넘어가면 앞 문제의 소리를 모두 멈춤 (2026-11-09 사용자 요청) — 새 문제 소리는 아래에서
   Object.assign(state, { q: q.error ? null : q, err: q.error || null, locked: false, attempted: false, skip: false, bad: new Set(), good: false, hinted: false, fb: null });
   clearAnswer();
   const ok = !!state.q;
