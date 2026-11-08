@@ -106,6 +106,9 @@ export function setView(v) {
   renderKeys();
 }
 
+/** 건반 표시를 다시 그린 뒤 부를 함수 (quiz.js가 [다음 문제] 버튼 상태를 맞춤) */
+export const keyHooks = { rendered: () => {} };
+
 /** 눌림·정답 표시를 다시 그리고, "선택한 음" 줄을 갱신 */
 export function renderKeys() {
   for (const [m, el] of keyEls) {
@@ -115,6 +118,7 @@ export function renderKeys() {
     el.setAttribute("aria-pressed", String(selected.has(m)));
   }
   $("selNotes").textContent = selected.size ? [...selected].sort((a, b) => a - b).map(m => pcLabel(m % 12)).join(" · ") : t("none");
+  keyHooks.rendered();
 }
 
 /** 건반 위 글자 표시 (음이름, 컴퓨터 키) */

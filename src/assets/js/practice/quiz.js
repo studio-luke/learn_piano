@@ -15,9 +15,9 @@
 import { Engine } from "../core/engine.js";
 import { Account } from "../account/account.js";
 import { t } from "../i18n/index.js";
-import { $, chordHTML } from "../common/dom.js";
+import { $, chordHTML, toast } from "../common/dom.js";
 import { S, setLocked } from "./settings.js";
-import { selected, setView, renderKeys } from "./keyboard.js";
+import { selected, setView, renderKeys, keyHooks } from "./keyboard.js";
 import { Sound } from "./audio.js";
 import { timer, elapsed, startTiming, setTimer, TIME_MAX } from "./timer.js";
 
@@ -199,9 +199,27 @@ export function renderFeedback() {
   if (!state.fb) { fb.className = "feedback"; fb.textContent = ""; return; }
   fb.className = "feedback " + state.fb.kind; fb.innerHTML = state.fb.build();
 }
+// ---------- [다음 문제] 막기 (2026-11-08 사용자 요청) ----------
+// 건반을 눌러 놓고 [제출] 대신 [다음 문제]를 누르는 실수가 많아서, 아직 풀고 있는 문제에 건반이 하나라도 눌려 있으면
+// [다음 문제]·N·→를 막고 "지우기" 안내를 띄움. 문제가 끝나면(정답·정답 확인) 눌린 건반이 남아 있어도 넘어갈 수 있음.
+// 버튼은 진짜 disabled가 아니라 꺼진 모양(.is-off)만 — disabled 버튼은 눌러도 아무 일이 없어 안내를 띄울 수 없음
+const nextBlocked = () => !!state.q && !state.locked && selected.size > 0;
+export function renderNext() {
+  const off = nextBlocked();
+  $("btnNext").classList.toggle("is-off", off);
+  $("btnNext").setAttribute("aria-disabled", String(off));
+}
+keyHooks.rendered = renderNext;   // 건반을 누르거나 지울 때마다
+/** [다음 문제] 버튼·N·→: 막혀 있으면 안내만, 아니면 새 문제 */
+export function tryNext() {
+  if (nextBlocked()) return toast(t("clearFirst"), 2000);   // 2초 뒤 흐려지며 사라짐 (2026-11-08 사용자 요청)
+  newQuestion();
+}
+
 // 문제 닫기: [채점]·[정답 확인]을 끄고 [다음 문제]만. (버튼에 자동 초점을 주면 Enter를 가로채서 초점을 뺌)
 function lock() {
   state.locked = true;
+  renderNext();
   $("btnCheck").disabled = true; $("btnReveal").disabled = true;
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
 }

@@ -57,6 +57,7 @@ export default {
   hintBasicNarrow: "可在下方选择要练习的和弦。",
   altList: "{core} + 至少一个变化张力音（{alts}）",
   pickFirst: "请先按琴键选出和弦音。",
+  clearFirst: "请先取消所有已选的琴键，然后再试一次。（“清除”按钮）",
   correct: "正确！",
   notYet: "还不对。",
   missing: "缺少 {n} 个音",
