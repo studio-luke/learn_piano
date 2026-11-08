@@ -2,7 +2,7 @@
 // 화면 문구를 고르는 곳. 문구 자체는 같은 폴더의 ko.js / en.js / ja.js / zh.js에 있어요.
 //
 // 사용법
-//   - JS에서:   t("check")               → "채점" (현재 언어)
+//   - JS에서:   t("check")               → "제출" (현재 언어)
 //               t("missing", { n: 2 })   → "빠진 음 2개"  ({n} 자리를 채움)
 //   - HTML에서: <span data-i18n="check"></span>          → 내용(innerHTML)을 문구로 바꿈
 //               data-i18n-aria="키" / data-i18n-title="키" → aria-label / title 속성을 바꿈
