@@ -350,6 +350,7 @@ export default {
   wrongExtra: "들어갈 수 없는 음",
   wrongBass: "맨 아래 음이 근음이어야 해요.",
   orWord: "또는",
+  altNeed: "7alt에는 ♭9, ♯9, ♭13 중 하나 이상이 있어야 해요.",
   reviewNone: "다시 풀 틀린 문제가 없어요.",
   hintBtn: "힌트",
   hintRoots: "근음 후보",

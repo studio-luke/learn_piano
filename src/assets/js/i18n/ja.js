@@ -349,6 +349,7 @@ export default {
   wrongExtra: "入らない音",
   wrongBass: "一番下の音がルートでなければなりません。",
   orWord: "または",
+  altNeed: "7altには♭9、♯9、♭13のうち1つ以上が必要です。",
   reviewNone: "解き直す問題はありません。",
   hintBtn: "ヒント",
   hintRoots: "ルート候補",

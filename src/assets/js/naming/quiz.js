@@ -264,6 +264,7 @@ export function submit() {
       const lines = [];
       if (r.extra.length) lines.push(`<span class="why">${esc(t("wrongMissing"))}: <b class="bad-name">${esc(r.extra.join(", "))}</b></span>`);
       if (r.missing.length) lines.push(`<span class="why">${esc(t("wrongExtra"))}: <b>${esc(r.missing.join(", "))}</b></span>`);
+      if (r.noAlt) lines.push(`<span class="why">${esc(t("altNeed"))}</span>`);   // 7alt인데 ♭9·♯9·♭13이 없음
       if (r.bassWrong) lines.push(`<span class="why">${esc(t("wrongBass"))}</span>`);
       return `<strong>${esc(t("notYet"))}</strong>${lines.join("")}`;
     });

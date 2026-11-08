@@ -349,6 +349,7 @@ export default {
   wrongExtra: "Doesn't belong",
   wrongBass: "The lowest note must be the root.",
   orWord: "or",
+  altNeed: "7alt needs at least one of ♭9, ♯9, ♭13.",
   reviewNone: "There are no missed questions to retry.",
   hintBtn: "Hint",
   hintRoots: "Possible roots",

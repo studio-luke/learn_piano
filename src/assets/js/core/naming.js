@@ -232,7 +232,7 @@ add("dom7", "7");
 add("7sus4", "7sus4");   // "7sus"는 받지 않음 — 어떤 경우에도 오답 (sus만 쓴 Csus = Csus4와 다름, 사용자 결정 2026-11-08)
 AUG.forEach(a => add("aug7", a + "7"));
 add("dim7", "dim7", "°7");
-add("m7b5", "ø", "ø7");
+add("m7b5", "ø", "ø7", "h7");   // h7: iReal Pro 등의 하프 디미니시드 표기 (2026-11-08 사용자 결정. "Ch"만 쓴 건 받지 않음)
 MIN.forEach(m => add("m7b5", m + "7b5"));   // m7b5는 괄호 없이도 받음 (자주 쓰는 표기)
 MIN.forEach(m => MAJ.forEach(M => add("mM7", m + M + "7")));
 MIN.forEach(m => add("mM7", m + "△"));
@@ -241,10 +241,20 @@ add("6", "6");
 MIN.forEach(m => add("m6", m + "6"));
 add("add9", "add9", "add2", "2");                                // C2 = Cadd2 = Cadd9 (2026-11-08)
 MIN.forEach(m => add("madd9", m + "add9", m + "add2"));           // Cmadd2 = Cmadd9. Cm2는 공신력 있는 표기가 아니라 받지 않음
-add("69", "6/9");
-MIN.forEach(m => add("m69", m + "6/9"));                          // Cm6/9 = Cm6(9)
+add("69", "6/9", "6add9");
+MIN.forEach(m => add("m69", m + "6/9", m + "6add9"));             // Cm6/9 = Cm6add9 = Cm6(9)
+MIN.forEach(m => add("m7b5", m + "7-5"));                         // Cm7-5 (일본·한국 실용음악 교재 표기, 2026-11-08)
 // 괄호 안에 "maj7"을 쓰는 표기: Cm(maj7) = CmM7
 const PAREN_MAJ7 = new Set(MAJ.map(M => M + "7"));
+const PAREN_MAJ9 = new Set(MAJ.map(M => M + "9"));   // Cm(maj9) = Cm(M9) = CmM7(9) (2026-11-08)
+// 괄호 안에 코드 종류를 쓰는 표기: 괄호 앞 코드 종류 → { 괄호 안 글자 → 코드 종류 } (괄호 하나에 이것 하나만)
+const PAREN_WORD = {
+  maj: { add9: "add9", add2: "add9", sus4: "sus4", sus2: "sus2", "#5": "aug" },   // C(♯5) = Caug
+  min: { add9: "madd9", add2: "madd9" },
+  dom7: { sus4: "7sus4" },
+  "6": { add9: "69" },     // C6(add9) = C6(9)
+  m6: { add9: "m69" },     // Cm6(add9) = Cm6(9)
+};
 // 텐션 코드 이름 → 세븐코드 + 텐션 (C9 = C7(9), Cm11 = Cm7(11), CM13 = CM7(13) — 사용자 결정 2026-11-08)
 // 이 페이지에는 텐션 코드 종류가 없어서, 이렇게 써도 세븐코드에 괄호 텐션을 쓴 것으로 읽어요. (C11은 해당 없음 → 괄호 안내)
 const EXT_HEADS = {};
@@ -253,6 +263,25 @@ ext("dom7", "9", "9");
 ext("dom7", "13", "13");
 MIN.forEach(m => { ext("m7", "9", m + "9"); ext("m7", "11", m + "11"); });
 MAJ.forEach(M => { ext("M7", "9", M + "9"); ext("M7", "13", M + "13"); });
+ext("7sus4", "9", "9sus4");     // C9sus4 = C7sus4(9) (재즈 악보 표기, 2026-11-08)
+ext("7sus4", "13", "13sus4");   // C13sus4 = C7sus4(13)
+ext("aug7", "9", "aug9");       // Caug9 = Caug7(9) ("C+9"는 C(♯9)와 헷갈려서 받지 않음)
+ext("m7b5", "9", "ø9");
+ext("m7b5", "11", "ø11");       // Cø11 = Cm7(♭5,11)
+MIN.forEach(m => MAJ.forEach(M => ext("mM7", "9", m + M + "9")));   // CmM9 = Cmmaj9 = C-△9 = CmM7(9)         // Cø9 = Cm7(♭5,9). Cm9(♭5)·Cm11(♭5)는 m9·m11 + 괄호 ♭5로 읽혀 따로 적지 않아도 됨
+
+/**
+ * 표기 차이 맞추기 (2026-11-08 사용자 결정: 공식적으로 틀린 표기가 아니면 여러 표기를 존중).
+ *   여러 글자 단어는 대소문자 구분 없이: DIM AUG SUS ADD MAJ MIN MA MI ALT (CMA7 = CMAJ7 = Cmaj7, CMI7 = CMIN7 = Cm7)
+ *   ^ = △ (메이저 7, iReal Pro 등), 맨 앞의 o = ° (dim — Co7 = Cdim7)
+ *   한 글자 M(메이저)·m(마이너)은 그대로 구분
+ * @param head  괄호 앞 부분이면 true (o → °는 여기서만)
+ */
+function normWords(w, head) {
+  w = w.replace(/\^/g, "△").replace(/dim|aug|sus|add|maj|min|alt/gi, x => x.toLowerCase());
+  w = w.replace(/[mM][aA](?![jdu])/g, "ma").replace(/[mM][iI](?!n)/g, "mi");   // maj·min·madd·maug는 앞에서 처리됨
+  return head ? w.replace(/^[oO](?=\d|$)/, "°") : w;
+}
 
 /**
  * 코드 이름 글자 → { root: {l, a}, rootPc, type, tens } 또는 { error }
@@ -273,9 +302,13 @@ export function parse(input) {
     if (inner.endsWith(")")) inner = inner.slice(0, -1);   // 닫는 괄호를 빼먹어도 읽음
     rest = rest.slice(0, open);
     if (/[()]/.test(inner) || !inner) return { error: "unknown" };
-    items = inner.split(",");
+    // 괄호 안: 대소문자 맞추고, -/+ 텐션은 ♭/♯로 (C7(-9) = C7(♭9), C7(+5) = C7(♯5) — 일본·한국 교재 표기)
+    items = inner.split(",").map(it => normWords(it, false).replace(/^-(?=\d)/, "b").replace(/^\+(?=\d)/, "#"));
   } else if (rest.includes(")")) return { error: "unknown" };
+  rest = normWords(rest, true);
 
+  // 7alt: 텐션 없이 따로 판정 (checkAlt). 괄호를 붙이면 받지 않음
+  if (rest === "7alt") return items.length ? { error: "unknown" } : { root, rootPc: E.pcOf(root.l, root.a), type: "dom7", tens: [], alt: true };
   let type = HEADS[rest];
   const extTen = [];
   if (type === undefined && EXT_HEADS[rest]) [type, extTen[0]] = EXT_HEADS[rest];   // C9 → 7 + (9)
@@ -288,6 +321,13 @@ export function parse(input) {
   const tens = [...extTen];
   for (const it of items) {
     if (PAREN_MAJ7.has(it) && type === "min") { type = "mM7"; continue; }
+    if (PAREN_MAJ9.has(it) && type === "min") { type = "mM7"; tens.push("9"); continue; }   // Cm(maj9) = CmM7(9)
+    if (PAREN_MAJ7.has(it) && type === "aug") { type = "augM7"; continue; }                // Caug(maj7) = C+(M7) = CaugM7
+    // 괄호 안에 쓴 코드 종류 (사용자 결정 2026-11-08): C(add9)·C(add2) = Cadd9, Cm(add9)·Cm(add2) = Cmadd9,
+    // C(sus4) = Csus4, C(sus2) = Csus2, C7(sus4) = C7sus4. 괄호 하나에 이것 하나만 (C(6)·Cm(6)은 받지 않음)
+    const word = PAREN_WORD[type] && PAREN_WORD[type][it];
+    if (word && items.length === 1) { type = word; continue; }
+    if (it === "sus4" && type === "dom7") { type = "7sus4"; continue; }   // C7(sus4,9)처럼 텐션과 함께도
     const tm = it.match(/^(b|#)?(5|9|11|13)$/);
     if (!tm) return { error: "unknown" };
     const id = (tm[1] || "") + tm[2];
@@ -314,9 +354,29 @@ export function parse(input) {
  * @returns { correct, missing(꼭 필요한데 화면에 없는 음 이름), extra(화면에 있는데 그 코드에 들어갈 수 없는 음 이름),
  *            bassWrong(자리바꿈 꺼짐인데 맨 아래 음이 근음이 아님) } 또는 { error, correct: false }
  */
+/**
+ * 7alt 판정 (사용자 결정 2026-11-08, 알터드 스케일 = 가락단음계 7번째 모드에는 자연 9·11·13·5가 없음):
+ *   R 3 ♭7 필수 / ♭9 ♯9 ♭13(=♯5) 중 하나 이상 / ♯11(=♭5)은 있어도 됨(♯11만으로는 alt가 아님 — 리디안 도미넌트) /
+ *   자연 9·13 있으면 오답(C13(♭9)는 하프-홀 디미니시드 코드) / 완전5도는 있어도 됨(랜덤 코드 연습의 7alt 판정과 같게)
+ * 정답 목록에는 7alt를 보여주지 않고 텐션으로 풀어 쓴 이름만 보여줌 (입력으로만 받음)
+ */
+function checkAlt(p, prob) {
+  const sp = (semi, deg) => E.spellTone(p.root, semi, deg);
+  const required = [sp(0, 1), sp(4, 3), sp(10, 7)];
+  const altered = [sp(1, 9), sp(3, 9), sp(8, 13)];
+  const allowed = new Set([...required, ...altered, sp(6, 11), sp(7, 5)].map(t => t.pc));
+  const name = t => (oddSpelling(t) ? E.simpleName(t.pc, t.a) : t.name);
+  const missing = required.filter(t => !prob.pcs.has(t.pc)).map(name);
+  const extra = [...new Set(prob.notes.filter(n => !allowed.has(mod12(n.midi))).map(n => n.name))];
+  const noAlt = !altered.some(t => prob.pcs.has(t.pc));
+  const bassWrong = !prob.inv && p.rootPc !== mod12(prob.notes[0].midi);
+  return { correct: !missing.length && !extra.length && !noAlt && !bassWrong, missing, extra, bassWrong, noAlt };
+}
+
 export function check(input, prob) {
   const p = parse(input);
   if (p.error) return { error: p.error, correct: false };
+  if (p.alt) return checkAlt(p, prob);
   const parts = E.tonesFor(p.type, p.root, p.tens);
   // 빠진 음 이름은 사용자가 쓴 코드의 철자 (겹변화표는 쉬운 이름으로)
   const missing = [];

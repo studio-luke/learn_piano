@@ -349,6 +349,7 @@ export default {
   wrongExtra: "不属于该和弦的音",
   wrongBass: "最低音必须是根音。",
   orWord: "或",
+  altNeed: "7alt 至少需要 ♭9、♯9、♭13 中的一个。",
   reviewNone: "没有需要重做的错题。",
   hintBtn: "提示",
   hintRoots: "可能的根音",

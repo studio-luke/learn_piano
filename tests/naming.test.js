@@ -249,3 +249,60 @@ test("naming review: a saved question comes back with the same voicing, then wit
   assert.strictEqual(N.fromSpec({ ...sp, notes: [[60, "<b>"]] }, true), null, "이상한 이름");
   assert.strictEqual(N.fromSpec({ ...sp, type: "M9" }, true), null, "이 페이지에 없는 코드 종류");
 });
+
+test("naming: chord words in parentheses — (add9) (add2) (sus4) (sus2) 7(sus4); C(6) is not taken", () => {
+  const same = [["C(add9)", "Cadd9"], ["C(add2)", "Cadd9"], ["Cm(add9)", "Cmadd9"], ["Cm(add2)", "Cmadd9"], ["C-(add9)", "Cmadd9"],
+    ["C(sus4)", "Csus4"], ["C(sus2)", "Csus2"], ["C7(sus4)", "C7sus4"], ["C7(sus4,9)", "C7sus4(9)"], ["C7(9,sus4)", "C7sus4(9)"]];
+  for (const [a, b] of same) assert.deepStrictEqual(N.parse(a), N.parse(b), a);
+  for (const s of ["C(6)", "Cm(6)", "C(sus)", "Cm(sus4)", "CM7(sus4)", "C(add9,13)", "C(add11)"]) assert.strictEqual(N.parse(s).error, "unknown", s);
+  assert.ok(N.check("C(add9)", prob("C4 E4 G4 D5", false)).correct);
+  assert.ok(N.check("C7(sus4)", prob("C4 F4 G4 B♭4", false)).correct);
+});
+
+test("naming: many accepted spellings — case of words, ^ and o, +/- tensions, sus4 tensions, 6(add9), aug9", () => {
+  const same = [
+    ["CMA7", "CM7"], ["CMAJ7", "CM7"], ["CMaj7", "CM7"], ["CmAJ7", "CM7"], ["C^7", "CM7"], ["C^", "CM7"], ["CMA9", "CM7(9)"],
+    ["CMI7", "Cm7"], ["CMIN7", "Cm7"], ["CMin7", "Cm7"], ["CMI", "Cm"], ["CMIN", "Cm"],
+    ["CmMA7", "CmM7"], ["Cm(M7)", "CmM7"], ["Cm(MAJ7)", "CmM7"], ["Cm^7", "CmM7"],
+    ["CSUS4", "Csus4"], ["CSus2", "Csus2"], ["CADD9", "Cadd9"], ["CmADD9", "Cmadd9"], ["C(ADD9)", "Cadd9"], ["C7(SUS4)", "C7sus4"],
+    ["CDIM", "Cdim"], ["CDIM7", "Cdim7"], ["Co", "Cdim"], ["Co7", "Cdim7"], ["CAUG", "Caug"], ["CAug7", "Caug7"],
+    ["C9sus4", "C7sus4(9)"], ["C13sus4", "C7sus4(13)"], ["C9SUS4", "C7sus4(9)"],
+    ["Cm7-5", "Cm7(b5)"], ["Cm7(-5)", "Cm7(b5)"], ["C7(+5)", "C7(#5)"], ["C7(-9)", "C7(b9)"], ["C7(+9)", "C7(#9)"], ["C7(+11)", "C7(#11)"], ["C7(-9,+11)", "C7(b9,#11)"],
+    ["C6add9", "C6(9)"], ["C6(add9)", "C6(9)"], ["Cm6add9", "Cm6(9)"], ["Cm6(add9)", "Cm6(9)"],
+    ["Caug9", "Caug7(9)"], ["CAUG9", "Caug7(9)"],
+  ];
+  for (const [a, b] of same) { assert.ok(!N.parse(b).error, b); assert.deepStrictEqual(N.parse(a), N.parse(b), a); }
+  // 한 글자 M/m은 그대로 구분, 근음 소문자는 여전히 오류
+  assert.notDeepStrictEqual(N.parse("CM7"), N.parse("Cm7"));
+  assert.strictEqual(N.parse("cMAJ7").error, "lowerRoot");
+  for (const s of ["C(add4)", "C+9", "Cadd4", "Ch"]) assert.ok(N.parse(s).error, s);
+});
+
+test("naming: half-diminished 9/11, C(♯5), Ch7 (2026-11-08)", () => {
+  const same = [["Cm9(b5)", "Cm7(b5,9)"], ["Cm11(b5)", "Cm7(b5,11)"], ["Cm9(-5)", "Cm7(b5,9)"], ["Cø9", "Cm7(b5,9)"],
+    ["C(#5)", "Caug"], ["C(+5)", "Caug"], ["C(♯5)", "Caug"], ["Ch7", "Cm7(b5)"]];
+  for (const [a, b] of same) { assert.ok(!N.parse(b).error, b); assert.deepStrictEqual(N.parse(a), N.parse(b), a); }
+  assert.ok(N.check("Cm9(♭5)", prob("C4 E♭4 G♭4 B♭4 D5", false)).correct);
+});
+
+test("naming: 7alt — R 3 ♭7 + one of ♭9 ♯9 ♭13, ♯11 may join, no natural 9/13, perfect 5th allowed", () => {
+  for (const s of ["C7alt", "C7Alt", "C7ALT"]) assert.ok(N.parse(s).alt, s);
+  assert.strictEqual(N.parse("C7alt(b9)").error, "unknown");
+  const yes = ["C4 E4 B♭4 D♭5", "C4 E4 B♭4 D♯5 A♭5", "C4 E4 G4 B♭4 E♭5", "C4 E4 G♭4 B♭4 A♭5", "E4 B♭4 C5 D♭5"];
+  for (const n of yes) assert.ok(N.check("C7alt", prob(n)).correct, n);
+  const r1 = N.check("C7alt", prob("C4 E4 B♭4 D♭5 A5"));   // C13(♭9): 자연 13
+  assert.ok(!r1.correct && r1.extra.includes("A"), "C13(♭9)는 alt 아님");
+  const r2 = N.check("C7alt", prob("C4 E4 G4 B♭4 F♯5"));   // C7(♯11): 리디안 도미넌트
+  assert.ok(!r2.correct && r2.noAlt, "♯11만으로는 alt 아님");
+  assert.ok(!N.check("C7alt", prob("C4 E4 B♭4 D5 A♭5")).correct, "자연 9가 있으면 alt 아님");
+  assert.deepStrictEqual(N.check("C7alt", prob("C4 B♭4 D♭5")).missing, ["E"]);
+  assert.ok(N.check("C7alt", prob("E4 B♭4 C5 D♭5", false)).bassWrong, "자리바꿈 꺼짐이면 근음이 맨 아래");
+});
+
+test("naming: ø11, mM9 forms, aug(maj7) forms", () => {
+  const same = [["Cø11", "Cm7(b5,11)"], ["CmM9", "CmM7(9)"], ["Cm(maj9)", "CmM7(9)"], ["Cm(M9)", "CmM7(9)"], ["C-△9", "CmM7(9)"], ["CmMAJ9", "CmM7(9)"],
+    ["Caug(maj7)", "CaugM7"], ["C+(M7)", "CaugM7"], ["CAUG(MAJ7)", "CaugM7"], ["Caug(△7)", "CaugM7"]];
+  for (const [a, b] of same) { assert.ok(!N.parse(b).error, b); assert.deepStrictEqual(N.parse(a), N.parse(b), a); }
+  // 정답 목록에 보이는 이름은 기본 표기 그대로
+  assert.deepStrictEqual(names(prob("C4 E♭4 G4 B4 D5", false)), ["CmM7(9)"]);
+});
