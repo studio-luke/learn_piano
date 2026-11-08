@@ -284,6 +284,16 @@ test("naming: many accepted spellings — case of words, ^ and o, +/- tensions, 
   assert.strictEqual(N.parse("Cm6").type, "m6");
 });
 
+test("naming: Fmajor = F, Fminor = Fm — triads only, any case of the word (2026-11-09)", () => {
+  const same = [["Fmajor", "F"], ["FMajor", "F"], ["FMAJOR", "F"], ["F major", "F"], ["Fminor", "Fm"], ["FMinor", "Fm"], ["FMINOR", "Fm"], ["F minor", "Fm"],
+    ["Bbmajor", "Bb"], ["F#minor", "F#m"]];
+  for (const [a, b] of same) { assert.ok(!N.parse(b).error, b); assert.deepStrictEqual(N.parse(a), N.parse(b), a); }
+  for (const s of ["Fmajor7", "Fminor7", "Fminor(add9)", "Fmajor(sus4)", "Fmajor(9)", "Fminor6", "Fmajor9"]) assert.ok(N.parse(s).error, s);
+  assert.strictEqual(N.parse("fmajor").error, "lowerRoot");
+  assert.ok(N.check("Fmajor", prob("F4 A4 C5", false)).correct);
+  assert.ok(N.check("FMINOR", prob("F4 A♭4 C5", false)).correct);
+});
+
 test("naming: half-diminished 9/11, C(♯5), Ch7 (2026-11-08)", () => {
   const same = [["Cm9(b5)", "Cm7(b5,9)"], ["Cm11(b5)", "Cm7(b5,11)"], ["Cm9(-5)", "Cm7(b5,9)"], ["Cø9", "Cm7(b5,9)"],
     ["C(#5)", "Caug"], ["C(+5)", "Caug"], ["C(♯5)", "Caug"], ["Ch7", "Cm7(b5)"], ["Ch9", "Cm7(b5,9)"], ["Ch11", "Cm7(b5,11)"]];

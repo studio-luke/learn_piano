@@ -221,6 +221,9 @@ const HEADS = {};   // 괄호 앞 글자 → 코드 종류 id
 const add = (id, ...names) => names.forEach(n => { HEADS[n] = id; });
 add("maj", "", "M", "Ma", "Maj", "maj");
 MIN.forEach(m => add("min", m));
+// Fmajor = F, Fminor = Fm (말로 부르는 이름, 대소문자 무관 — 사용자 결정 2026-11-09). 3화음에만: 숫자·괄호를 붙이면 받지 않음(parse)
+const WORD_TRIADS = { major: "maj", minor: "min" };
+Object.entries(WORD_TRIADS).forEach(([w, id]) => add(id, w));
 add("dim", "dim", "°");
 AUG.forEach(a => add("aug", a));
 add("sus4", "sus4", "sus");
@@ -280,13 +283,13 @@ MIN.forEach(m => MAJ.forEach(M => ext("mM7", "9", m + M + "9")));   // CmM9 = Cm
 
 /**
  * 표기 차이 맞추기 (2026-11-08 사용자 결정: 공식적으로 틀린 표기가 아니면 여러 표기를 존중).
- *   여러 글자 단어는 대소문자 구분 없이: DIM AUG SUS ADD MAJ MIN MA MI ALT (CMA7 = CMAJ7 = Cmaj7, CMI7 = CMIN7 = Cm7)
+ *   여러 글자 단어는 대소문자 구분 없이: MAJOR MINOR DIM AUG SUS ADD MAJ MIN MA MI ALT (CMA7 = CMAJ7 = Cmaj7, CMI7 = CMIN7 = Cm7, CMajor = C)
  *   ^ = △ (메이저 7, iReal Pro 등), 맨 앞의 o = ° (dim — Co7 = Cdim7)
  *   한 글자 M(메이저)·m(마이너)은 그대로 구분
  * @param head  괄호 앞 부분이면 true (o → °는 여기서만)
  */
 function normWords(w, head) {
-  w = w.replace(/\^/g, "△").replace(/dim|aug|sus|add|maj|min|alt/gi, x => x.toLowerCase());
+  w = w.replace(/\^/g, "△").replace(/major|minor|dim|aug|sus|add|maj|min|alt/gi, x => x.toLowerCase());   // major·minor를 maj·min보다 먼저
   w = w.replace(/[mM][aA](?![jdu])/g, "ma").replace(/[mM][iI](?!n)/g, "mi");   // maj·min·madd·maug는 앞에서 처리됨
   return head ? w.replace(/^[oO](?=\d|$)/, "°") : w;
 }
@@ -317,6 +320,7 @@ export function parse(input) {
 
   // 7alt: 텐션 없이 따로 판정 (checkAlt). 괄호를 붙이면 받지 않음
   if (rest === "7alt") return items.length ? { error: "unknown" } : { root, rootPc: E.pcOf(root.l, root.a), type: "dom7", tens: [], alt: true };
+  if (rest in WORD_TRIADS && items.length) return { error: "unknown" };   // Fminor(add9)·Fmajor(sus4)는 받지 않음 (3화음만)
   let type = HEADS[rest];
   const extTen = [];
   if (type === undefined && EXT_HEADS[rest]) [type, extTen[0]] = EXT_HEADS[rest];   // C9 → 7 + (9)
