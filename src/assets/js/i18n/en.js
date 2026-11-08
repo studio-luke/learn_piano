@@ -57,6 +57,7 @@ export default {
   hintBasicNarrow: "Choose which chords to practice below.",
   altList: "{core} + at least one altered tension ({alts})",
   pickFirst: "Press keys to choose the chord tones first.",
+  clearFirst: "Clear all selected keys first, then try again. (the 'Clear' button)",
   correct: "Correct!",
   notYet: "Not quite.",
   missing: "Missing notes: {n}",

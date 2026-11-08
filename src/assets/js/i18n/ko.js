@@ -58,6 +58,7 @@ export default {
   hintBasicNarrow: "아래에서 연습하실 화음 옵션을 선택하실 수 있습니다.",
   altList: "{core} + altered 텐션 1개 이상({alts})",
   pickFirst: "건반을 눌러 코드의 구성음을 골라 주세요.",
+  clearFirst: "건반 선택을 모두 해제한 뒤 다시 시도해 주세요. ('지우기' 버튼)",
   correct: "정답!",
   notYet: "아직 아니에요.",
   missing: "빠진 음 {n}개",

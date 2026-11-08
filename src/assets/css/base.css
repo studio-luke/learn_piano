@@ -129,7 +129,10 @@ button { cursor: pointer; }
 .legend { display: flex; gap: 12px; align-items: center; justify-content: flex-end; font-size: 12px; color: var(--muted); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
 /* 화면 아래에 잠깐 뜨는 알림 (common/dom.js toast) */
-.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20; max-width: min(420px, calc(100vw - 32px)); background: var(--ink); color: var(--bg); font-size: 13px; line-height: 1.45; border-radius: 10px; padding: 10px 14px; box-shadow: 0 12px 30px -12px rgba(40,20,10,.5); text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); touch-action: none; user-select: none; -webkit-user-select: none; z-index: 20; max-width: min(420px, calc(100vw - 32px)); background: var(--ink); color: var(--bg); font-size: 13px; line-height: 1.45; border-radius: 10px; padding: 10px 14px; box-shadow: 0 12px 30px -12px rgba(40,20,10,.5); text-align: center; transition: opacity .4s ease; }
+.toast.out { opacity: 0; }   /* 사라질 때 흐려지게 (dom.js TOAST_FADE_MS와 같은 0.4초) */
+/* 아래로 밀어 닫기(dom.js swipeToClose): touch-action: none은 알림 위에서 미는 동안 페이지가 스크롤되지 않게 */
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
 /* ---------- 도움말 (?) 버튼: 마우스를 올리거나(.help:hover) 눌러서 열면(.help.open) 설명이 보임 — common/layout.js ---------- */
 .help { position: relative; display: inline-flex; }

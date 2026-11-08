@@ -57,6 +57,7 @@ export default {
   hintBasicNarrow: "練習するコードは下で選べます。",
   altList: "{core} + オルタードテンション1つ以上（{alts}）",
   pickFirst: "鍵盤を押して構成音を選んでください。",
+  clearFirst: "鍵盤の選択をすべて解除してから、もう一度お試しください。（「クリア」ボタン）",
   correct: "正解！",
   notYet: "まだです。",
   missing: "足りない音 {n}個",

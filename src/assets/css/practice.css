@@ -101,9 +101,14 @@
 @media (max-width: 400px) { .long-lbl { display: none; } }   /* 좁은 화면: "▶ 재생" */
 
 /* ---------- 채점 / 정답 확인 / 다음 문제 ---------- */
+/* [제출]을 위 한 줄 전체로 가장 크게, 아래에 [정답 확인 | 다음 문제] (2026-11-08: 건반을 누른 뒤 [제출] 대신
+   가장 큰 [다음 문제]를 누르는 사람이 많았음). 폰 세로는 아래에서 세 버튼을 한 줄로 */
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.actions .next { grid-column: 1 / -1; }
-.btn.next:not(:disabled) { border-color: var(--ink); font-weight: 600; }
+.actions #btnCheck { grid-column: 1 / -1; }
+.btn.next:not(:disabled):not(.is-off) { border-color: var(--ink); font-weight: 600; }
+/* 건반이 눌려 있는 동안의 [다음 문제]: 꺼진 버튼처럼 보이지만 누를 수는 있음 — 누르면 "지우기" 안내 (quiz.js tryNext) */
+.btn.is-off { opacity: 0.4; cursor: not-allowed; }
+.btn.is-off:hover { background: var(--surface); }
 .small-toggles { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
 
 /* ---------- 출제 설정 ---------- */
@@ -158,8 +163,9 @@
     background: var(--surface); border-top: 1px solid var(--line);
     border-radius: 0 0 var(--radius) var(--radius);
   }
-  .actions .next { grid-column: auto; }
+  .actions #btnCheck { grid-column: auto; }
   .btn { padding: 11px 6px; font-size: 14px; }
+  .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }   /* 아래에 붙은 버튼 줄을 가리지 않게 그 위에 */
   .small-toggles { padding-bottom: 14px; }
 }
 
