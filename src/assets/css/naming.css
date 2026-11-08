@@ -1,0 +1,76 @@
+/* ===== 코드 추론하기 (trainer/chords-name/) =====
+   랜덤 코드 연습의 practice.css(카드·건반·버튼·출제 설정)를 그대로 쓰고, 이 페이지에만 있는 모양만 여기에.
+   폰 레이아웃을 바꾸면 폰 크기별로 다시 확인할 것. */
+
+/* ---------- 악보 자리 (3단계에서 채움) ---------- */
+.naming .staff:empty { display: none; }
+/* 문제를 낼 수 없을 때 안내 ("출제할 코드 종류를 하나 이상 선택하세요.") */
+.name-msg { font-size: 15px; color: var(--muted); padding-block: 18px; }
+
+/* ---------- 건반 (F3–D6, 흰 건반 20개, 보기만 함) ---------- */
+/* 사용자가 누르지 않으니 랜덤 코드 연습보다 낮게 (사용자 요청 2026-11-08) */
+.keyboard.wide { height: clamp(84px, 13vw, 130px); cursor: default; }
+.keyboard.wide .key.black { width: calc(100% / var(--whites, 20) * 0.66); }
+.keyboard.wide .key { font-size: 10px; }
+.keyboard.wide .key.white { padding-bottom: 5px; }
+/* 오답일 때 화면에 있는데 그 코드에 들어갈 수 없는 음: 주황 (결과 안내의 "들어갈 수 없는 음"과 같은 색) */
+.keyboard.wide .key.white.bad { background: var(--warn); color: #fff; border-color: color-mix(in srgb, var(--warn) 60%, #000); }
+.keyboard.wide .key.black.bad { background: color-mix(in srgb, var(--warn) 80%, #000); color: #fff; }
+@media (max-width: 520px) { .keyboard.wide .key .lbl { font-size: 7px; } .keyboard.wide .key.black .lbl { display: block; font-size: 6px; } }
+
+/* ---------- 답 입력칸 + 키패드 ---------- */
+.answer { display: flex; flex-direction: column; gap: 8px; }
+.answer-row { display: flex; gap: 6px; }
+/* 글자 크기 16px 이상: 아이폰이 칸을 누를 때 화면을 확대하지 않게 */
+.answer-input { flex: 1; min-width: 0; min-height: 50px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; font-family: var(--font-display); font-size: 26px; letter-spacing: 0.02em; padding: 4px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); cursor: text; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.answer-input.disabled { opacity: 0.5; cursor: default; }
+.answer-input.disabled .caret { display: none; }
+/* 조각 (naming/keypad.js). ♯ ♭은 제목 글꼴에 없어 악보 글꼴로 */
+.answer-input .tok { padding-inline: 0.5px; }
+.answer-input .tok.acc { font-family: "Noto Music", "Apple Symbols", "Segoe UI Symbol", var(--font-body); }
+/* 커서: 조각 사이의 깜빡이는 막대 (다시 그릴 때마다 처음부터 깜빡여서 누른 직후엔 보임) */
+.answer-input .caret { display: inline-block; width: 2px; height: 1.1em; margin-inline: 1px; background: var(--accent); animation: caret-blink 1s steps(1) infinite; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .answer-input .caret { animation: none; } }
+.paren-note { margin: 0; text-align: center; font-size: 12px; color: var(--muted); }
+.naming .feedback { margin-top: 0; }
+.naming .feedback .why { display: block; width: 100%; color: var(--ink); }
+.naming .feedback .bad-name { color: var(--warn); }
+.ans-list { color: var(--ink); }
+.ans-name { font-weight: 700; }
+.ans-or { color: var(--muted); font-size: 12px; }
+
+.keypad { display: flex; flex-direction: column; gap: 6px; }
+.pad-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.pad-row.r3 { grid-auto-columns: minmax(0, 64px); justify-content: center; }
+.pad-key { min-height: 40px; padding: 0 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 16px; font-weight: 600; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.pad-key:hover:not(:disabled) { background: var(--sunken); }
+.pad-key:active:not(:disabled) { background: var(--accent-soft); }
+.pad-key:disabled { opacity: 0.4; cursor: not-allowed; }
+.pad-key.back { flex: none; width: 56px; font-size: 18px; }
+/* 힌트 버튼: ⌫와 같은 크기 (자리바꿈 허용일 때만 보임) */
+.pad-key.hint-btn { font-size: 14px; color: var(--accent); }
+.pad-key.hint-btn[hidden] { display: none; }
+.pad-row.r0 .pad-key { font-family: var(--font-display); font-size: 18px; }
+/* ♯ ♭: 제목 글꼴에는 이 기호가 없어 작게 나와서 악보 글꼴로 */
+.pad-row.r0 .pad-key[data-k="♯"], .pad-row.r0 .pad-key[data-k="♭"] { font-family: "Noto Music", "Apple Symbols", "Segoe UI Symbol", var(--font-body); font-size: 22px; font-weight: 400; }
+
+/* 출제 설정: 자리바꿈을 켜면 옵션 E는 흐리게 + 이유 */
+.check.off { opacity: 0.55; }
+.opt-locked { display: block; color: var(--accent); }
+
+/* 폰 세로: 버튼 줄은 practice.css가 화면 아래에 붙임. 키패드는 조금 낮게 */
+@media (max-width: 600px) and (orientation: portrait) {
+  .pad-key { min-height: 38px; font-size: 15px; }
+  .answer-input { font-size: 24px; min-height: 46px; }
+}
+
+/* 폰 가로(높이 520px 이하): practice.css는 랜덤 코드 연습을 "왼쪽 코드·버튼 / 오른쪽 건반" 격자로 바꾸는데,
+   이 페이지는 입력칸·키패드가 있어 한 화면에 다 들어가지 않음 → 위에서 아래로 쌓고 스크롤 (건반은 낮게) */
+@media (orientation: landscape) and (max-height: 520px) {
+  .desk.naming { display: flex; flex-direction: column; gap: 10px; }
+  .desk.naming .keyboard.wide { height: clamp(70px, 24vh, 110px); }
+  .desk.naming .small-toggles { padding-right: 0; }
+  .desk.naming .actions { align-self: stretch; }
+  .desk.naming .btn kbd { display: none; }
+}

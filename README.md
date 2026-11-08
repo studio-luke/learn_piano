@@ -60,6 +60,8 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     config.js               Supabase 주소와 공개 키 (비우면 회원 기능 꺼짐)
     core/engine.js          코드 엔진: 출제·채점·철자·보이싱 (화면 없는 순수 함수 → Node에서 테스트)
     core/naming.js          코드 추론하기 엔진: 보이싱(자리바꿈)·코드 이름 읽기·복수 정답 (순수 함수)
+    naming/settings.js keys.js keypad.js   코드 추론하기의 출제 설정·건반(보기만)·코드 입력 키패드
+    pages/naming.js         코드 추론하기 페이지 (trainer/chords-name/)
     i18n/index.js           언어 고르기, t("키") 문구 함수, data-i18n 속성 채우기
     i18n/ko.js en.js ja.js zh.js   화면 문구 (ko가 원문, 네 파일의 키가 같아야 함)
     common/layout.js        모든 페이지의 머리글·바닥글·☰ 왼쪽 메뉴·도움말(?)과 페이지 시작(startPage)

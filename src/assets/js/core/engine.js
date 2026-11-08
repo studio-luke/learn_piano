@@ -78,6 +78,8 @@ const TYPES = [
   { id: "add9", group: "add", name: "add9", w: 2, tones: [...T3, [2, 9]], std: ["add9"], sym: [] },
   { id: "madd9", group: "add", name: "madd9", w: 1.3, tones: [...t3, [2, 9]], std: ["madd9"], sym: ["-add9"] },
   { id: "69", group: "add", name: "6(9)", w: 1.2, tones: [...T3, [9, 6], [2, 9]], std: ["6(9)"], sym: [] },
+  // 마이너 6(9): 1 ♭3 5 6 9 (Cm6/9 — 2026-11-08 사용자 요청, 두 페이지 모두. 처음 설정에서는 꺼짐)
+  { id: "m69", group: "add", name: "m6(9)", w: 1, tones: [...t3, [9, 6], [2, 9]], std: ["m6(9)"], sym: ["-6(9)"] },
 
   // 텐션 코드: 3음·7음·맨 위 텐션은 필수, 5음과 중간 텐션은 생략 가능. M13·13에는 11을 쓰지 않음
   { id: "M9", group: "tension", name: "M9", w: 1.8, tones: [[0, 1], [4, 3], O5, [11, 7], [2, 9]], std: ["M9"], sym: ["△9"], seventh: true, ten: ["#11", "13"] },

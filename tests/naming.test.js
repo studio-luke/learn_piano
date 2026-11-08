@@ -42,8 +42,12 @@ test("naming: without inversion the notes are stacked 1 3 5 7 9 11 13 from the r
 
 test("naming: with inversion the bass varies and an optional fifth is left out about half the time", () => {
   const qs = gen({ optInv: true }, 6000);
+  // 바로 옆 음끼리 한 옥타브 이상 벌어지지 않음 (사용자 요청 2026-11-08)
+  for (const q of qs) for (let i = 1; i < q.notes.length; i++) assert.ok(q.notes[i].midi - q.notes[i - 1].midi < 12, `${q.symbol}: ${q.notes.map(n => n.name + n.oct)}`);
   assert.ok(qs.filter(q => mod12(q.notes[0].midi) !== q.rootPc).length > 2000, "bass is often not the root");
-  const withOpt = qs.filter(q => q.optional.size);
+  // mM7은 텐션이 붙어도 5음을 빼지 않음
+  for (const q of gen({ optInv: true, types: { mM7: true } }, 1500)) assert.strictEqual(q.notes.length, q.tones.length, q.symbol);
+  const withOpt = qs.filter(q => q.optional.size && q.type !== "mM7");
   const omitted = withOpt.filter(q => q.notes.length < q.tones.length).length / withOpt.length;
   assert.ok(omitted > 0.4 && omitted < 0.6, `omitted ${omitted}`);
 });
@@ -101,6 +105,15 @@ test("naming: keyboard aliases — M7 / m7 / mM7 / 6(9) spellings, case matters"
   for (const s of ["CmM7", "Cmmaj7", "Cm(maj7)", "Cm△7", "C-M7", "CminMaj7"]) assert.ok(N.check(s, mM7).correct, s);
   const six9 = prob("C4 E4 G4 A4 D5", false);
   for (const s of ["C6(9)", "C6/9"]) assert.ok(N.check(s, six9).correct, s);
+  const add9 = prob("C4 E4 G4 D5", false);
+  for (const s of ["Cadd9", "Cadd2", "C2"]) assert.ok(N.check(s, add9).correct, s);
+  const madd9 = prob("C4 E♭4 G4 D5", false);
+  for (const s of ["Cmadd9", "Cmadd2", "C-add2"]) assert.ok(N.check(s, madd9).correct, s);
+  assert.strictEqual(N.check("Cm2", madd9).error, "unknown", "Cm2는 받지 않음");
+  const m69 = prob("C4 E♭4 G4 A4 D5", false);
+  for (const s of ["Cm6(9)", "Cm6/9", "C-6/9"]) assert.ok(N.check(s, m69).correct, s);
+  assert.deepStrictEqual(names(m69), ["Cm6(9)"]);
+  assert.strictEqual(N.check("Cm69", m69).error, "noParen");
   const sus = prob("C4 F4 G4", false);
   for (const s of ["Csus4", "Csus"]) assert.ok(N.check(s, sus).correct, s);
   assert.ok(N.check("C7(b9", prob("C4 E4 G4 B♭4 D♭5", false)).correct, "missing ) is closed");
@@ -120,7 +133,7 @@ test("naming: input errors — lowercase root, tensions outside parentheses, unk
   assert.strictEqual(N.check("bb7", p).error, "lowerRoot");
   for (const s of ["C69", "C7b9", "C11", "Cm13", "C7#5", "Cmaj7#11"]) assert.strictEqual(N.check(s, p).error, "noParen", s);
   for (const s of ["", "   "]) assert.strictEqual(N.check(s, p).error, "empty", s);
-  for (const s of ["H7", "Cxyz", "C(9)", "C7(9))", "Cm6(9)"]) assert.strictEqual(N.check(s, p).error, "unknown", s);
+  for (const s of ["H7", "Cxyz", "C(9)", "C7(9))", "Cdim(9)", "C7sus", "C7sus(9)", "Eb7sus"]) assert.strictEqual(N.check(s, p).error, "unknown", s);
 });
 
 test("naming: wrong answers say which notes are missing and which do not belong", () => {

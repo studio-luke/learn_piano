@@ -42,6 +42,7 @@ const HTML_LANG = { ko: "ko", en: "en", ja: "ja", zh: "zh-Hans" };
 export const PAGES = [
   { src: "index.html", route: "", title: "seoHomeTitle", desc: "seoHomeDesc" },
   { src: "trainer/chords/index.html", route: "trainer/chords/", title: "seoTrainerTitle", desc: "seoTrainerDesc" },
+  { src: "trainer/chords-name/index.html", route: "trainer/chords-name/", title: "seoNameTitle", desc: "seoNameDesc" },
   { src: "about.html", route: "about", title: "seoAboutTitle", desc: "seoAboutDesc" },
 ];
 

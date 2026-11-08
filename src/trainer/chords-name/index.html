@@ -1,0 +1,117 @@
+<!doctype html>
+<!-- ===== 코드 추론하기 — 주소 /trainer/chords-name/ =====
+     눌린 건반(과 3단계에서 붙일 오선지 악보)을 보고 코드 이름을 키패드로 입력하는 연습.
+     화면 구성: 머리글(공통) · 연습 카드(악보, 건반, 입력칸, 키패드, 버튼) · 출제 설정 · 바닥글(공통)
+     랜덤 코드 연습(trainer/chords/)의 화면을 바탕으로 해서 practice.css를 함께 쓰고, 이 페이지만의 모양은 naming.css.
+     동작은 assets/js/pages/naming.js에서 시작해요. 규칙은 chordoven-spec.md "코드 추론하기". -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="눌린 건반과 악보를 보고 코드 이름을 맞히는 화성학 연습. 자리바꿈과 텐션까지, 복수 정답도 모두 인정.">
+<title>코드 추론하기 · ChordOven</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#F5ECDD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1E1612" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Music&display=swap">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/account.css">
+<link rel="stylesheet" href="/assets/css/practice.css">
+<link rel="stylesheet" href="/assets/css/naming.css">
+<script type="module" src="/assets/js/pages/naming.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="top" id="siteHeader"></header>
+
+  <main class="layout">
+    <!-- 연습 카드 -->
+    <section class="desk naming" aria-label="연습" data-i18n-aria="deskAria">
+      <div class="prompt">
+        <div class="eyebrow" data-i18n="nameEyebrow">이 코드는 무엇일까요?</div>
+        <!-- 오선지 악보 자리 (3단계). 문제를 낼 수 없을 때는 이 자리에 안내 문구 -->
+        <div class="staff" id="staff"></div>
+        <div class="name-msg" id="nameMsg" hidden></div>
+      </div>
+
+      <div class="kb-wrap">
+        <div class="kb-bar">
+          <span></span>
+          <div class="mini">
+            <button class="mini-btn" id="btnListen" type="button" data-i18n="listenHTML">▶ 들어보기</button>
+          </div>
+        </div>
+        <!-- 건반은 assets/js/naming/keys.js가 그림 (F3–D6, 보기만 하고 누를 수 없음) -->
+        <div class="keyboard wide" id="keyboard" role="img" aria-label="피아노 건반 (F3–D6)" data-i18n-aria="kbAriaName"></div>
+      </div>
+
+      <!-- 답 입력: 입력칸 + 키패드 (assets/js/naming/keypad.js). 입력칸은 <input>이 아니라 조각을 늘어놓은 칸이라 휴대폰 키보드가 뜨지 않음 -->
+      <div class="answer">
+        <div class="answer-row">
+          <div class="answer-input" id="answer" role="textbox" aria-readonly="true" aria-label="코드 이름" data-i18n-aria="answerAria"></div>
+          <button class="pad-key back" id="padBack" type="button" aria-label="한 칸 지우기" data-i18n-aria="backAria">⌫</button>
+          <!-- 힌트: 자리바꿈 허용일 때만 보임 — 누르면 정답 근음 후보 (pages/naming.js) -->
+          <button class="pad-key back hint-btn" id="padHint" type="button" hidden data-i18n="hintBtn">힌트</button>
+        </div>
+        <div class="feedback info" id="nameHint" role="status" hidden></div>
+        <div class="feedback" id="feedback" role="status"></div>
+        <p class="paren-note" data-i18n="parenNote">텐션은 괄호 안에 써 주세요. 예: C7(♭9)</p>
+        <div class="keypad" id="keypad"></div>
+      </div>
+
+      <div class="actions">
+        <!-- 폰 세로 첫 방문 안내: 출제 설정이 아래에 있다는 걸 알려주는 떠 있는 알약 (랜덤 코드 연습과 같음, 이 페이지는 따로 기억 — pages/naming.js) -->
+        <div class="scroll-tip" id="scrollTip" hidden><button class="scroll-tip-go" id="scrollTipGo" type="button"><span class="scroll-tip-arrow" aria-hidden="true">▼</span><span data-i18n="scrollTip">아래로 내리면 출제할 코드를 고를 수 있어요</span></button><button class="scroll-tip-x" id="scrollTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></div>
+        <button class="btn primary" id="btnCheck"><span data-i18n="check">제출</span><kbd>Enter</kbd></button>
+        <button class="btn" id="btnReveal"><span data-i18n="reveal">정답 확인</span></button>
+        <button class="btn next" id="btnNext"><span data-i18n="nextPlain">다음 문제</span><kbd>→</kbd></button>
+      </div>
+
+      <div class="small-toggles">
+        <label class="check"><input type="checkbox" id="optLabels"> <span data-i18n="showLabels">건반에 음이름 표시</span></label>
+      </div>
+    </section>
+
+    <!-- 출제 설정 (코드 종류 칩은 assets/js/naming/settings.js가 그림) -->
+    <aside class="sheet" aria-label="출제 설정" data-i18n-aria="settings">
+      <h2 data-i18n="settings">출제 설정</h2>
+
+      <div id="typeGroups" class="group" style="gap: 16px"></div>
+
+      <hr class="divider">
+
+      <div class="opt">
+        <h3 data-i18n="rangeH">출제 범위</h3>
+        <label class="check"><input type="checkbox" id="optB"><span><span data-i18n="optB">특정 베이스의 코드만 출제</span><small data-i18n="optBsub"></small></span></label>
+        <div class="sub" id="basesBox" hidden>
+          <div class="bases" id="bases"></div>
+          <div><button class="white-btn" id="basesWhite" type="button" aria-pressed="false" data-i18n="whiteKeys">흰 건반</button><button class="linkbtn" id="basesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="basesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
+        </div>
+        <label class="check"><input type="checkbox" id="optC"><span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsubName"></small></span></label>
+        <div class="sub" id="cBox" hidden>
+          <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
+            <label class="chip"><input type="radio" name="cMax" id="cMax1" value="1" checked><span data-i18n="max1">최대 1개</span></label>
+            <label class="chip"><input type="radio" name="cMax" id="cMax2" value="2"><span data-i18n="max2">최대 2개</span></label>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="optInv"><span><span data-i18n="optInv">자리바꿈 허용</span><small data-i18n="optInvSub"></small></span></label>
+      </div>
+
+      <button class="adv-toggle" id="advToggle" aria-expanded="false" aria-controls="advBox"><span data-i18n="adv">[심화] 입시 대비 표기 옵션</span><span class="chev" aria-hidden="true">▾</span></button>
+      <div class="adv" id="advBox" hidden>
+        <!-- 자리바꿈을 켜면 악보는 늘 쉬운 표현이라 옵션 E는 비활성화 (core/naming.js generate) -->
+        <label class="check" id="optELabel"><input type="checkbox" id="optE"><span><span data-i18n="optEName"></span><small data-i18n="optEsubName"></small><small class="opt-locked" id="optELocked" data-i18n="optELocked" hidden></small></span></label>
+      </div>
+
+      <p class="warnbox" id="settingsWarn"></p>
+    </aside>
+  </main>
+
+  <footer class="contact" id="siteFooter"></footer>
+</div>
+</body>
+</html>

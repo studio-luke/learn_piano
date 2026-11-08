@@ -47,13 +47,15 @@ const degOf = t => (t.ten ? E.TEN[t.ten][1] : t.deg);
 /**
  * 건반 높이 정하기.
  *   자리바꿈 꺼짐: 근음부터 1 3 5 7 9 11 13 순서로 바로 위에 쌓음 (5음은 늘 보여줌)
- *   자리바꿈 켜짐: 맨 아래 음을 구성음 중에서 무작위로 고르고, 나머지는 그 위 2옥타브 안에서 무작위 높이.
- *                  생략할 수 있는 5음(텐션이 붙은 코드)은 50% 확률로 뺌
+ *   자리바꿈 켜짐: 구성음을 무작위 순서로 섞어 아래에서부터 차례로 쌓음 — 각 음은 바로 앞 음보다 높고 한 옥타브 안
+ *                  (바로 옆 음끼리 옥타브 이상 벌어지지 않게 — 사용자 요청 2026-11-08). 그래서 근음이 맨 아래가 아닐 수 있음.
+ *                  생략할 수 있는 5음(텐션이 붙은 코드)은 50% 확률로 뺌. 단 mM7은 늘 5음을 보여줌
  * @returns 음 목록 (낮은 음부터)
  */
 export function voice(q, inv, rnd = Math.random) {
   let tones = q.tones.filter(t => t.role !== "alt");
-  if (inv && tones.some(t => t.role === "optional") && rnd() < 0.5) tones = tones.filter(t => t.role !== "optional");
+  // mM7은 5음을 빼면 알아듣기 너무 어려워서 늘 보여줌 (출제만 — 판정은 그대로, 사용자 결정 2026-11-08)
+  if (inv && q.type !== "mM7" && tones.some(t => t.role === "optional") && rnd() < 0.5) tones = tones.filter(t => t.role !== "optional");
 
   if (!inv) {
     tones = tones.slice().sort((a, b) => degOf(a) - degOf(b) || a.semi - b.semi);
@@ -71,18 +73,20 @@ export function voice(q, inv, rnd = Math.random) {
     return tones.map((t, i) => note(root + offs[i], t.name));
   }
 
-  const bassTone = pick(tones, rnd);
-  const bassChoices = [];
-  for (let m = LOW; m <= HIGH - 12; m++) if (mod12(m) === bassTone.pc) bassChoices.push(m);   // 위로 한 옥타브 이상 남게
-  const bass = pick(bassChoices, rnd);
-  const out = [note(bass, bassTone.name)];
-  for (const t of tones) {
-    if (t === bassTone) continue;
-    const spots = [];
-    for (let m = bass + 1; m <= Math.min(bass + 24, HIGH); m++) if (mod12(m) === t.pc) spots.push(m);
-    out.push(note(pick(spots, rnd), t.name));
+  // 섞은 순서로 쌓았을 때 F3~D6 안에 들어가는 순서가 나올 때까지 다시 섞음 (거의 항상 몇 번 안에 나옴)
+  for (let tries = 0; tries < 60; tries++) {
+    const order = tones.slice();
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    const offs = [0];   // 맨 아래 음에서 몇 반음 위인지: 앞 음보다 1~11반음 위의 같은 음이름 자리 (pc가 모두 달라서 하나뿐)
+    for (let i = 1; i < order.length; i++) offs.push(offs[i - 1] + 1 + mod12(order[i].pc - order[i - 1].pc - 1));
+    const top = offs[offs.length - 1];
+    const basses = [];
+    for (let m = LOW; m + top <= HIGH; m++) if (mod12(m) === order[0].pc) basses.push(m);
+    if (!basses.length) continue;
+    const bass = pick(basses, rnd);
+    return order.map((t, i) => note(bass + offs[i], t.name));
   }
-  return out.sort((a, b) => a.midi - b.midi);
+  return voice(q, false, rnd);   // (만일을 위한 대비) 자리바꿈 없이
 }
 
 // 사용자가 쓴 답의 구성음이 화면의 음(pcs)과 맞는지: 필수음이 다 있고, 코드에 들어갈 수 없는 음이 없어야 함
@@ -194,7 +198,7 @@ MAJ.forEach(M => add("M7", M + "7"));
 add("M7", "△");
 MIN.forEach(m => add("m7", m + "7"));
 add("dom7", "7");
-add("7sus4", "7sus4", "7sus");
+add("7sus4", "7sus4");   // "7sus"는 받지 않음 — 어떤 경우에도 오답 (sus만 쓴 Csus = Csus4와 다름, 사용자 결정 2026-11-08)
 AUG.forEach(a => add("aug7", a + "7"));
 add("dim7", "dim7", "°7");
 add("m7b5", "ø", "ø7");
@@ -204,9 +208,10 @@ MIN.forEach(m => add("mM7", m + "△"));
 AUG.forEach(a => MAJ.forEach(M => add("augM7", a + M + "7")));
 add("6", "6");
 MIN.forEach(m => add("m6", m + "6"));
-add("add9", "add9");
-MIN.forEach(m => add("madd9", m + "add9"));
+add("add9", "add9", "add2", "2");                                // C2 = Cadd2 = Cadd9 (2026-11-08)
+MIN.forEach(m => add("madd9", m + "add9", m + "add2"));           // Cmadd2 = Cmadd9. Cm2는 공신력 있는 표기가 아니라 받지 않음
 add("69", "6/9");
+MIN.forEach(m => add("m69", m + "6/9"));                          // Cm6/9 = Cm6(9)
 // 괄호 안에 "maj7"을 쓰는 표기: Cm(maj7) = CmM7
 const PAREN_MAJ7 = new Set(MAJ.map(M => M + "7"));
 // 텐션 코드 이름 → 세븐코드 + 텐션 (C9 = C7(9), Cm11 = Cm7(11), CM13 = CM7(13) — 사용자 결정 2026-11-08)
@@ -263,6 +268,7 @@ export function parse(input) {
   if (type === "m7" && take("b5")) type = "m7b5";            // Cm7(♭5)
   else if (type === "M7" && take("#5")) type = "augM7";      // CM7(♯5) = CaugM7
   else if (type === "6" && tens.length === 1 && take("9")) type = "69";   // C6(9)
+  else if (type === "m6" && tens.length === 1 && take("9")) type = "m69";  // Cm6(9)
   const T = E.BY_ID[type];
   if (!T || !NAME_IDS.has(T.id)) return { error: "unknown" };
   if (tens.length && !T.seventh) return { error: "unknown" };

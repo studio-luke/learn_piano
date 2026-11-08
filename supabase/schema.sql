@@ -602,7 +602,7 @@ $$;
 
 -- the tensions of a chord as asked (텐션 통계): what is written in the parentheses — C7(♭9,13) → {♭9, 13} — plus the
 -- number in the name of a tension chord (M9 m9 9 → 9, M13 13 → 13, m11 → 11) and 'alt' for 7alt.
--- Not tensions: the ♭5 of m7(♭5), the ♯5 of M7(♯5) (= augM7) and the 9 of 6(9).
+-- Not tensions: the ♭5 of m7(♭5), the ♯5 of M7(♯5) (= augM7) and the 9 of 6(9) and m6(9) (m69 added 2026-11-08).
 create or replace function public.chord_tensions(quality text, symbol text)
 returns text[] language sql immutable set search_path = '' as $$
   select coalesce(array_agg(x), '{}') from (
@@ -611,7 +611,7 @@ returns text[] language sql immutable set search_path = '' as $$
       else '{}'::text[] end) as x
     union all
     select trim(t) from unnest(string_to_array(substring(symbol from '\(([^)]*)\)$'), ',')) as t
-    where not (quality = 'm7b5' and trim(t) = '♭5') and not (quality = 'augM7' and trim(t) = '♯5') and quality <> '69'
+    where not (quality = 'm7b5' and trim(t) = '♭5') and not (quality = 'augM7' and trim(t) = '♯5') and quality not in ('69', 'm69')
   ) s where x <> '';
 $$;
 

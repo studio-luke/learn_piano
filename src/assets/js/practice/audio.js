@@ -8,6 +8,9 @@ function init() {
   if (ctx) return ctx;
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
+  // iPhone(Safari·Chrome 모두 WebKit): 무음(벨) 스위치가 켜져 있으면 Web Audio 소리가 꺼짐 → "음악 재생" 소리라고 알려서
+  // 무음 모드에서도 들리게 (동영상처럼). 이 기능이 없는 브라우저는 그냥 지나감 (2026-11-08: 두 페이지 모두 iPhone에서 소리가 안 났음)
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) { /* 지원 안 함 */ }
   ctx = new AC();
   // 여러 음을 동시에 쳐도 소리가 깨지지 않게 압축기를 거침
   const comp = ctx.createDynamicsCompressor();
@@ -26,7 +29,9 @@ function init() {
  */
 function note(m, when = 0, dur = 1.8, vel = 0.5) {
   if (!init()) return;
-  if (ctx.state === "suspended") ctx.resume();
+  // 멈춰 있으면 다시 켬. iPhone(Safari·Chrome 모두 WebKit)은 "suspended" 말고 "interrupted"가 되기도 해서
+  // running이 아니면 모두 다시 켬 (2026-11-08: 코드 추론하기의 [들어보기]가 iPhone에서 안 들렸음)
+  if (ctx.state !== "running") ctx.resume();
   const t0 = ctx.currentTime + when + 0.005;
   const f = 440 * Math.pow(2, (m - 69) / 12);   // MIDI → 주파수 (A4 = 440Hz)
   // 고음일수록 밝게 시작해서 점점 어두워지는 필터

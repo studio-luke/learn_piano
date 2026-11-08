@@ -86,7 +86,8 @@ $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; store.set("r
   if (store.get("scrollTip") !== "seen" && head && "IntersectionObserver" in window) {
     tip.hidden = false;
     seen.observe(head);
-    tip.onclick = () => { done(); head.closest(".sheet").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    $("scrollTipGo").onclick = () => { done(); head.closest(".sheet").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    $("scrollTipX").onclick = done;   // ×: 스크롤하지 않고 닫기 (다시 안 나옴 — 2026-11-08)
   }
 }
 

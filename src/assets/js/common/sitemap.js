@@ -20,13 +20,14 @@ export const ROOT = new URL("../../../", import.meta.url).href;
 export const ROUTES = {
   home: "",
   trainer: "trainer/chords/",
+  nameTrainer: "trainer/chords-name/",   // 코드 추론하기 (2026-11-08)
   about: "about",
   mypage: "mypage",
   teacher: "teacher/",
 };
 
 /** 언어별로 따로 만드는 페이지 (/ko/about, /en/about …). tools/build.js의 PAGES와 같게 유지할 것 */
-export const LOCALIZED = [ROUTES.home, ROUTES.trainer, ROUTES.about];
+export const LOCALIZED = [ROUTES.home, ROUTES.trainer, ROUTES.nameTrainer, ROUTES.about];
 
 /**
  * 페이지 링크 주소. 언어별 페이지면 언어 표시를 붙임:
@@ -39,6 +40,7 @@ export const SITEMAP = [
     group: "navLearn",
     items: [
       { key: "navTrainer", path: ROUTES.trainer, icon: "🎹" },
+      { key: "navNameTrainer", path: ROUTES.nameTrainer, icon: "🔍" },
       { key: "navChordGuide", soon: true, icon: "📖" },
       { key: "navVoiceLeading", soon: true, icon: "🎼" },
       { key: "navTheory", soon: true, icon: "🎵" },

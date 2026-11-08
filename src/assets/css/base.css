@@ -128,8 +128,10 @@ button { cursor: pointer; }
 .divider { border: none; border-top: 1px solid var(--line); margin: 0; }
 .legend { display: flex; gap: 12px; align-items: center; justify-content: flex-end; font-size: 12px; color: var(--muted); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
-/* 화면 아래에 잠깐 뜨는 알림 (common/dom.js toast) */
-.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); touch-action: none; user-select: none; -webkit-user-select: none; z-index: 20; max-width: min(420px, calc(100vw - 32px)); background: var(--ink); color: var(--bg); font-size: 13px; line-height: 1.45; border-radius: 10px; padding: 10px 14px; box-shadow: 0 12px 30px -12px rgba(40,20,10,.5); text-align: center; transition: opacity .4s ease; }
+/* 화면 아래에 잠깐 뜨는 알림 (common/dom.js toast)
+   width: max-content — 가운데 정렬(left 50%)만 하면 폭이 화면의 절반으로 줄어 글이 좁게 꺾였음 → 글 길이만큼 넓게, 화면 폭 - 32px까지 (2026-11-08)
+   word-break: keep-all — 한국어가 단어 중간에서 끊기지 않고 단어 앞에서 줄이 바뀜 (모든 알림 공통) */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); touch-action: none; user-select: none; -webkit-user-select: none; z-index: 20; width: max-content; max-width: min(460px, calc(100vw - 32px)); word-break: keep-all; overflow-wrap: anywhere; background: var(--ink); color: var(--bg); font-size: 13px; line-height: 1.45; border-radius: 10px; padding: 10px 14px; box-shadow: 0 12px 30px -12px rgba(40,20,10,.5); text-align: center; transition: opacity .4s ease; }
 .toast.out { opacity: 0; }   /* 사라질 때 흐려지게 (dom.js TOAST_FADE_MS와 같은 0.4초) */
 /* 아래로 밀어 닫기(dom.js swipeToClose): touch-action: none은 알림 위에서 미는 동안 페이지가 스크롤되지 않게 */
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
