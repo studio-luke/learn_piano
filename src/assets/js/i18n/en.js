@@ -349,6 +349,7 @@ export default {
   wrongExtra: "Doesn't belong",
   wrongBass: "The lowest note must be the root.",
   orWord: "or",
+  reviewNone: "There are no missed questions to retry.",
   hintBtn: "Hint",
   hintRoots: "Possible roots",
   keysDisplayOnly: "This keyboard only shows the question. Type the chord name with the keypad below.",

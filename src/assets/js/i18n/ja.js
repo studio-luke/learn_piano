@@ -349,6 +349,7 @@ export default {
   wrongExtra: "入らない音",
   wrongBass: "一番下の音がルートでなければなりません。",
   orWord: "または",
+  reviewNone: "解き直す問題はありません。",
   hintBtn: "ヒント",
   hintRoots: "ルート候補",
   keysDisplayOnly: "この鍵盤は問題を表示するだけです。下のキーパッドでコード名を入力してください。",

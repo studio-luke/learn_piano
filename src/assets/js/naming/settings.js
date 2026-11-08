@@ -1,6 +1,6 @@
 // ===== 코드 추론하기 — 출제 설정 =====
 // 오른쪽 "출제 설정" 카드의 상태(S)와 화면. 랜덤 코드 연습(practice/settings.js)과 모양은 같지만 고를 수 있는 옵션이 달라서
-// 따로 저장해요 (localStorage chordoven.nameSettings.v1 — 사용자 결정 2026-11-08). 계정 저장은 4단계에서.
+// 따로 저장해요: 이 기기 localStorage chordoven.nameSettings.v1, 로그인했으면 계정 profiles.name_settings (사용자 결정 2026-11-08).
 //
 // S의 항목
 //   types        코드 종류별 출제 여부 { maj: true, M7: false, … } (텐션 코드 종류 M9 M13 m9 m11 9 13은 없음)
@@ -10,10 +10,12 @@
 //   optE         옵션 E(복잡한 표현이 포함된 코드 출제) — 자리바꿈을 켜면 쓰지 않음(비활성화, 값은 그대로 둠)
 //   adv          [심화] 묶음 펼침
 //   labels       건반에 음이름 표시
+//   timerShow    (타이머) 시간 표시
 import { Engine } from "../core/engine.js";
 import { NAME_TYPES } from "../core/naming.js";
+import { Account } from "../account/account.js";
 import { t, applyI18n } from "../i18n/index.js";
-import { $, chordHTML } from "../common/dom.js";
+import { $, chordHTML, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
 
 const KEY = "nameSettings.v1";
@@ -28,7 +30,7 @@ export const DEFAULTS = {
     add9: true, madd9: true,
   },
   optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optInv: false, optE: false,
-  adv: false, labels: false,
+  adv: false, labels: false, timerShow: true,
 };
 
 /** 지금 출제 설정. 다른 파일이 이 객체를 계속 참조하므로 새 객체로 바꾸지 말 것 */
@@ -37,7 +39,15 @@ export const S = structuredClone(DEFAULTS);
   const saved = store.getJSON(KEY);
   if (saved && typeof saved === "object") Object.assign(S, saved);
 }
-export const save = () => store.setJSON(KEY, S);
+const saveLocal = () => store.setJSON(KEY, S);
+/** 저장: 이 기기 + (로그인했으면) 계정의 name_settings */
+export function save() { saveLocal(); Account.settingsChanged(S, "name_settings"); }
+/** S의 내용을 통째로 바꿈 (기본값 + 계정의 값). 로그인 때 계정 설정을 받을 때 씀 */
+export function replaceSettings(remote) {
+  for (const k of Object.keys(S)) delete S[k];
+  Object.assign(S, structuredClone(DEFAULTS), remote);
+  saveLocal();
+}
 
 // 출제 설정 묶음 (화면에 이 순서대로). 텐션 코드 묶음은 없음
 const GROUPS = ["triad", "sus", "seventh", "sixth", "add"];
@@ -85,6 +95,8 @@ export function initSettings(changed) {
   $("optInv").onchange = e => { S.optInv = e.target.checked; settingsChanged(); };
   $("optE").onchange = e => { S.optE = e.target.checked; settingsChanged(); };
   $("advToggle").onclick = () => { S.adv = !S.adv; syncSettingsUI(); save(); };
+  // 잠긴 설정을 누르면 왜 잠겼는지 알려줌
+  $("sheetLock").onclick = () => { if (lockReason) toast(t(lockReason)); };
 }
 
 // 출제 범위가 바뀜: 화면 맞추고 저장, 0.25초 뒤 새 문제 (칩을 연달아 누를 때 문제가 계속 바뀌지 않게)
@@ -107,4 +119,19 @@ export function syncSettingsUI() {
   // 옵션 C를 켰는데 7화음이 하나도 없으면 텐션이 붙을 코드가 없음
   const has7 = NAME_TYPES.some(x => x.seventh && S.types[x.id]);
   $("settingsWarn").textContent = S.optC && !has7 ? t("warnC") : "";
+}
+
+// ---------- 잠금 (랜덤 코드 연습과 같음, practice/settings.js) ----------
+// 틀린 문제 다시 풀기 중(출제 설정이 적용되지 않음)과 타이머 실행 중(타이머 세션에 저장한 설정을 지키려고)에는
+// 출제 설정을 회색으로 잠가요. 위에 투명한 막(#sheetLock)이 클릭을 받아 이유를 알려줘요.
+let lockReason = null;
+/** reason: 안내 문구 키("lockNote" | "lockTimer") 또는 null(잠금 해제) */
+export function setLocked(reason) {
+  lockReason = reason;
+  const sheet = document.querySelector(".sheet");
+  sheet.classList.toggle("locked", !!reason);
+  $("lockNote").hidden = !reason; $("sheetLock").hidden = !reason;
+  if (reason) $("lockNote").textContent = t(reason);
+  sheet.querySelectorAll("input, button:not(.sheet-lock)").forEach(el => { el.disabled = !!reason; });
+  if (!reason) syncSettingsUI();   // 옵션 E는 자리바꿈일 때 계속 꺼져 있어야 해서 다시 맞춤
 }

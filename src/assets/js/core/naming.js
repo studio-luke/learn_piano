@@ -179,6 +179,37 @@ export function generate(s, rnd = Math.random, prev = null) {
   return { ...q, inv, notes, pcs: new Set(notes.map(n => mod12(n.midi))), answers: list };
 }
 
+// ---------- 틀린 문제 다시 풀기 (2026-11-08) ----------
+// DB review_queue.spec에 남기는 정보: engine의 spec(근음·코드 종류·텐션·이름) + 자리바꿈 여부 + 그때의 음 배치(MIDI와 보이던 철자)
+/** 다시 풀기용 정보 */
+export const specOf = q => ({ ...E.spec(q), inv: !!q.inv, notes: q.notes.map(n => [n.midi, n.name]) });
+
+/**
+ * 저장한 정보로 문제를 다시 만듦 (DB에서 온 값이라 꼼꼼히 확인, 이상하면 null).
+ * @param same  true = 처음과 같은 음 배치, false = 같은 방식(자리바꿈 여부)의 다른 배치
+ *              — 다시 풀기의 첫 번째는 같은 배치, 두 번째(한 번 맞힌 뒤)는 다른 배치 (사용자 결정 2026-11-08)
+ */
+export function fromSpec(sp, same, rnd = Math.random) {
+  if (!sp || !Array.isArray(sp.notes) || !sp.notes.length || sp.notes.length > 8) return null;
+  if (!sp.notes.every(x => Array.isArray(x) && Number.isInteger(x[0]) && x[0] >= LOW && x[0] <= HIGH && typeof x[1] === "string" && /^[A-G][♯♭𝄪𝄫]{0,2}$/u.test(x[1]))) return null;
+  const q = E.rebuild(sp, { optE: false });   // 쉬운 철자로 만든 뒤, 처음에 보이던 철자로 바꿔 씀
+  if (!q || q.alt || !NAME_IDS.has(q.type)) return null;
+  const inv = !!sp.inv;
+  const shown = new Map(sp.notes.map(([m, name]) => [mod12(m), name]));
+  for (const t of q.tones) if (shown.has(t.pc)) t.name = shown.get(t.pc);
+  let notes;
+  if (same) notes = sp.notes.map(([m, name]) => note(m, name)).sort((a, b) => a.midi - b.midi);
+  else {
+    // 다른 배치: 몇 번 다시 뽑아 처음과 다른 배치를 고름 (자리바꿈 없는 문제는 근음 옥타브만 다를 수 있음 — 하나뿐이면 같은 배치)
+    const before = sp.notes.map(x => x[0]).sort((a, b) => a - b).join();
+    for (let i = 0; i < 12; i++) { notes = voice(q, inv, rnd); if (notes.map(n => n.midi).join() !== before) break; }
+  }
+  if (notes.some(n => !Number.isInteger(n.oct))) return null;   // 철자와 높이가 안 맞음 (조작된 값)
+  const list = answers(notes, inv);
+  list.sort((a, b) => (b.rootPc === q.rootPc) - (a.rootPc === q.rootPc));
+  return { ...q, inv, notes, pcs: new Set(notes.map(n => mod12(n.midi))), answers: list };
+}
+
 // ---------- 사용자가 쓴 코드 이름 읽기 ----------
 // 키패드(M m dim aug sus add 숫자 ♯ ♭ 괄호)로 쓴 글자와, 컴퓨터 키보드로 친 다른 표기를 모두 읽어요.
 // 대소문자를 구분함: M = 메이저, m = 마이너. 근음을 소문자로 쓰면 오류 "lowerRoot" (사용자 결정 2026-11-08)
@@ -300,5 +331,5 @@ export function check(input, prob) {
   return { correct: !missing.length && !extra.length && !bassWrong, missing: [...new Set(missing)], extra: [...new Set(extra)], bassWrong };
 }
 
-export const Naming = { LOW, HIGH, NAME_TYPES, generate, voice, answers, parse, check };
+export const Naming = { LOW, HIGH, NAME_TYPES, generate, voice, answers, parse, check, specOf, fromSpec };
 export default Naming;

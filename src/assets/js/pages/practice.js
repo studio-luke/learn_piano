@@ -12,7 +12,7 @@ import { store } from "../common/storage.js";
 import { S, IS_PC, initSettings, syncSettingsUI, replaceSettings, save } from "../practice/settings.js";
 import { initKeyboard, setKeyLabels, selected, renderKeys, CODE_TO_MIDI } from "../practice/keyboard.js";
 import { Sound } from "../practice/audio.js";
-import { initTimer, setTimer, renderTimer } from "../practice/timer.js";
+import { initTimer, setTimer, renderTimer, timerSettings } from "../practice/timer.js";
 import {
   state, stats, renderStats, newQuestion, tryNext, check, reveal, keysChanged,
   startReview, stopReview, inReview, renderPrompt, renderFeedback, renderReview, timerHooks,
@@ -92,7 +92,7 @@ $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; store.set("r
 }
 
 // ---------- 타이머 ----------
-initTimer(timerHooks);
+initTimer(timerHooks, { mode: "play", S, save, sessionSettings: review => timerSettings(S, review, { optD: !!S.optD }) });
 
 // ---------- 언어가 바뀌면 JS로 그린 문구를 다시 ----------
 onLangChange(() => { syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys(); renderReview(); renderTimer(); });
@@ -103,7 +103,9 @@ async function beginReview() {
   const items = await Account.reviewItems();
   if (items && items.length) startReview(items);
 }
-authHooks.startReview = beginReview;
+// 사이드바에서 고른 연습: 랜덤 코드 연습이면 여기서 바로 시작, 코드 추론하기는 그 페이지로 이동
+const goOtherReview = authHooks.startReview;
+authHooks.startReview = mode => (mode === "name" ? goOtherReview(mode) : beginReview());
 
 let reviewFromUrl = new URLSearchParams(location.search).get("review") === "1";   // 마이페이지의 [다시 풀기]
 Account.on("profile", async profile => {

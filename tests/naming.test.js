@@ -227,3 +227,25 @@ test("staff: accidentals in one column never overlap, and every generated questi
   check(notesOf("F3 A♭3 C♭4 E𝄫4"));
   for (const optInv of [false, true]) for (const q of gen({ optInv, optE: true }, 3000)) check(q.notes);
 });
+
+test("naming review: a saved question comes back with the same voicing, then with a different one", () => {
+  for (const optInv of [false, true]) for (const optE of [false, true]) for (const q of gen({ optInv, optE }, 1500)) {
+    const sp = JSON.parse(JSON.stringify(N.specOf(q)));   // DB를 거친 것처럼
+    const same = N.fromSpec(sp, true);
+    assert.ok(same, q.symbol);
+    assert.deepStrictEqual(same.notes.map(n => n.midi + n.name), q.notes.map(n => n.midi + n.name), q.symbol);
+    assert.strictEqual(same.symbol, q.symbol);
+    assert.deepStrictEqual(same.answers.map(a => a.symbol), q.answers.map(a => a.symbol));
+    const other = N.fromSpec(sp, false);
+    assert.ok(other && N.check(q.symbol, other).correct, `${q.symbol} 다른 배치도 같은 코드`);
+    assert.strictEqual(other.inv, q.inv);
+    assert.ok(other.notes.every(n => n.midi >= N.LOW && n.midi <= N.HIGH));
+    if (optInv) for (let i = 1; i < other.notes.length; i++) assert.ok(other.notes[i].midi - other.notes[i - 1].midi < 12);
+    else assert.strictEqual(other.notes[0].midi % 12, q.rootPc, "자리바꿈 없는 문제는 다시 풀어도 근음이 맨 아래");
+    assert.ok(JSON.stringify(sp).length < 600, "DB spec 크기 제한(800바이트) 안");
+  }
+  const sp = N.specOf(gen({ optInv: true }, 1)[0]);
+  assert.strictEqual(N.fromSpec({ ...sp, notes: [[30, "C"]] }, true), null, "범위 밖 음");
+  assert.strictEqual(N.fromSpec({ ...sp, notes: [[60, "<b>"]] }, true), null, "이상한 이름");
+  assert.strictEqual(N.fromSpec({ ...sp, type: "M9" }, true), null, "이 페이지에 없는 코드 종류");
+});

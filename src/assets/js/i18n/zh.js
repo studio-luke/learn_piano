@@ -349,6 +349,7 @@ export default {
   wrongExtra: "不属于该和弦的音",
   wrongBass: "最低音必须是根音。",
   orWord: "或",
+  reviewNone: "没有需要重做的错题。",
   hintBtn: "提示",
   hintRoots: "可能的根音",
   keysDisplayOnly: "这个键盘只用来显示题目。请用下方的按键输入和弦名称。",

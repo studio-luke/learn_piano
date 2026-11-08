@@ -10,6 +10,8 @@
 .naming .staff { width: 100%; display: flex; justify-content: center; }
 /* [들어보기]: 악보 줄의 오른쪽 아래 (악보는 가운데라 겹치지 않음) */
 .listen-btn { position: absolute; right: 0; bottom: 0; }
+/* 타이머를 켤 때 3·2·1: 악보 자리에 같은 높이로 (모양은 practice.css .symbol.count) */
+.name-count { height: var(--staff-h); display: flex; align-items: center; justify-content: center; }
 .naming .staff:empty { display: none; }
 .naming .staff svg { height: var(--staff-h); width: auto; overflow: visible; color: var(--ink); }
 .st-line, .st-ledger { stroke: currentColor; stroke-width: 1; }
@@ -81,6 +83,9 @@
   .naming { --staff-h: 100px; }
   .desk.naming { gap: 10px; padding-top: 10px; }
   .desk.naming .prompt { padding-top: 0; gap: 0; }
+  /* 오른쪽 위 타이머 버튼과 같은 줄이라, 안내 문구는 왼쪽으로 붙이고 악보는 조금 아래로 (좁은 폰에서 겹쳤음) */
+  .desk.naming .eyebrow { align-self: flex-start; text-align: left; padding-top: 4px; }
+  .desk.naming .staff-row { margin-top: 6px; }
   .desk.naming .keyboard.wide { height: 72px; }
   .desk.naming .answer { gap: 6px; }
   .paren-note { font-size: 11px; }

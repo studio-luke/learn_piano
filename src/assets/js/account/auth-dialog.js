@@ -191,7 +191,12 @@ const MARKUP = `
     <nav class="side-menu">
       <a class="menu-item" id="menuMy" href="${pageUrl(ROUTES.mypage)}"><span data-i18n="menuMy"></span><span class="chev" aria-hidden="true">›</span></a>
       <a class="menu-item" id="menuStudents" href="${pageUrl(ROUTES.teacher)}" hidden><span data-i18n="menuStudents"></span><span class="chev" aria-hidden="true">›</span></a>
-      <button class="menu-item" type="button" id="menuReview"><span data-i18n="menuReview"></span><span class="badge" id="reviewCount"></span></button>
+      <!-- 틀린 문제 다시 풀기: 누르면 아래에 오답이 있는 연습 목록이 펼쳐짐(다시 누르면 닫힘), 오답이 하나도 없으면 회색 (2026-11-08 사용자 결정) -->
+      <button class="menu-item" type="button" id="menuReview" aria-expanded="false" aria-controls="reviewSub"><span data-i18n="menuReview"></span><span class="badge" id="reviewCount"></span></button>
+      <div class="side-sub" id="reviewSub" hidden>
+        <button class="menu-item menu-sub" type="button" data-review="play"><span data-i18n="navTrainer"></span><span class="badge"></span></button>
+        <button class="menu-item menu-sub" type="button" data-review="name"><span data-i18n="navNameTrainer"></span><span class="badge"></span></button>
+      </div>
     </nav>
     <!-- 계정 설정 묶음 (2026-11-07 사용자 결정: 메뉴가 모두 나란히 있어 읽기 어려움 → 제목으로 나눔) -->
     <nav class="side-menu" aria-labelledby="acctSettingsHead">
@@ -217,8 +222,11 @@ const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 const here = () => location.origin + location.pathname;
 const fmtDate = d => new Date(d).toLocaleDateString(locale(), { year: "numeric", month: "long", day: "numeric" });
 
-/** 틀린 문제 다시 풀기를 누르면 할 일. 연습 페이지가 바꿔 끼우고, 다른 페이지에서는 연습 페이지로 이동 */
-export const hooks = { startReview: () => { location.href = `${pageUrl(ROUTES.trainer)}?review=1`; } };
+/**
+ * 틀린 문제 다시 풀기를 누르면 할 일. mode = "play"(랜덤 코드 연습) | "name"(코드 추론하기).
+ * 기본: 그 연습 페이지로 이동(?review=1). 연습 페이지는 자기 연습이면 바로 시작하도록 바꿔 끼움
+ */
+export const hooks = { startReview: (mode = "play") => { location.href = `${pageUrl(mode === "name" ? ROUTES.nameTrainer : ROUTES.trainer)}?review=1`; } };
 
 // 구글 공식 버튼 그리기 (지금 보이는 화면의 슬롯만 — 숨겨진 칸은 폭을 잴 수 없어서)
 function drawGoogle() {
@@ -306,12 +314,23 @@ function render() {
   if (isOpen() && view === "account" && !user) show("login");
 }
 
-// 사이드바의 "틀린 문제 다시 풀기" 옆 숫자
+// 사이드바의 "틀린 문제 다시 풀기" 옆 숫자(두 연습 합) + 펼친 목록의 연습별 숫자. 오답이 없는 연습은 목록에서 숨김
 async function countReview() {
+  setReviewOpen(false);   // 사이드바를 열 때마다 목록은 접힌 채로
   $("reviewCount").textContent = "";
-  const n = await Account.reviewCount();
+  const [play, name] = await Promise.all([Account.reviewCount("play"), Account.reviewCount("name")]);
+  const n = play + name;
   $("reviewCount").textContent = n || "";
   $("menuReview").disabled = !n;
+  for (const [mode, c] of [["play", play], ["name", name]]) {
+    const b = $("reviewSub").querySelector(`[data-review="${mode}"]`);
+    b.hidden = !c; b.querySelector(".badge").textContent = c || "";
+  }
+  if (!n) setReviewOpen(false);
+}
+function setReviewOpen(open) {
+  $("reviewSub").hidden = !open;
+  $("menuReview").setAttribute("aria-expanded", String(open));
 }
 
 // 정보 추가 입력 화면: 소셜 로그인 첫 방문이면 닉네임·언어·동의 칸도 보여주고, 아는 값(소셜 계정 이름 등)을 미리 채움
@@ -693,7 +712,8 @@ export function initAuthDialog() {
   }
 
   $("logoutBtn").onclick = async () => { await Account.signOut(); close(); };
-  $("menuReview").onclick = () => { close(); hooks.startReview(); };
+  $("menuReview").onclick = () => setReviewOpen($("reviewSub").hidden);
+  $("reviewSub").onclick = e => { const b = e.target.closest("[data-review]"); if (b) { close(); hooks.startReview(b.dataset.review); } };
   $("deleteAcctBtn").onclick = () => open("delete");
   $("restoreBtn").onclick = async () => {
     const { error } = await Account.restore();

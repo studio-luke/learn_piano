@@ -350,6 +350,7 @@ export default {
   wrongExtra: "들어갈 수 없는 음",
   wrongBass: "맨 아래 음이 근음이어야 해요.",
   orWord: "또는",
+  reviewNone: "다시 풀 틀린 문제가 없어요.",
   hintBtn: "힌트",
   hintRoots: "근음 후보",
   keysDisplayOnly: "이 건반은 문제를 보여주기만 해요. 아래 키패드로 코드 이름을 입력해 주세요.",
