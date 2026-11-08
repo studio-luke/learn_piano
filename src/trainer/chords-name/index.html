@@ -33,18 +33,16 @@
     <section class="desk naming" aria-label="연습" data-i18n-aria="deskAria">
       <div class="prompt">
         <div class="eyebrow" data-i18n="nameEyebrow">이 코드는 무엇일까요?</div>
-        <!-- 오선지 악보 자리 (3단계). 문제를 낼 수 없을 때는 이 자리에 안내 문구 -->
-        <div class="staff" id="staff"></div>
+        <!-- 오선지 악보 (assets/js/naming/staff.js). 문제를 낼 수 없을 때는 오선과 음자리표만, 아래에 안내 문구.
+             [들어보기]는 악보와 같은 줄의 오른쪽 아래에 겹쳐 둠 — 악보는 가운데라 가리지 않음, 따로 한 줄을 쓰지 않아 폰에서 키패드까지 보이게 (2026-11-08) -->
+        <div class="staff-row">
+          <div class="staff" id="staff"></div>
+          <button class="mini-btn listen-btn" id="btnListen" type="button" data-i18n="listenHTML">▶ 들어보기</button>
+        </div>
         <div class="name-msg" id="nameMsg" hidden></div>
       </div>
 
       <div class="kb-wrap">
-        <div class="kb-bar">
-          <span></span>
-          <div class="mini">
-            <button class="mini-btn" id="btnListen" type="button" data-i18n="listenHTML">▶ 들어보기</button>
-          </div>
-        </div>
         <!-- 건반은 assets/js/naming/keys.js가 그림 (F3–D6, 보기만 하고 누를 수 없음) -->
         <div class="keyboard wide" id="keyboard" role="img" aria-label="피아노 건반 (F3–D6)" data-i18n-aria="kbAriaName"></div>
       </div>

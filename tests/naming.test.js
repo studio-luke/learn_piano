@@ -12,8 +12,8 @@ const mod12 = n => ((n % 12) + 12) % 12;
 const LET = "CDEFGAB", NAT = [0, 2, 4, 5, 7, 9, 11];
 function prob(text, inv = true) {
   const notes = text.split(" ").map(s => {
-    const [, L, acc, o] = s.match(/^([A-G])([♯♭]*)(\d)$/);
-    const a = [...acc].reduce((x, c) => x + (c === "♯" ? 1 : -1), 0);
+    const [, L, acc, o] = s.match(/^([A-G])([♯♭𝄪𝄫]*)(\d)$/u);
+    const a = [...acc].reduce((x, c) => x + ({ "♯": 1, "♭": -1, "𝄪": 2, "𝄫": -2 }[c]), 0);
     const l = LET.indexOf(L);
     return { midi: (+o + 1) * 12 + NAT[l] + a, name: L + acc, l, a, oct: +o };
   });
@@ -188,4 +188,42 @@ test("naming spelling: inversion off + option E off → flip the black-key root,
   // 철자를 바꿔도 안 되는 코드는 빼지 않고 쉬운 표현으로
   for (const q of only("dom7", 1)) assert.deepStrictEqual(q.notes.map(n => n.name), ["D♭", "F", "A♭", "B"]);
   for (const q of only("dim7", 0)) assert.deepStrictEqual(q.notes.map(n => n.name), ["C", "E♭", "G♭", "A"]);
+});
+
+// ---------- 오선지 악보 위치 계산 (naming/staff.js layout) ----------
+import { layout } from "../src/assets/js/naming/staff.js";
+const notesOf = text => prob(text).notes;
+const ACC_H = { "1": [3, 3], "-1": [1, 4], "2": [1.5, 1.5], "-2": [1, 4] };   // staff.js SHAPE의 [아래, 위]
+
+test("staff: seconds push the upper note to the right; ♭9 and ♯9 on the same line sit side by side", () => {
+  const { heads } = layout(notesOf("C4 D4 E4"));   // 2도 2개: 왼 · 오 · 왼
+  assert.deepStrictEqual(heads.map(h => h.right), [false, true, false]);
+  const b9s9 = layout(notesOf("C4 E4 G4 B♭4 D♭5 D♯5")).heads;
+  const d = b9s9.filter(h => h.note.l === 1);
+  assert.strictEqual(d.length, 2);
+  assert.notStrictEqual(d[0].right, d[1].right, "D♭와 D♯는 좌우로 비켜 놓임");
+  assert.deepStrictEqual(layout(notesOf("C4 E4 G4")).heads.map(h => h.right), [false, false, false], "3도는 비키지 않음");
+});
+
+test("staff: ledger lines — F3 needs 3 below, D6 needs 2 above, notes on the staff need none", () => {
+  assert.strictEqual(layout(notesOf("F3")).ledgers.length, 3);
+  assert.strictEqual(layout(notesOf("D6")).ledgers.length, 2);
+  assert.strictEqual(layout(notesOf("E4 G4 B4 D5 F5")).ledgers.length, 0);
+});
+
+test("staff: accidentals in one column never overlap, and every generated question fits left of the notes", () => {
+  const check = notes => {
+    const { accs } = layout(notes);
+    for (let i = 0; i < accs.length; i++) for (let j = i + 1; j < accs.length; j++) {
+      const p = accs[i], q = accs[j];
+      if (p.col !== q.col) continue;
+      const sp = p.note.oct * 7 + p.note.l, sq = q.note.oct * 7 + q.note.l;
+      const [pl, ph] = ACC_H[p.a], [ql, qh] = ACC_H[q.a];
+      assert.ok(sp - pl >= sq + qh || sq - ql >= sp + ph, notes.map(n => n.name + n.oct).join(" "));
+    }
+    for (const a of accs) assert.ok(a.x > 28, `임시표가 음자리표와 겹침: ${notes.map(n => n.name + n.oct).join(" ")}`);
+  };
+  check(notesOf("C♯5 E♯5 G♯5 B5"));
+  check(notesOf("F3 A♭3 C♭4 E𝄫4"));
+  for (const optInv of [false, true]) for (const q of gen({ optInv, optE: true }, 3000)) check(q.notes);
 });

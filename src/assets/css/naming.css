@@ -2,8 +2,24 @@
    랜덤 코드 연습의 practice.css(카드·건반·버튼·출제 설정)를 그대로 쓰고, 이 페이지에만 있는 모양만 여기에.
    폰 레이아웃을 바꾸면 폰 크기별로 다시 확인할 것. */
 
-/* ---------- 악보 자리 (3단계에서 채움) ---------- */
+/* ---------- 오선지 악보 (naming/staff.js) ----------
+   악보 크기는 --staff-h(높이) 하나로 정함 → 키우거나 줄이려면 이 값만 바꾸면 됨 (2026-11-08 사용자 요청)
+   그림 단위로 오선 간격 10 / 그림 높이 120 → 130px이면 오선 간격 약 11px, 폰 세로 108px이면 약 9px */
+.naming { --staff-h: 130px; }
+.staff-row { position: relative; width: 100%; }
+.naming .staff { width: 100%; display: flex; justify-content: center; }
+/* [들어보기]: 악보 줄의 오른쪽 아래 (악보는 가운데라 겹치지 않음) */
+.listen-btn { position: absolute; right: 0; bottom: 0; }
 .naming .staff:empty { display: none; }
+.naming .staff svg { height: var(--staff-h); width: auto; overflow: visible; color: var(--ink); }
+.st-line, .st-ledger { stroke: currentColor; stroke-width: 1; }
+.st-ledger { stroke-width: 1.2; }
+.st-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 40px; fill: currentColor; }
+.st-acc { fill: currentColor; }
+.st-head { fill: currentColor; }
+/* 정답이면 초록, 오답일 때 "빠진 음"은 주황 (건반과 같은 색) */
+.st-head.good, .st-acc.good { fill: var(--ok); }
+.st-head.bad, .st-acc.bad { fill: var(--warn); }
 /* 문제를 낼 수 없을 때 안내 ("출제할 코드 종류를 하나 이상 선택하세요.") */
 .name-msg { font-size: 15px; color: var(--muted); padding-block: 18px; }
 
@@ -61,7 +77,15 @@
 
 /* 폰 세로: 버튼 줄은 practice.css가 화면 아래에 붙임. 키패드는 조금 낮게 */
 @media (max-width: 600px) and (orientation: portrait) {
-  .pad-key { min-height: 38px; font-size: 15px; }
+  /* 주소창·아래 탐색 막대가 함께 보이는 폰(iPhone Chrome 등)에서도 키패드 마지막 줄까지 버튼 줄 위로 보이게 줄임 (2026-11-08) */
+  .naming { --staff-h: 100px; }
+  .desk.naming { gap: 10px; padding-top: 10px; }
+  .desk.naming .prompt { padding-top: 0; gap: 0; }
+  .desk.naming .keyboard.wide { height: 72px; }
+  .desk.naming .answer { gap: 6px; }
+  .paren-note { font-size: 11px; }
+  .pad-key { min-height: 36px; font-size: 15px; }
+  .keypad { gap: 5px; } .pad-row { gap: 5px; }
   .answer-input { font-size: 24px; min-height: 46px; }
 }
 
@@ -70,6 +94,7 @@
 @media (orientation: landscape) and (max-height: 520px) {
   .desk.naming { display: flex; flex-direction: column; gap: 10px; }
   .desk.naming .keyboard.wide { height: clamp(70px, 24vh, 110px); }
+  .desk.naming { --staff-h: 100px; }
   .desk.naming .small-toggles { padding-right: 0; }
   .desk.naming .actions { align-self: stretch; }
   .desk.naming .btn kbd { display: none; }

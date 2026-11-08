@@ -2,7 +2,8 @@
 // 문제 흐름(출제 → 제출 → 정답/오답 → 다음 문제)과 버튼·단축키를 여기서 연결해요. 규칙은 core/naming.js.
 //   naming/settings.js  출제 설정 카드     naming/keys.js  건반(보기만)     naming/keypad.js  코드 입력 키패드
 //   practice/audio.js   피아노 소리(랜덤 코드 연습과 같음)
-// 2단계(2026-11-08)에는 기록·타이머·숫자판·다시 풀기가 없어요 — 4단계에서 붙임. 악보는 3단계.
+// 기록·타이머·숫자판·다시 풀기는 4단계에서 붙여요.
+//   naming/staff.js  오선지 악보(SVG)
 import { startPage } from "../common/layout.js";
 import { isOpen as authOpen } from "../account/auth-dialog.js";
 import { t, onLangChange } from "../i18n/index.js";
@@ -11,6 +12,7 @@ import { store } from "../common/storage.js";
 import { Naming } from "../core/naming.js";
 import { S, save, initSettings, syncSettingsUI } from "../naming/settings.js";
 import { initKeys, drawKeys } from "../naming/keys.js";
+import { drawStaff } from "../naming/staff.js";
 import { initKeypad, type, backspace, moveCaret, caretAtEnd, answerText, clearAnswer, setPadEnabled } from "../naming/keypad.js";
 import { Sound } from "../practice/audio.js";
 
@@ -34,7 +36,9 @@ for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, () =>
 // ---------- 화면 그리기 ----------
 
 function draw() {
-  drawKeys(state.q ? state.q.notes : [], state.bad, S.labels, state.good);
+  const notes = state.q ? state.q.notes : [];
+  drawKeys(notes, state.bad, S.labels, state.good);
+  drawStaff(notes, state.bad, state.good);   // 악보는 음이름 없이 (음이름 표시는 건반에만 — 사용자 결정)
 }
 function renderMsg() {
   $("nameMsg").hidden = !state.err;
