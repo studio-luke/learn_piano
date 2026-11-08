@@ -6,6 +6,9 @@
 // 실제 사이트(Cloudflare)처럼 빌드 결과인 dist/ 폴더의 파일을 보내요 (그 밖의 개발용 파일은 보내지 않음).
 // npm run dev로 켜면 먼저 사이트를 만들고(tools/build.js), src/의 파일을 고칠 때마다 자동으로 다시 만들어요 → 브라우저 새로고침만 하면 됨.
 // 레이아웃 검사(tests/layout-audit.js)도 이 서버를 씁니다.
+//
+// npm run dev:stub (포트 8769): 같은 서버인데 모든 html에 가짜 Supabase(tools/stub/supabase-stub.js)를 끼워 넣어
+// 진짜 계정 없이 로그인한 상태의 화면을 확인 (2026-11-09). dist/ 파일은 건드리지 않고 보낼 때만 바꿔요.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -20,9 +23,22 @@ const TYPES = {
 // 숨김 파일(.DS_Store 등)은 보내지 않음
 const PRIVATE = /\/\./;
 
-export function serve(port = 8766, host = "127.0.0.1") {
+// 가짜 Supabase를 끼울 때 html의 첫 모듈 스크립트 앞에 넣는 것:
+//   시계 조절(window.__off ms만큼 Date.now를 앞으로 — 타이머 5분 무입력 같은 시험용) + 가짜 supabase-js
+const STUB_FILE = fileURLToPath(new URL("./stub/supabase-stub.js", import.meta.url));
+const STUB_TAGS = '<script>window.__off=0;(()=>{const r=Date.now.bind(Date);Date.now=()=>r()+window.__off;})();</script><script src="/__stub/supabase.js"></script>\n';
+
+/**
+ * 사이트 서버 켜기.
+ * @param opt.stub  true면 가짜 Supabase를 끼워 넣음 (npm run dev:stub)
+ */
+export function serve(port = 8766, host = "127.0.0.1", opt = {}) {
   const server = http.createServer((req, res) => {
     let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
+    if (opt.stub && p === "/__stub/supabase.js") {
+      res.writeHead(200, { "Content-Type": TYPES[".js"], "Cache-Control": "no-store" });
+      return res.end(fs.readFileSync(STUB_FILE));
+    }
     if (PRIVATE.test(p) || p.includes("..")) { res.writeHead(404); return res.end("not found"); }
     // 깔끔한 주소로 넘겨주기 (Cloudflare의 기본 동작과 같게):
     //   /ko/about.html → /ko/about,  /teacher/index.html → /teacher/,  /ko/trainer/chords → /ko/trainer/chords/
@@ -37,15 +53,17 @@ export function serve(port = 8766, host = "127.0.0.1") {
     fs.readFile(file, (err, data) => {
       if (err) { res.writeHead(404); return res.end("not found"); }
       res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-store" });
+      if (opt.stub && file.endsWith(".html")) data = String(data).replace('<script type="module"', STUB_TAGS + '<script type="module"');
       res.end(data);
     });
   });
   return new Promise(resolve => server.listen(port, host, () => resolve(server)));
 }
 
-// npm run dev 로 실행했을 때
+// npm run dev (또는 npm run dev:stub = --stub) 로 실행했을 때
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const port = +(process.env.PORT || 8766), host = process.env.HOST || "127.0.0.1";
+  const stub = process.argv.includes("--stub");
+  const port = +(process.env.PORT || (stub ? 8769 : 8766)), host = process.env.HOST || "127.0.0.1";
   await build();
   // src/를 고치면 0.2초 뒤 다시 만들기 (여러 파일을 한꺼번에 저장해도 한 번만)
   let timer = null;
@@ -53,5 +71,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     clearTimeout(timer);
     timer = setTimeout(() => build().then(() => console.log("다시 만듦", new Date().toLocaleTimeString()), e => console.error("빌드 실패:", e.message)), 200);
   });
-  serve(port, host).then(() => console.log(`http://${host === "0.0.0.0" ? "localhost" : host}:${port}  (끄려면 Ctrl+C)`));
+  serve(port, host, { stub }).then(() => console.log(`http://${host === "0.0.0.0" ? "localhost" : host}:${port}${stub ? "  [가짜 Supabase — 관리자로 로그인된 상태]" : ""}  (끄려면 Ctrl+C)`));
 }
