@@ -273,6 +273,7 @@ export default {
   timerHelp: "Turning on the timer counts down 3, 2, 1 and then brings up a new question; from then on it records how long you take from the question appearing to the right answer (up to 5 minutes).<br>· To start it, pick at least 5 chord types, and when practicing selected roots only, at least 7 roots.<br>· Practice settings are locked while it runs.<br>· While the timer runs, <b>a question skipped without submitting, or answered with “show answer”, counts as missed</b>.<br>· No input for 5 minutes stops the timer and records a miss (5:00).",
   timerReady: "Get ready — your first question is coming.",
   timerNeedBases: "To use the timer, turn “Selected roots only” off or select at least 7 roots.",
+  timerSkipped: "The question you skipped without submitting was recorded as missed.",
   needLogin: "Log in to see this page.",
   needAdmin: "Only the teacher (admin) can see this page.",
   studentPage: "Student record",

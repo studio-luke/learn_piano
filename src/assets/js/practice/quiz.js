@@ -63,8 +63,10 @@ function sendTimed(ms) {
 // 문제가 맞히지 못한 채 끝남: 이미 나온 오답을 시간 없이 보냄
 function settleTimed() { if (timer.cur && timer.cur.first === false && !timer.cur.sent) sendTimed(null); }
 // 타이머 중 채점하지 않고 넘김 → 오답 (시간 없음)
+// 기록했으면 true (새 문제가 나온 뒤 "넘어간 문제는 오답" 알림을 띄우려고 — 2026-11-08 사용자 요청)
 function skipTimed() {
-  if (timer.cur && timer.cur.first === null && state.q && !state.locked && !state.skip) { state.attempted = true; finish(state.q, false); }
+  if (timer.cur && timer.cur.first === null && state.q && !state.locked && !state.skip) { state.attempted = true; finish(state.q, false); return true; }
+  return false;
 }
 // 재던 문제가 결과 없이 사라지는지 (중단)
 const unfinished = () => !!(timer.cur && !timer.cur.sent && !state.skip && state.q);
@@ -135,7 +137,7 @@ function stopCountdown() {
 
 export function newQuestion() {
   if (countdown) return;   // 3·2·1 세는 중에는 다음 문제(N·→·버튼) 무시
-  skipTimed();     // 타이머 중 넘김 → 오답
+  const skipped = skipTimed();     // 타이머 중 넘김 → 오답
   settleTimed();   // 남은 오답 기록 보내기
   let q = review && nextReview();
   if (review && !q) return stopReview(true);   // 다시 풀기를 다 끝냄
@@ -147,6 +149,7 @@ export function newQuestion() {
   renderFeedback(); renderPrompt(); renderReview();
   setView({ q: state.q, answer: state.answer, good: state.good });
   startTiming(!!state.q, { ...stats });
+  if (skipped) toast(t("timerSkipped"), 2000);
 }
 
 // 안내 힌트 (코드 종류에 따라)
