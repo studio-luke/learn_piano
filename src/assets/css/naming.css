@@ -46,6 +46,10 @@
 /* 조각 (naming/keypad.js). ♯ ♭은 제목 글꼴에 없어 악보 글꼴로 */
 .answer-input .tok { padding-inline: 0.5px; }
 .answer-input .tok.acc { font-family: "Noto Music", "Apple Symbols", "Segoe UI Symbol", var(--font-body); }
+/* 고른 조각 (마우스로 끌기, 터치로 꾹 눌러 끌기 — naming/keypad.js) */
+.answer-input .tok.picked { background: color-mix(in srgb, var(--accent) 28%, transparent); border-radius: 3px; }
+/* 입력칸 위에서 끄는 동작은 선택에 쓰므로 페이지 스크롤·확대를 하지 않음 */
+.answer-input { touch-action: none; -webkit-touch-callout: none; }
 /* 커서: 조각 사이의 깜빡이는 막대 (다시 그릴 때마다 처음부터 깜빡여서 누른 직후엔 보임) */
 .answer-input .caret { display: inline-block; width: 2px; height: 1.1em; margin-inline: 1px; background: var(--accent); animation: caret-blink 1s steps(1) infinite; }
 @keyframes caret-blink { 50% { opacity: 0; } }
@@ -104,3 +108,16 @@
   .desk.naming .actions { align-self: stretch; }
   .desk.naming .btn kbd { display: none; }
 }
+
+/* ---------- 답 입력칸의 우클릭 메뉴 (naming/answer-menu.js, 컴퓨터) ---------- */
+.ctx-menu { position: fixed; z-index: 30; min-width: 190px; padding: 5px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 30px -12px rgba(40,20,10,.45); }
+.ctx-menu button { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 6px 10px; border: none; border-radius: 6px; background: none; color: var(--ink); font-size: 13px; text-align: left; }
+.ctx-menu { outline: none; }
+/* 강조는 초점이 있는 항목 하나만 (마우스를 올리면 그 항목으로 초점이 옮겨감 — answer-menu.js) */
+.ctx-menu button:focus { background: var(--accent-soft); outline: none; }
+.ctx-menu button:disabled { color: var(--muted); opacity: 0.55; cursor: default; }
+.ctx-menu kbd { font-family: var(--font-body); font-size: 12px; color: var(--muted); background: none; border: none; padding: 0; }
+.ctx-sep { border: none; border-top: 1px solid var(--line); margin: 4px 6px; }
+/* 폰: 누르기 쉽게 크게, 단축키 없음 */
+.ctx-menu.touch { min-width: 170px; }
+.ctx-menu.touch button { padding: 10px 14px; font-size: 15px; }

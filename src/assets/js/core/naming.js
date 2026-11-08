@@ -238,8 +238,14 @@ MIN.forEach(m => MAJ.forEach(M => add("mM7", m + M + "7")));
 MIN.forEach(m => add("mM7", m + "△"));
 AUG.forEach(a => MAJ.forEach(M => add("augM7", a + M + "7")));
 add("6", "6");
+// CM6 = CMa6 = CMAJ6 = C6 (메이저를 밝혀 쓴 표기, 2026-11-08). 여러 글자 Ma·Maj는 대소문자 무관(normWords),
+// 한 글자 M은 대문자만(소문자 m6은 마이너 6). △6·^6은 △가 메이저 7을 뜻해 받지 않음
+MAJ.filter(M => M !== "△").forEach(M => add("6", M + "6"));
+// 6(9)도 같게: CM6/9 = CMaj6add9 = C6(9). CM6(9)·CMaj6(add9)는 위 "6" + 괄호 규칙으로 읽힘
+MAJ.filter(M => M !== "△").forEach(M => add("69", M + "6/9", M + "6add9"));
 MIN.forEach(m => add("m6", m + "6"));
 add("add9", "add9", "add2", "2");                                // C2 = Cadd2 = Cadd9 (2026-11-08)
+MAJ.forEach(M => add("add9", M + "add9", M + "add2"));           // CMadd9 = CMadd2 = Cmaj(add9)처럼 메이저를 밝혀 쓴 표기 (2026-11-08)
 MIN.forEach(m => add("madd9", m + "add9", m + "add2"));           // Cmadd2 = Cmadd9. Cm2는 공신력 있는 표기가 아니라 받지 않음
 add("69", "6/9", "6add9");
 MIN.forEach(m => add("m69", m + "6/9", m + "6add9"));             // Cm6/9 = Cm6add9 = Cm6(9)
@@ -268,6 +274,8 @@ ext("7sus4", "13", "13sus4");   // C13sus4 = C7sus4(13)
 ext("aug7", "9", "aug9");       // Caug9 = Caug7(9) ("C+9"는 C(♯9)와 헷갈려서 받지 않음)
 ext("m7b5", "9", "ø9");
 ext("m7b5", "11", "ø11");       // Cø11 = Cm7(♭5,11)
+ext("m7b5", "9", "h9");         // Ch9 = Cø9, Ch11 = Cø11 (h7처럼 h = ø로 읽음, "Ch"만은 받지 않음)
+ext("m7b5", "11", "h11");
 MIN.forEach(m => MAJ.forEach(M => ext("mM7", "9", m + M + "9")));   // CmM9 = Cmmaj9 = C-△9 = CmM7(9)         // Cø9 = Cm7(♭5,9). Cm9(♭5)·Cm11(♭5)는 m9·m11 + 괄호 ♭5로 읽혀 따로 적지 않아도 됨
 
 /**

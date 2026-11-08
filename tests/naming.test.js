@@ -270,17 +270,23 @@ test("naming: many accepted spellings — case of words, ^ and o, +/- tensions, 
     ["Cm7-5", "Cm7(b5)"], ["Cm7(-5)", "Cm7(b5)"], ["C7(+5)", "C7(#5)"], ["C7(-9)", "C7(b9)"], ["C7(+9)", "C7(#9)"], ["C7(+11)", "C7(#11)"], ["C7(-9,+11)", "C7(b9,#11)"],
     ["C6add9", "C6(9)"], ["C6(add9)", "C6(9)"], ["Cm6add9", "Cm6(9)"], ["Cm6(add9)", "Cm6(9)"],
     ["Caug9", "Caug7(9)"], ["CAUG9", "Caug7(9)"],
+    ["CM6", "C6"], ["CMa6", "C6"], ["CMA6", "C6"], ["Cma6", "C6"], ["CMaj6", "C6"], ["CMAJ6", "C6"], ["Cmaj6", "C6"],
+    ["CM6/9", "C6(9)"], ["CMaj6/9", "C6(9)"], ["CMA6/9", "C6(9)"], ["CM6(9)", "C6(9)"], ["Cmaj6(9)", "C6(9)"], ["CMAJ6(add9)", "C6(9)"], ["CM6add9", "C6(9)"],
+    ["GMadd2", "Gadd9"], ["GMadd9", "Gadd9"], ["GMAJadd9", "Gadd9"], ["Gmaj(add9)", "Gadd9"],
   ];
   for (const [a, b] of same) { assert.ok(!N.parse(b).error, b); assert.deepStrictEqual(N.parse(a), N.parse(b), a); }
   // 한 글자 M/m은 그대로 구분, 근음 소문자는 여전히 오류
   assert.notDeepStrictEqual(N.parse("CM7"), N.parse("Cm7"));
   assert.strictEqual(N.parse("cMAJ7").error, "lowerRoot");
-  for (const s of ["C(add4)", "C+9", "Cadd4", "Ch"]) assert.ok(N.parse(s).error, s);
+  for (const s of ["C(add4)", "C+9", "Cadd4", "Ch", "C^6", "C△6", "C△6/9", "C^6(9)"]) assert.ok(N.parse(s).error, s);
+  assert.strictEqual(N.parse("Cm6/9").type, "m69", "소문자 m6/9는 마이너 6(9) 그대로");
+  assert.deepStrictEqual(N.parse("Cm6"), { ...N.parse("Cm6") }, "소문자 m6은 마이너 6 그대로");
+  assert.strictEqual(N.parse("Cm6").type, "m6");
 });
 
 test("naming: half-diminished 9/11, C(♯5), Ch7 (2026-11-08)", () => {
   const same = [["Cm9(b5)", "Cm7(b5,9)"], ["Cm11(b5)", "Cm7(b5,11)"], ["Cm9(-5)", "Cm7(b5,9)"], ["Cø9", "Cm7(b5,9)"],
-    ["C(#5)", "Caug"], ["C(+5)", "Caug"], ["C(♯5)", "Caug"], ["Ch7", "Cm7(b5)"]];
+    ["C(#5)", "Caug"], ["C(+5)", "Caug"], ["C(♯5)", "Caug"], ["Ch7", "Cm7(b5)"], ["Ch9", "Cm7(b5,9)"], ["Ch11", "Cm7(b5,11)"]];
   for (const [a, b] of same) { assert.ok(!N.parse(b).error, b); assert.deepStrictEqual(N.parse(a), N.parse(b), a); }
   assert.ok(N.check("Cm9(♭5)", prob("C4 E♭4 G♭4 B♭4 D5", false)).correct);
 });

@@ -12,7 +12,8 @@ import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
 import { S, save, initSettings, syncSettingsUI, replaceSettings } from "../naming/settings.js";
 import { initKeys } from "../naming/keys.js";
-import { initKeypad, type, backspace, moveCaret, caretAtEnd } from "../naming/keypad.js";
+import { menuOpen } from "../naming/answer-menu.js";
+import { initKeypad, type, backspace, deleteForward, moveCaret, caretTo, caretAtEnd, selectAll, undo, redo, extendCaret } from "../naming/keypad.js";
 import {
   state, stats, renderStats, newQuestion, tryNext, submit, reveal, showHint, answerChanged, draw,
   startReview, stopReview, inReview, renderPrompt, renderFeedback, renderHint, renderReview, timerHooks,
@@ -38,20 +39,32 @@ $("keyboard").addEventListener("pointerdown", () => toast(t("keysDisplayOnly"), 
 // ---------- 키보드 단축키 (사용자 결정 2026-11-08) ----------
 // 글자 키는 모두 코드 입력이라(G7, Cmin7) 랜덤 코드 연습의 G·N은 쓰지 않음.
 //   Enter  제출 (끝난 문제면 다음 문제)      →  커서가 맨 끝이면 다음 문제, 아니면 커서를 오른쪽으로     ←  커서를 왼쪽으로
-//   글자 키·Backspace는 어디서 치든 입력칸으로 (입력칸은 <input>이 아니라서 초점과 상관없음 — naming/keypad.js)
+//   Backspace / Delete  커서 앞 / 뒤 조각(고른 부분이 있으면 그 부분) 지우기     Home / End  커서를 맨 앞 / 맨 끝으로 (2026-11-08)
+//   ⌘A 입력칸 전체 선택(비어 있으면 브라우저 기본), ⌘C 고른 부분 복사, ⌘X 잘라내기, ⌘V 붙여넣기,
+//   ⌘Z 되돌리기, ⌘⇧Z·Ctrl+Y 다시 실행, Shift+← → 선택 (2026-11-08)
+//   글자 키는 어디서 치든 입력칸으로 (입력칸은 <input>이 아니라서 초점과 상관없음 — naming/keypad.js)
 document.addEventListener("keydown", e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (authOpen() || document.querySelector("dialog[open]")) return;
+  if (authOpen() || document.querySelector("dialog[open]") || menuOpen()) return;   // 우클릭 메뉴가 열려 있으면 메뉴가 키를 받음
   const el = e.target, tag = (el.tagName || "").toLowerCase();
   if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
+  // ⌘A / Ctrl+A: 입력칸에 글자가 있으면 입력칸 전체 선택 (비어 있으면 브라우저 기본 = 페이지 전체 선택). ⌘C·⌘V는 keypad.js의 copy·paste
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "a" || e.key === "A")) { if (selectAll()) e.preventDefault(); return; }
+  // ⌘Z / Ctrl+Z 되돌리기, ⌘⇧Z / Ctrl+Shift+Z / Ctrl+Y 다시 실행 (맥 ⌘Y는 브라우저 방문 기록이라 그대로). 할 게 없으면 브라우저 기본
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z")) { if (e.shiftKey ? redo() : undo()) e.preventDefault(); return; }
+  if (e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "y" || e.key === "Y")) { if (redo()) e.preventDefault(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === "Enter") {
     e.preventDefault();
     if (state.locked) newQuestion(); else submit();
-  } else if (e.key === "ArrowRight") {
+  } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
     e.preventDefault();
-    if (caretAtEnd()) tryNext(); else moveCaret(1);
-  } else if (e.key === "ArrowLeft") { e.preventDefault(); moveCaret(-1); }
-  else if (e.key === "Backspace") { e.preventDefault(); backspace(); }
+    const d = e.key === "ArrowRight" ? 1 : -1;
+    if (e.shiftKey) extendCaret(d);                // Shift+← → : 선택 넓히기·줄이기
+    else if (d > 0 && caretAtEnd()) tryNext();     // →: 커서가 맨 끝이면 다음 문제
+    else moveCaret(d);
+  } else if (e.key === "Backspace") { e.preventDefault(); backspace(); }
+  else if (e.key === "Delete") { e.preventDefault(); deleteForward(); }
+  else if (e.key === "Home" || e.key === "End") { e.preventDefault(); caretTo(e.key === "End"); }
   else if (e.key.length === 1 && e.key !== " ") { e.preventDefault(); type(e.key); }
 }, true);
 
