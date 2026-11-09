@@ -61,13 +61,15 @@ document.addEventListener("keydown", e => {
   const el = e.target, tag = (el.tagName || "").toLowerCase();
   if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
   const onPianoKey = el.classList && el.classList.contains("key");
-  const onToggle = tag === "input";
   if (e.code === "Enter" || e.code === "NumpadEnter") {
-    if (onPianoKey || onToggle) return;
+    // 코드 칩·옵션 체크·건반을 마우스로 누른 뒤 초점이 거기 남아 있어도 Enter는 제출 (2026-11-09 사용자 요청 — 예전엔 건너뛰어서
+    // 칩을 고른 뒤 Enter가 안 먹었음. 체크박스는 Enter로 켜지지 않고, 건반은 Space로 누를 수 있어서 잃는 것 없음)
     e.preventDefault();
     if (state.locked) newQuestion(); else check();
   } else if (e.code === "Space") {
-    if (onPianoKey || onToggle) return;
+    // 코드 칩·옵션 체크에 초점이 있어도 Space는 재생 — 체크를 켜고 끄지 않음 (2026-11-09 사용자 요청, 막는 건 아래 keyup도 함께).
+    // Tab으로 초점을 옮긴 건반만 예외: Space로 그 건반을 누름 (keyboard.js, 접근성)
+    if (onPianoKey) return;
     e.preventDefault(); if (selected.size) Sound.chord(selected, false);
   } else if (e.code === "Escape" || e.code === "Backspace") { e.preventDefault(); clearKeys(); }
   else if (e.code === "KeyN" || e.code === "ArrowRight") { e.preventDefault(); tryNext(); }
@@ -76,6 +78,16 @@ document.addEventListener("keydown", e => {
     e.preventDefault();
     if (!e.repeat) kb.toggle(CODE_TO_MIDI[e.code]);   // 키를 누르고 있어도 한 번만
   }
+}, true);
+
+// 체크박스·버튼은 Space를 뗄 때 눌림(클릭)으로 처리하는 브라우저가 있어서, 위에서 재생으로 쓴 Space는 뗄 때도 막음
+document.addEventListener("keyup", e => {
+  if (e.code !== "Space" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (authOpen() || document.querySelector("dialog[open]")) return;
+  const el = e.target, tag = (el.tagName || "").toLowerCase();
+  if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
+  if (el.classList && el.classList.contains("key")) return;
+  e.preventDefault();
 }, true);
 
 // ---------- MIDI 건반 (2026-11-09 사용자 요청, 연결·권한은 input/midi.js) ----------

@@ -68,9 +68,9 @@ export function initKeyboard(onToggle) {
     if (key && +key.dataset.midi === p.midi) { e.preventDefault(); toggle(p.midi); }
   });
   kb.addEventListener("pointercancel", () => { pending = null; });
-  // 건반에 키보드 초점이 있을 때 Space/Enter로 누르기 (접근성)
+  // 건반에 키보드 초점이 있을 때 Space로 누르기 (접근성). Enter는 어디서든 제출이라 여기서 받지 않음 (2026-11-09)
   kb.addEventListener("keydown", e => {
-    if ((e.key === " " || e.key === "Enter") && e.target.classList.contains("key")) { e.preventDefault(); e.stopPropagation(); toggle(+e.target.dataset.midi); }
+    if (e.key === " " && e.target.classList.contains("key")) { e.preventDefault(); e.stopPropagation(); toggle(+e.target.dataset.midi); }
   });
 
   function toggle(m) {
