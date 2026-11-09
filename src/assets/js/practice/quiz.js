@@ -41,14 +41,17 @@ export function renderStats() {
 
 // ---------- 결과 기록 ----------
 
-// 첫 결과(정답/오답)가 나옴: 숫자에 더하고 기록
-function finish(q, first) {
+// 첫 결과(정답/오답)가 나옴: 숫자에 더하고 기록.
+// given = 첫 오답 때 누른 건반(MIDI 번호를 낮은 음부터 "48,52,55" — 2026-11-09, 어떻게 틀렸는지 보려고).
+// 제출하지 않은 오답(정답 확인·넘김·5분 무입력)은 "" → 화면에 "제출 안 함". 정답이면 보내지 않음
+function finish(q, first, given = "") {
   if (state.skip) return;
+  state.given = first ? null : given;
   stats.total++;
   if (first) { stats.first++; stats.streak++; } else stats.streak = 0;
   renderStats();
   if (review && review.cur && first) review.cur.hits++;
-  if (!timer.cur) return Account.record(q, first, !!review);
+  if (!timer.cur) return Account.record(q, first, !!review, null, { answer: state.given });
   // 타이머 중: 정답은 지금 시간과 함께 보내고, 오답은 문제가 끝날 때 보냄(맞히기까지의 시간을 붙이려고)
   timer.cur.first = first;
   if (first) sendTimed(elapsed());
@@ -58,7 +61,7 @@ function sendTimed(ms) {
   const c = timer.cur;
   if (!c || c.sent || state.skip || !state.q) return;
   c.sent = true; c.end = ms == null ? elapsed() : ms;
-  Account.record(state.q, c.first, !!review, ms == null ? null : Math.round(ms));
+  Account.record(state.q, c.first, !!review, ms == null ? null : Math.round(ms), { answer: state.given });
 }
 // 문제가 맞히지 못한 채 끝남: 이미 나온 오답을 시간 없이 보냄
 function settleTimed() { if (timer.cur && timer.cur.first === false && !timer.cur.sent) sendTimed(null); }
@@ -239,7 +242,7 @@ export function check() {
   const q = state.q; if (!q || state.locked) return;
   if (!selected.size) { setFeedback("info", () => t("pickFirst")); return; }
   const g = Engine.grade(selected, q);
-  if (!state.attempted) { state.attempted = true; finish(q, g.correct); }
+  if (!state.attempted) { state.attempted = true; finish(q, g.correct, [...selected].sort((a, b) => a - b).join(",")); }
   // 처음엔 틀렸다가 맞힘: 타이머가 켜져 있으면 맞힐 때까지의 시간 (꺼져 있으면 timer.cur가 없어 시간을 잴 수 없음)
   else if (g.correct && timer.cur) sendTimed(elapsed());
   if (g.correct) {

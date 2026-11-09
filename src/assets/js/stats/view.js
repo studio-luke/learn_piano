@@ -78,11 +78,18 @@ export function sortClicked(e) {
   return true;
 }
 
+// 지금 그려진 표의 줄 (표 id → { rows, name }) — 오답 숫자를 누르면 몇 번째 줄인지로 찾음
+const shown = {};
+
 // 결과 표 하나 (코드 종류 / 베이스 / 텐션). 평균 시간이 없는 줄은 빈칸. id = 정렬 상태를 기억할 이름
+// 오답 숫자는 버튼: 누르면 그 줄의 오답 목록 창 (2026-11-09, wrongClicked·wrongDialog)
 function tableHTML(id, head, rows, name) {
   if (!rows.length) return "";
   const s = sorts[id];
   rows = sortRows(rows, s);
+  shown[id] = { rows, name };
+  const wrongCell = (r, i) => r.n - r.ok
+    ? `<button type="button" class="st-wrong-btn" data-wrong="${id}:${i}" title="${esc(t("wrongListTip"))}">${r.n - r.ok}</button>` : "0";
   // 열 머리 = 정렬 버튼. 지금 정렬한 열에 ▼(내림)·▲(오름), aria-sort로 화면 낭독기에도 알림
   const th = (key, label, cls = "") => {
     const on = s && s.key === key;
@@ -91,9 +98,71 @@ function tableHTML(id, head, rows, name) {
   };
   return `<div class="st-scroll-x"><table class="st-table">
     <thead><tr>${th("name", head)}${th("n", t("colCount"), "num")}${th("ok", t("sCorrect"), "num")}${th("no", t("sWrong"), "num")}${th("rate", t("sRate"))}${th("time", t("colTime"), "num")}</tr></thead>
-    <tbody>${rows.map(r => `<tr><td class="st-type">${chordHTML(name(r))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${r.n - r.ok}</td>
+    <tbody>${rows.map((r, i) => `<tr><td class="st-type">${chordHTML(name(r))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${wrongCell(r, i)}</td>
       <td><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span><span class="st-rate-n">${pct(r.ok, r.n)}%</span></td>
       <td class="num">${r.t ? esc(sec(r.ms)) : ""}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+// ---------- 입력한 답·오답 목록 (2026-11-09 사용자 요청) ----------
+// DB practice_log.answer: null = 정답이거나 이 기능 전의 기록, "" = 제출하지 않은 오답(정답 확인·넘김·5분 무입력),
+// 랜덤 코드 연습 = 누른 건반 MIDI 번호("48,52,55"), 코드 추론하기 = 입력한 글자.
+const KEY_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];   // 건반 이름 (검은 건반은 흔한 쪽)
+/** 입력한 답 칸 (학생이 친 글자라 반드시 esc) */
+export function answerHTML(r) {
+  if (r.answer == null) return r.first === false || r.first === undefined ? `<span class="st-dim" title="${esc(t("answerOld"))}">–</span>` : "";
+  if (r.answer === "") return `<span class="st-dim">${esc(t("notSubmitted"))}</span>`;
+  if (r.mode === "name") return `<span class="st-answer">${esc(r.answer)}</span>`;
+  return `<span class="st-answer">${esc(r.answer.split(",").map(m => KEY_NAMES[+m % 12]).join(" "))}</span>`;
+}
+
+/** 오답 숫자를 눌렀으면 { title(줄 이름), filter(DB 조건) }, 아니면 null */
+export function wrongClicked(e) {
+  const b = e.target.closest("[data-wrong]");
+  if (!b) return null;
+  const [id, i] = b.dataset.wrong.split(":");
+  const tb = shown[id], r = tb && tb.rows[+i];
+  if (!r) return null;
+  const filter = id === "type" ? { quals: [r.q] } : id === "root" ? { root: r.pc } : { quals: r.qs, tension: r.x };
+  return { title: tb.name(r), filter };
+}
+
+/**
+ * 오답 목록 창 (가운데 팝업 — 사용자 결정 2026-11-09). 열자마자 "불러오는 중", load()가 끝나면 목록.
+ * 열: 날짜 | (전체 통계 탭이면) 연습 종류 | 문제 | 입력한 답. 다시 풀기·힌트 문제는 문제 옆 작은 표. 최근 50개까지.
+ * @param w      wrongClicked의 결과
+ * @param sub    제목 아래 작은 글자 (기간)
+ * @param mode   지금 탭 "all" | "play" | "name"
+ * @param load   () => Promise<{ data, error }> (Account.wrongAnswers)
+ */
+let wrongSeq = 0;
+export async function wrongDialog(w, sub, mode, load) {
+  let dlg = document.getElementById("wrongDlg");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "wrongDlg"; dlg.className = "st-dlg";
+    document.body.appendChild(dlg);
+    // 닫기 버튼 또는 창 바깥(뒤 배경)을 누르면 닫힘. Esc는 브라우저가 닫아 줌
+    dlg.addEventListener("click", e => { if (e.target === dlg || e.target.closest("[data-close]")) dlg.close(); });
+  }
+  const head = `<div class="st-dlg-head"><div><h3>${esc(t("wrongListH"))} · <span class="st-type">${chordHTML(w.title)}</span></h3><small>${esc(sub)}</small></div>
+    <button type="button" class="icon-btn" data-close aria-label="${esc(t("close"))}">✕</button></div>`;
+  dlg.innerHTML = `${head}<div class="st-dlg-body"><p class="st-empty">${esc(t("loading"))}</p></div>`;
+  if (!dlg.open) dlg.showModal();
+  const n = ++wrongSeq;
+  const res = await load();
+  if (n !== wrongSeq) return;   // 그사이 다른 줄을 눌렀음
+  const body = dlg.querySelector(".st-dlg-body");
+  if (res.error || !res.data) { body.innerHTML = `<p class="st-empty">${esc(t("errLoad"))}</p>`; return; }
+  const { total, items } = res.data;
+  if (!items.length) { body.innerHTML = `<p class="st-empty">${esc(t("noData"))}</p>`; return; }
+  const all = mode === "all";
+  const rows = items.map(r => `<tr><td class="num st-dim">${esc(dateText(r.d, { month: "numeric", day: "numeric" }))}</td>
+    ${all ? `<td class="st-dim st-nowrap">${esc(t(r.mode === "name" ? "tagName" : "tagPlay"))}</td>` : ""}
+    <td class="st-type">${chordHTML(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}${r.hint ? ` <span class="st-tag">${esc(t("hintBtn"))}</span>` : ""}</td>
+    <td>${answerHTML({ ...r, first: false })}</td></tr>`).join("");
+  body.innerHTML = `${total > items.length ? `<p class="note">${esc(t("wrongListMore", { n: items.length, total }))}</p>` : ""}
+    <div class="st-scroll"><table class="st-table"><thead><tr><th class="num">${esc(t("colDate"))}</th>${all ? `<th>${esc(t("colMode"))}</th>` : ""}<th>${esc(t("colQuestion"))}</th><th>${esc(t("colAnswer"))}</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
 }
 
 /** 도움말(?) 버튼 — 마우스를 올리거나 누르면 설명 (동작은 common/layout.js) */

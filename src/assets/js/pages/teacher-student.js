@@ -4,7 +4,7 @@
 //   2. 연습 습관: 연습한 날, 하루 평균, 최근 연습일, 가입일, 타이머 사용·중단, 최근 7일
 //   3. 전체 기간 숫자
 //   4. 연습량 그래프 + 코드 종류·베이스·텐션 표 (기간 선택)
-//   5. 최근 푼 문제 50개 (날짜·코드·종류·결과·걸린 시간)
+//   5. 최근 푼 문제 50개 (날짜·(전체 탭이면 연습 종류)·코드·종류·결과·입력한 답·걸린 시간)
 //   6. 틀린 문제 목록
 // 맨 위 탭 [전체 통계 | 랜덤 코드 연습 | 코드 추론하기]로 어느 연습을 볼지 골라요 (4-3 2026-11-08, 전체 통계 2026-11-09 —
 // 주소 ?mode=play / ?mode=name, 없으면 전체). 힌트를 쓴 문제는 최근 문제에 "힌트" 표, 전체 통계 탭에서는 날짜와 코드 사이에 "연습 종류" 열.
@@ -14,7 +14,7 @@ import { startPage } from "../common/layout.js";
 import { Account } from "../account/account.js";
 import { t, locale, onLangChange } from "../i18n/index.js";
 import { $, esc, chordHTML } from "../common/dom.js";
-import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, card, dateText, sec, typeName, rootName, tensionName, currentMode, setModeInUrl, modeTabsHTML, modeClicked, sortClicked } from "../stats/view.js";
+import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, card, dateText, sec, typeName, rootName, tensionName, currentMode, setModeInUrl, modeTabsHTML, modeClicked, sortClicked, wrongClicked, wrongDialog, answerHTML } from "../stats/view.js";
 import { localDay, buckets, rootRows, tensionRows, weakest, pct, WEAK_MIN } from "../stats/data.js";
 import { Engine } from "../core/engine.js";
 import { gateHTML, wireGate, leaveOnSignOut } from "../stats/gate.js";
@@ -80,10 +80,10 @@ function render() {
   const modeCol = mode === "all";
   const recentRows = (ov.recent || []).map(r => `<tr><td class="num st-dim">${esc(dateText(r.d, { month: "numeric", day: "numeric" }))}</td>
     ${modeCol ? `<td class="st-dim st-nowrap">${esc(t(r.mode === "name" ? "tagName" : "tagPlay"))}</td>` : ""}<td class="st-type">${chordHTML(r.symbol)}${r.review ? ` <span class="st-tag">${esc(t("reviewTag"))}</span>` : ""}${r.hint ? ` <span class="st-tag">${esc(t("hintBtn"))}</span>` : ""}</td><td class="st-dim">${chordHTML(typeName(r.q))}</td>
-    <td><span class="st-res ${r.first ? "ok" : "no"}">${esc(t(r.first ? "sCorrect" : "sWrong"))}</span></td>
+    <td><span class="st-res ${r.first ? "ok" : "no"}">${esc(t(r.first ? "sCorrect" : "sWrong"))}</span></td><td>${answerHTML(r)}</td>
     <td class="num st-dim">${r.ms != null ? esc(sec(r.ms)) : ""}</td></tr>`).join("");
   const recent = `<section class="st-card"><h3>${esc(t("recentH"))}</h3>${recentRows ? `<div class="st-scroll"><table class="st-table">
-    <thead><tr><th class="num">${esc(t("colDate"))}</th>${modeCol ? `<th>${esc(t("colMode"))}</th>` : ""}<th>${esc(t("colChord"))}</th><th>${esc(t("colKind"))}</th><th>${esc(t("colResult"))}</th><th class="num">${esc(t("colTook"))}</th></tr></thead>
+    <thead><tr><th class="num">${esc(t("colDate"))}</th>${modeCol ? `<th>${esc(t("colMode"))}</th>` : ""}<th>${esc(t("colChord"))}</th><th>${esc(t("colKind"))}</th><th>${esc(t("colResult"))}</th><th>${esc(t("colAnswer"))}</th><th class="num">${esc(t("colTook"))}</th></tr></thead>
     <tbody>${recentRows}</tbody></table></div>` : `<p class="st-empty">${esc(t("noData"))}</p>`}</section>`;
 
   const tables = tablesHTML(data);
@@ -102,6 +102,12 @@ body.addEventListener("click", e => {
   if (action === "load") return load();
   if (action === "render") return render();
   if (sortClicked(e)) return render();   // 표 머리: 정렬 바꾸기
+  // 표의 오답 숫자: 그 줄의 오답 목록 창 (표와 같은 기간·탭 — 2026-11-09)
+  const w = wrongClicked(e);
+  if (w && data) {
+    const d = data;
+    return wrongDialog(w, d.range === "custom" ? picker.label() : t("range" + d.range), mode, () => Account.wrongAnswers(uid, d.range, d.custom, mode, w.filter));
+  }
   const m = modeClicked(e);
   if (m && m !== mode) { mode = m; setModeInUrl(m); load(); }   // 탭을 바꿈: 기간은 그대로, 그 연습의 기록을 새로
 });

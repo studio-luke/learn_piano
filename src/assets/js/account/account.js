@@ -209,7 +209,8 @@ export const Account = {
    * @param first   처음 채점에서 맞혔는지 (정답) — false면 오답
    * @param review  틀린 문제 다시 풀기 중이었는지
    * @param ms      타이머가 켜져 있을 때 맞히기까지 걸린 시간(ms), 없으면 null
-   * @param opt     { mode: "play" | "name", hint: 힌트를 봤는지, spec: 다시 풀기용 정보(없으면 engine의 spec — 코드 추론하기는 음 배치까지) }
+   * @param opt     { mode: "play" | "name", hint: 힌트를 봤는지, spec: 다시 풀기용 정보(없으면 engine의 spec — 코드 추론하기는 음 배치까지),
+   *                  answer: 첫 오답 때의 입력(랜덤 코드 연습 "48,52,55", 코드 추론하기 글자, 제출하지 않았으면 "") — 2026-11-09 }
    */
   record(q, first, review, ms = null, opt = {}) {
     if (!Account.active()) return;
@@ -217,6 +218,7 @@ export const Account = {
       p_quality: Engine.quality(q), p_symbol: q.symbol, p_first: first, p_day: localDay(),
       p_review: !!review, p_spec: first || review ? null : (opt.spec || Engine.spec(q)), p_ms: ms, p_session: null,
       p_mode: opt.mode || "play", p_hint: !!opt.hint,
+      p_answer: first || opt.answer == null ? null : String(opt.answer).slice(0, 40),
     };
     const send = () => sb.rpc("record_attempt", args).then(({ error }) => { if (error) console.warn("record", error); });
     // 시간이 있는 기록은 타이머 세션 번호와 함께 보냄 (DB는 유효한 세션이 있을 때만 시간을 저장).
@@ -278,6 +280,14 @@ export const Account = {
   }),
   /** 선생님 화면 전용: 약점·연습 습관·최근 문제 (관리자만, DB가 확인, 연습별) */
   overview: (uid, mode = "play") => sb.rpc("student_overview", { p_user: uid, p_today: localDay(), p_mode: mode }),
+  /**
+   * 오답 목록 (2026-11-09): 표의 한 줄(코드 종류·베이스·텐션)에 해당하는 오답 최근 50개와 그때 입력한 답. 기간·연습은 summary와 같게.
+   * filter: { quals: 코드 종류 id 목록, root: 베이스 pc(0–11), tension: 텐션 이름 } (없는 것은 조건 없음)
+   */
+  wrongAnswers: (uid, range, custom, mode, filter = {}) => sb.rpc("wrong_answers", {
+    p_user: uid, p_range: range, p_today: localDay(), p_from: custom ? custom.from : null, p_to: custom ? custom.to : null, p_mode: mode,
+    p_quals: filter.quals || null, p_root: filter.root ?? null, p_tension: filter.tension || null,
+  }),
   /** 학생 목록 (관리자만, 숫자는 연습별) */
   students: (mode = "play") => sb.rpc("student_list", { p_mode: mode }),
 };

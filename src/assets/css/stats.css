@@ -140,3 +140,18 @@
 .st-mode:hover { color: var(--ink); }
 .st-mode[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40,20,10,.15); }
 @media (max-width: 420px) { .st-modes { width: 100%; } .st-mode { flex: 1; padding-inline: 6px; font-size: 13px; white-space: normal; line-height: 1.25; } }   /* 탭 3개: 좁으면 두 줄로 */
+
+/* ---------- 오답 목록 (2026-11-09): 표의 오답 숫자 버튼 + 가운데 창 (stats/view.js wrongDialog) ---------- */
+/* 오답 숫자: 숫자 모양 그대로, 밑줄로 누를 수 있다는 것만 보여줌 */
+.st-wrong-btn { all: unset; cursor: pointer; color: var(--warn); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 2px 4px; border-radius: 4px; }
+.st-wrong-btn:hover { background: var(--warn-soft); }
+.st-wrong-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+dialog.st-dlg { width: min(560px, calc(100vw - 32px)); max-height: min(640px, calc(100dvh - 32px)); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 18px 18px 16px; box-shadow: 0 24px 60px -24px rgba(40,20,10,.5); display: none; flex-direction: column; gap: 10px; }
+dialog.st-dlg[open] { display: flex; }
+dialog.st-dlg::backdrop { background: rgba(40,25,15,.45); }
+.st-dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.st-dlg-head h3 { margin: 0; font-size: 16px; }
+.st-dlg-head small { color: var(--muted); font-size: 12px; }
+.st-dlg-body { overflow: auto; min-height: 0; }
+.st-dlg-body .note { margin: 0 0 8px; }
+.st-answer { font-weight: 600; }

@@ -57,11 +57,14 @@ for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, () =>
 
 // ---------- 결과 기록 ----------
 
-const record = (q, first, ms = null) => Account.record(q, first, !!review, ms, { mode: MODE, hint: state.hinted, spec: Naming.specOf(q) });
+// answer: 첫 오답 때 입력한 글자(state.given — 2026-11-09, 선생님·학생이 어떻게 틀렸는지 보려고). 정답이면 보내지 않음
+const record = (q, first, ms = null) => Account.record(q, first, !!review, ms, { mode: MODE, hint: state.hinted, spec: Naming.specOf(q), answer: state.given });
 
-// 첫 결과(정답/오답)가 나옴: 숫자에 더하고 기록
-function finish(q, first) {
+// 첫 결과(정답/오답)가 나옴: 숫자에 더하고 기록.
+// given = 첫 오답 때 입력한 글자. 제출하지 않은 오답(정답 확인·넘김·5분 무입력)은 "" → 화면에 "제출 안 함"
+function finish(q, first, given = "") {
   if (state.skip) return;
+  state.given = first ? null : given;
   stats.total++;
   if (first) { stats.first++; stats.streak++; } else stats.streak = 0;
   renderStats();
@@ -245,7 +248,7 @@ export function submit() {
   const q = state.q; if (!q || state.locked) return;
   const r = Naming.check(answerText(), q);
   if (r.error === "empty") return setFeedback("info", () => esc(t("errEmpty")));   // 빈 칸은 시도로 치지 않음
-  if (!state.attempted) { state.attempted = true; finish(q, r.correct); }
+  if (!state.attempted) { state.attempted = true; finish(q, r.correct, answerText()); }
   // 처음엔 틀렸다가 맞힘: 타이머가 켜져 있으면 맞힐 때까지의 시간
   else if (r.correct && timer.cur) sendTimed(elapsed());
   state.bad = new Set();

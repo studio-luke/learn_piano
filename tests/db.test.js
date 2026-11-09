@@ -182,6 +182,22 @@ test("db: two practices kept apart by mode (play / name)", async () => {
   r = await as(A, "select * from public.student_list('all')"); ok(r.rows[0].total === 10 && r.rows[0].first_correct === firsts, "학생 목록(전체) " + JSON.stringify(r.rows[0]));
   e = null; try { await as(S1, "select public.practice_summary($1, '7d', current_date, null, null, 'x')", [S1]); } catch (x) { e = x; } ok(e, "모르는 연습 구분은 통계에서도 거절");
   e = null; try { await as(S1, "select public.all_totals($1)", [S1]); } catch (x) { e = x; } ok(e, "all_totals는 브라우저에서 직접 못 부름");
+  // 첫 오답 입력 (2026-11-09): 오답에만 저장, 형식이 이상하면 버리고 기록은 남김. 오답 목록(wrong_answers)
+  const ans = (mode, q, sym, first, answer) => as(S1, "select public.record_attempt($1, $2, $3, current_date, false, null, null, null, $4, false, $5)", [q, sym, first, mode, answer]);
+  await ans("play", "M7", "CM7", false, "48,52,55,58");
+  await ans("play", "M7", "C♯M7", false, "");          // 제출 안 함
+  await ans("play", "M7", "DM7", false, "48,99");       // 범위 밖 → 버림
+  await ans("name", "dom7", "C7(9)", false, "Cm7(9)");
+  await ans("name", "dom7", "D♭7(9)", true, "C7");      // 정답이면 저장 안 함
+  r = await db.query("select symbol, answer from public.practice_log where symbol in ('CM7','C♯M7','DM7','C7(9)','D♭7(9)') order by id");
+  ok(JSON.stringify(r.rows.map(x => x.answer)) === JSON.stringify(["48,52,55,58", "", null, "Cm7(9)", null]), "answer 저장 규칙 " + JSON.stringify(r.rows));
+  const wa = async (mode, quals, root, ten, who = S1) => (await as(who, "select public.wrong_answers($1, '7d', current_date, null, null, $2, $3, $4, $5) w", [S1, mode, quals, root, ten])).rows[0].w;
+  let w = await wa("play", ["M7"], null, null); ok(w.total === 3 && w.items[0].symbol === "DM7" && w.items[2].answer === "48,52,55,58", "코드 종류 줄의 오답 " + JSON.stringify(w));
+  w = await wa("all", null, 1, null); ok(w.total === 1 && w.items[0].symbol === "C♯M7", "베이스 줄(C♯/D♭ = 1) — 정답인 D♭7(9)는 빠짐");
+  w = await wa("all", ["dom7", "dom9", "dom13"], null, "9"); ok(w.total === 1 && w.items[0].answer === "Cm7(9)" && w.items[0].mode === "name", "텐션 줄의 오답");
+  r = await as(A, "select public.student_overview($1, current_date, 'all') o", [S1]); ok(r.rows[0].o.recent[0].hasOwnProperty("answer"), "최근 문제에 answer");
+  w = await wa("all", null, null, null, A); ok(w.total >= 4, "관리자는 학생 오답 목록을 봄");
+  e = null; try { await as(S1, "select public.wrong_answers($1, '7d', current_date, null, null, 'all')", [A]); } catch (x) { e = x; } ok(e, "학생은 남의 오답 목록을 못 봄");
   r = await as(S1, "select mode, total from public.practice_stats where user_id=$1 and mode='name'", [S1]); ok(r.rows.length === 1, "학생은 자기 누적 숫자를 연습별로 읽음(RLS)");
   // name_settings는 본인만 고칠 수 있음
   await as(S1, "update public.profiles set name_settings = '{\"optInv\":true}' where id = $1", [S1]);

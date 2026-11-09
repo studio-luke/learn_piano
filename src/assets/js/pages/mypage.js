@@ -12,7 +12,7 @@ import { Account } from "../account/account.js";
 import { hooks } from "../account/auth-dialog.js";
 import { t, onLangChange } from "../i18n/index.js";
 import { $, esc } from "../common/dom.js";
-import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, currentMode, setModeInUrl, modeTabsHTML, modeClicked, sortClicked } from "../stats/view.js";
+import { PeriodPicker, totalsHTML, chartHTML, tablesHTML, reviewHTML, currentMode, setModeInUrl, modeTabsHTML, modeClicked, sortClicked, wrongClicked, wrongDialog } from "../stats/view.js";
 import { gateHTML, wireGate, leaveOnSignOut } from "../stats/gate.js";
 
 startPage({ title: "menuMy", back: true });
@@ -56,6 +56,12 @@ body.addEventListener("click", e => {
   if (action === "load") return load();
   if (action === "render") return render();
   if (sortClicked(e)) return render();   // 표 머리: 정렬 바꾸기
+  // 표의 오답 숫자: 그 줄의 오답 목록 창 (표와 같은 기간·탭 — 2026-11-09)
+  const w = wrongClicked(e);
+  if (w && data) {
+    const d = data;
+    return wrongDialog(w, d.range === "custom" ? picker.label() : t("range" + d.range), mode, () => Account.wrongAnswers(Account.user.id, d.range, d.custom, mode, w.filter));
+  }
   const rb = e.target.closest("[data-review-mode]");
   if (rb) hooks.startReview(rb.dataset.reviewMode);   // 그 연습의 페이지로 이동해 다시 풀기
   const m = modeClicked(e);

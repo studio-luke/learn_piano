@@ -89,8 +89,9 @@ export function tensionRows(rows, types) {
   for (const r of rows || []) {
     const q = TENSION_BASE[r.q] || r.q;
     const key = q + "|" + r.x;
-    if (!by.has(key)) by.set(key, { q, x: r.x, n: 0, ok: 0, ms: null, t: 0 });
+    if (!by.has(key)) by.set(key, { q, x: r.x, n: 0, ok: 0, ms: null, t: 0, qs: [] });
     addRow(by.get(key), r);
+    if (!by.get(key).qs.includes(r.q)) by.get(key).qs.push(r.q);   // 합친 원래 코드 종류들 (오답 목록을 DB에서 찾을 때)
   }
   const ti = q => { const i = types.findIndex(t => t.id === q); return i < 0 ? 99 : i; };
   const xi = x => TENSIONS.indexOf(x) + 1 || 99;

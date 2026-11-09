@@ -464,6 +464,10 @@ alter table public.practice_log add column if not exists timer_session bigint re
 alter table public.practice_log add column if not exists mode text not null default 'play' check (mode in ('play', 'name'));
 alter table public.practice_log add column if not exists hinted boolean not null default false;
 create index if not exists practice_log_user_mode_day on public.practice_log (user_id, mode, day);
+-- 2026-11-09: the first wrong answer the student gave (null on right answers and on records from before this).
+--   랜덤 코드 연습 'play': the pressed keys as MIDI numbers, low to high ("48,52,55"); 코드 추론하기 'name': the typed text.
+--   '' = wrong without submitting anything (정답 확인, skipped with the timer on, 5 minutes idle)
+alter table public.practice_log add column if not exists answer text;
 alter table public.timer_sessions add column if not exists mode text not null default 'play' check (mode in ('play', 'name'));
 
 -- running totals per account and practice (mode, see practice_log) — 머리글 정답/시도·연속 are counted per practice
@@ -530,17 +534,20 @@ grant select on public.practice_log, public.practice_stats, public.review_queue,
 drop function if exists public.record_attempt(text, text, boolean, date, boolean, jsonb);            -- before p_ms
 drop function if exists public.record_attempt(text, text, boolean, date, boolean, jsonb, integer);   -- before p_session
 drop function if exists public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint);   -- before p_mode / p_hint
+drop function if exists public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint, text, boolean);   -- before p_answer
 -- p_ms / p_session: time and timer session when the timer was on. A time is kept only with the user's own session
 -- that is still on (or ended in the last 2 minutes — the last record may arrive after the timer was turned off).
 -- p_mode: which practice ('play' 랜덤 코드 연습 / 'name' 코드 추론하기, 2026-11-08); the timer session must be of the same
--- practice. p_hint: the 힌트 button was used.
+-- practice. p_hint: the 힌트 button was used. p_answer (2026-11-09): the first wrong answer (see practice_log.answer) —
+-- a value that doesn't look right is dropped (kept as null), the question itself is still recorded.
 create or replace function public.record_attempt(p_quality text, p_symbol text, p_first boolean, p_day date,
   p_review boolean default false, p_spec jsonb default null, p_ms integer default null, p_session bigint default null,
-  p_mode text default 'play', p_hint boolean default false)
+  p_mode text default 'play', p_hint boolean default false, p_answer text default null)
 returns void language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
   sess bigint;
+  ans text := p_answer;
 begin
   if uid is null then
     raise exception 'not signed in';
@@ -566,10 +573,16 @@ begin
   if (select count(*) from public.practice_log where user_id = uid and day = p_day) >= 1000 then
     return;
   end if;
+  -- the answer: only on wrong answers; keys must be C3–C5 (48–72), at most 25; typed text at most 40 characters
+  if p_first or char_length(coalesce(ans, '')) > 40
+     or (p_mode = 'play' and ans <> '' and (ans !~ '^[0-9]{2}(,[0-9]{2}){0,24}$'
+         or exists (select 1 from unnest(string_to_array(ans, ',')) k where k::int not between 48 and 72))) then
+    ans := null;
+  end if;
 
-  insert into public.practice_log (user_id, day, quality, symbol, first_try, review, duration_ms, timer_session, mode, hinted)
+  insert into public.practice_log (user_id, day, quality, symbol, first_try, review, duration_ms, timer_session, mode, hinted, answer)
     values (uid, p_day, p_quality, p_symbol, p_first, coalesce(p_review, false), case when sess is null then null else p_ms end, sess,
-      p_mode, coalesce(p_hint, false));
+      p_mode, coalesce(p_hint, false), ans);
 
   insert into public.practice_stats as s (user_id, mode, total, first_correct, streak, best_streak)
     values (uid, p_mode, 1, p_first::int, p_first::int, p_first::int)
@@ -591,8 +604,8 @@ begin
   end if;
 end;
 $$;
-revoke execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint, text, boolean) from public, anon;
-grant execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint, text, boolean) to authenticated;
+revoke execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint, text, boolean, text) from public, anon;
+grant execute on function public.record_attempt(text, text, boolean, date, boolean, jsonb, integer, bigint, text, boolean, text) to authenticated;
 
 -- timer on: checks the rule (5+ chord types; with option B, 7+ roots — user decision 2026-11-06) and opens a session.
 -- A session left open (page closed with the timer on) is closed first.
@@ -691,6 +704,22 @@ $$;
 -- the same rule as src/stats.js). firstDay = the first practice day, the earliest date the calendar allows;
 -- practiceDays = every date with practice (all time), marked with a dot on that calendar.
 -- A student may ask only for their own; the admin for anyone.
+-- the dates a stats range covers (practice_summary and wrong_answers — the same rule as src/assets/js/stats/data.js period):
+-- '7d' / '30d' up to today, '1y' = this month and the 11 before, 'custom' = p_from..p_to (either order, not past today)
+create or replace function public.stats_range(p_range text, p_today date, p_from date, p_to date, out since date, out until date)
+language plpgsql immutable set search_path = '' as $$
+begin
+  until := p_today;
+  if p_range = 'custom' and p_from is not null and p_to is not null then
+    since := least(p_from, p_to);
+    until := least(greatest(p_from, p_to), p_today);
+  else
+    since := case p_range when '7d' then p_today - 6 when '30d' then p_today - 29
+      else (date_trunc('month', p_today) - interval '11 months')::date end;
+  end if;
+end;
+$$;
+
 -- 전체 통계 (2026-11-09): totals over both practices. total / first add up; the streaks are counted again from the log in
 -- answer order (practice_log.id), because two separate per-practice streaks can't simply be added
 create or replace function public.all_totals(p_user uuid)
@@ -728,14 +757,7 @@ begin
   if today is null or today not between current_date - 1 and current_date + 1 then
     today := current_date;
   end if;
-  until := today;
-  if p_range = 'custom' and p_from is not null and p_to is not null then
-    since := least(p_from, p_to);
-    until := least(greatest(p_from, p_to), today);
-  else
-    since := case p_range when '7d' then today - 6 when '30d' then today - 29
-      else (date_trunc('month', today) - interval '11 months')::date end;
-  end if;
+  select r.since, r.until into since, until from public.stats_range(p_range, today, p_from, p_to) r;
   monthly := p_range = '1y' or (p_range = 'custom' and until - since > 62);
   return jsonb_build_object(
     'since', since,
@@ -812,14 +834,53 @@ begin
     'week', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'n', n) order by day) from (
       select day, count(*) as n from public.practice_log
       where user_id = p_user and (p_mode = 'all' or mode = p_mode) and day between today - 6 and today group by day) w), '[]'::jsonb),
-    'recent', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'first', first_try, 'review', review, 'ms', duration_ms, 'hint', hinted, 'mode', mode) order by id desc) from (
-      select id, day, symbol, quality, first_try, review, duration_ms, hinted, mode from public.practice_log
+    'recent', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'first', first_try, 'review', review, 'ms', duration_ms, 'hint', hinted, 'mode', mode, 'answer', answer) order by id desc) from (
+      select id, day, symbol, quality, first_try, review, duration_ms, hinted, mode, answer from public.practice_log
       where user_id = p_user and (p_mode = 'all' or mode = p_mode) order by id desc limit 50) r), '[]'::jsonb)
   );
 end;
 $$;
 revoke execute on function public.student_overview(uuid, date, text) from public, anon;
 grant execute on function public.student_overview(uuid, date, text) to authenticated;
+
+-- 오답 목록 (2026-11-09): the wrong answers behind one row of the 코드 종류 / 베이스 / 텐션 tables, newest 50, with what
+-- the student answered. Same range and mode as practice_summary. Which row:
+--   p_quals: chord types (null = any) — a tension row passes every type folded into it (M7 row of "9": M7, M9, M13)
+--   p_root: root pitch class 0–11 (null = any) — a 베이스 row joins C♯ and D♭ (chord_root_pc)
+--   p_tension: one tension as chord_tensions() names it (null = any)
+-- total = how many wrong answers match (the list shows at most 50). A student may ask only for their own; the admin for anyone.
+create or replace function public.wrong_answers(p_user uuid, p_range text, p_today date, p_from date, p_to date, p_mode text,
+  p_quals text[] default null, p_root integer default null, p_tension text default null)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  today date := p_today;
+  since date;
+  until date;
+begin
+  if auth.uid() is null or (p_user <> auth.uid() and not public.is_admin()) then
+    raise exception 'not allowed';
+  end if;
+  if coalesce(p_mode, '') not in ('play', 'name', 'all') then
+    raise exception 'bad mode';
+  end if;
+  if today is null or today not between current_date - 1 and current_date + 1 then
+    today := current_date;
+  end if;
+  select r.since, r.until into since, until from public.stats_range(p_range, today, p_from, p_to) r;
+  return (
+    with w as (
+      select id, day, symbol, quality, review, hinted, mode, answer from public.practice_log
+      where user_id = p_user and (p_mode = 'all' or mode = p_mode) and not first_try and day between since and until
+        and (p_quals is null or quality = any(p_quals))
+        and (p_root is null or public.chord_root_pc(symbol) = p_root)
+        and (p_tension is null or p_tension = any(public.chord_tensions(quality, symbol))))
+    select jsonb_build_object('total', (select count(*) from w),
+      'items', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'review', review,
+        'hint', hinted, 'mode', mode, 'answer', answer) order by id desc) from (select * from w order by id desc limit 50) x), '[]'::jsonb)));
+end;
+$$;
+revoke execute on function public.wrong_answers(uuid, text, date, date, date, text, text[], integer, text) from public, anon;
+grant execute on function public.wrong_answers(uuid, text, date, date, date, text, text[], integer, text) to authenticated;
 
 -- the admin's student list (empty for everyone else)
 -- p_mode: which practice's numbers ('play' / 'name', 2026-11-08; 'all' both added up, 2026-11-09)

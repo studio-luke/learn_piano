@@ -20,13 +20,15 @@
   const qs = ["maj", "dom7", "M7", "m7b5", "7alt", "min"];
   const roots = ["C", "D♭", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"], heads = { maj: "", dom7: ["7", "7(♭9)", "7(♯11)", "7(9,13)"], M7: ["M7", "M7(♯11)", "M7(9)"], m7b5: "m7(♭5)", "7alt": "7alt", min: "m" };
   for (let i = 0; i < 300; i++) { const q = qs[i % 6], r = roots[Math.floor(Math.random() * 12)]; db.practice_log.push({ id: i, user_id: "u-s1", day: day(Math.floor(Math.random() * 200)), quality: q, symbol: r + [].concat(heads[q])[i % [].concat(heads[q]).length], duration_ms: i % 3 ? Math.round(3000 + Math.random() * 40000) : null, first_try: Math.random() < (r === "F♯" ? 0.4 : q === "7alt" ? 0.5 : 0.85), review: Math.random() < 0.05 }); }
+  // 오답의 입력한 답 (2026-11-09): 대부분 누른 건반, 가끔 ""(제출 안 함)·null(예전 기록)
+  for (const r of db.practice_log) if (!r.first_try) r.answer = r.id % 7 === 0 ? "" : r.id % 11 === 0 ? null : ["48,52,55,58", "50,53,57,60", "54,58,61,64,67"][r.id % 3];
   db.practice_log.sort((a, b) => (a.day < b.day ? -1 : 1));
   db.review_queue.push({ user_id: "u-s1", symbol: "F♯7alt", quality: "7alt", spec: {}, hits: 1, added_at: 1 });
   db.review_queue.push({ user_id: "u-admin", symbol: "C7", quality: "dom7", spec: { l: 0, a: 0, type: "dom7", tens: [], alt: false, head: "7", items: [] }, hits: 0, added_at: 2 });
   db.review_queue.push({ user_id: "u-admin", symbol: "Dm", quality: "min", spec: { l: 1, a: 0, type: "min", tens: [], alt: false, head: "m", items: [] }, hits: 1, added_at: 3 });
   db.review_queue.push({ user_id: "u-admin", symbol: "Em", quality: "min", spec: { l: 2, a: 0, type: "min", tens: [], alt: false, head: "m", items: [] }, hits: 0, added_at: 4 });
   for (const [uid, sym, q, ok, h] of [["u-s1","Dm7(♭5)","m7b5",true,true],["u-s1","CM7","M7",false,false],["u-s1","F♯m","min",true,false],["u-admin","E♭7(♭9)","dom7",true,true],["u-admin","Gsus4","sus4",false,false]])
-    db.practice_log.push({ user_id: uid, mode: "name", day: day(1), quality: q, symbol: sym, first_try: ok, review: false, duration_ms: ok ? 7000 : null, hinted: h });
+    db.practice_log.push({ user_id: uid, mode: "name", day: day(1), quality: q, symbol: sym, first_try: ok, review: false, duration_ms: ok ? 7000 : null, hinted: h, answer: ok ? null : { CM7: "Cm7", Gsus4: "Gsus2" }[sym] });
   db.review_queue.push({ user_id: "u-admin", mode: "name", symbol: "Dm7(♭5)", quality: "m7b5", spec: { l: 1, a: 0, type: "m7b5", tens: [], alt: false, head: "m7", items: ["♭5"], inv: true, notes: [[56, "A♭"], [60, "C"], [62, "D"], [65, "F"]] }, hits: 0, added_at: 6 });
   db.review_queue.push({ user_id: "u-admin", symbol: "FM7", quality: "M7", spec: { l: 3, a: 0, type: "M7", tens: [], alt: false, head: "M7", items: [] }, hits: 0, added_at: 5 });
   db.practice_stats.push({ user_id: "u-s1", total: 300, first_correct: 210, streak: 3, best_streak: 14 });
@@ -41,7 +43,7 @@
     complete_signup({ p_full_name, p_nickname, p_lang }) { Object.assign(db.profiles[0], { full_name: p_full_name, nickname: p_nickname, preferred_lang: p_lang, age14_confirmed: true, terms_version: "2026-11-05" }); return null; },
     record_attempt(a) {
       const uid = me.id;
-      db.practice_log.push({ user_id: uid, day: a.p_day, quality: a.p_quality, symbol: a.p_symbol, first_try: a.p_first, review: a.p_review, duration_ms: a.p_ms });
+      db.practice_log.push({ user_id: uid, day: a.p_day, quality: a.p_quality, symbol: a.p_symbol, first_try: a.p_first, review: a.p_review, duration_ms: a.p_ms, mode: a.p_mode || "play", hinted: !!a.p_hint, answer: a.p_first ? null : (a.p_answer ?? null) });
       let s = db.practice_stats.find(x => x.user_id === uid);
       if (!s) db.practice_stats.push(s = { user_id: uid, total: 0, first_correct: 0, streak: 0, best_streak: 0 });
       s.total++; s.first_correct += a.p_first ? 1 : 0; s.streak = a.p_first ? s.streak + 1 : 0; s.best_streak = Math.max(s.best_streak, s.streak);
@@ -86,7 +88,16 @@
       return { nickname: pr.nickname, full_name: pr.full_name, sessions: 4, abandoned: 2, joined: "2026-03-02T09:00:00Z", byQuality: [...g(r => r.quality)].map(([q, x]) => ({ q, ...x })),
         byRoot: [...g(r => r.symbol.match(/^[A-G][♯♭]?/)[0])].map(([r, x]) => ({ r, ...x })),
         days: new Set(rows.map(r => r.day)).size, lastDay: rows.length ? rows[rows.length - 1].day : null,
-        week: [...wk].map(([d, n]) => ({ d, n })), recent: rows.slice(-50).reverse().map(r => ({ d: r.day, symbol: r.symbol, q: r.quality, first: r.first_try, review: !!r.review, ms: r.duration_ms ?? null, hint: !!r.hinted, mode: r.mode || "play" })), byTension: [] };
+        week: [...wk].map(([d, n]) => ({ d, n })), recent: rows.slice(-50).reverse().map(r => ({ d: r.day, symbol: r.symbol, q: r.quality, first: r.first_try, review: !!r.review, ms: r.duration_ms ?? null, hint: !!r.hinted, mode: r.mode || "play", answer: r.answer ?? null })), byTension: [] };
+    },
+    // 오답 목록 (2026-11-09): 기간은 단순하게(최근 기록 전체), 조건은 DB와 같게
+    wrong_answers({ p_user, p_mode, p_quals, p_root, p_tension }) {
+      const M = p_mode || "play", NAT = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+      const pc = s => (NAT[s[0]] + (s[1] === "♯" ? 1 : s[1] === "♭" ? -1 : 0) + 12) % 12;
+      const w = db.practice_log.filter(r => r.user_id === p_user && !r.first_try && (M === "all" || (r.mode || "play") === M)
+        && (!p_quals || p_quals.includes(r.quality)) && (p_root == null || pc(r.symbol) === p_root)
+        && (!p_tension || (r.symbol.match(/\(([^)]*)\)$/) || ["", ""])[1].split(",").includes(p_tension)));
+      return { total: w.length, items: w.slice(-50).reverse().map(r => ({ d: r.day, symbol: r.symbol, q: r.quality, review: !!r.review, hint: !!r.hinted, mode: r.mode || "play", answer: r.answer ?? null })) };
     },
     student_list({ p_mode } = {}) {
       const M = p_mode || "play";
