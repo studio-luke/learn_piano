@@ -46,48 +46,50 @@ const O5 = [7, 5, "opt"], O9 = [2, 9, "opt"];   // 실전 보이싱에서 빼도
 //   id     코드 종류 이름(DB의 practice_log.quality에도 이 값이 저장됨 — 바꾸면 예전 기록과 안 맞음)
 //   group  출제 설정의 묶음 (triad sus seventh sixth add tension)
 //   name   화면에 보이는 이름
-//   w      출제 비율 (가장 큰 것과 작은 것이 약 3배 차이)
+//   w      출제 비율 — 고른 코드 종류들 안에서 이 비율대로 뽑음 (두 연습 공통).
+//          2026-11-09 사용자 결정: 7화음·6화음 위주로. 3화음·sus는 크게, add는 적당히 줄이고 텐션 코드는 예전 값의 35%.
+//          텐션 코드 빼고 전부 고르면 7화음 약 62%, 6화음 12.5%, add 11%, 3화음 10%, sus 4% (spec "출제 가중치")
 //   tones  구성음
 //   std    표준 표기들 (여러 개면 무작위로 하나), sym  옵션 D(기호 표기)에서 추가로 섞이는 표기
 //   seventh  7화음 계열인지 (옵션 C 텐션을 붙일 수 있음), ten  붙일 수 있는 텐션, maxTen  텐션 최대 개수
 //   dominant  도미넌트 계열인지 (♯5/♭5 표기, 7alt)
 const TYPES = [
-  { id: "maj", group: "triad", name: "Major", w: 3, tones: T3, std: [""], sym: [] },
-  { id: "min", group: "triad", name: "minor", w: 3, tones: t3, std: ["m"], sym: ["-"] },
-  { id: "dim", group: "triad", name: "dim", w: 1.4, tones: [[0, 1], [3, 3], [6, 5]], std: ["dim"], sym: ["°"] },
-  { id: "aug", group: "triad", name: "aug", w: 1.2, tones: [[0, 1], [4, 3], [8, 5]], std: ["aug"], sym: ["+"] },
+  { id: "maj", group: "triad", name: "Major", w: 1, tones: T3, std: [""], sym: [] },
+  { id: "min", group: "triad", name: "minor", w: 1, tones: t3, std: ["m"], sym: ["-"] },
+  { id: "dim", group: "triad", name: "dim", w: 0.5, tones: [[0, 1], [3, 3], [6, 5]], std: ["dim"], sym: ["°"] },
+  { id: "aug", group: "triad", name: "aug", w: 0.4, tones: [[0, 1], [4, 3], [8, 5]], std: ["aug"], sym: ["+"] },
 
-  { id: "sus4", group: "sus", name: "sus4", w: 2, tones: [[0, 1], [5, 4], [7, 5]], std: ["sus4"], sym: [] },
-  { id: "sus2", group: "sus", name: "sus2", w: 1, tones: [[0, 1], [2, 2], [7, 5]], std: ["sus2"], sym: [] },
+  { id: "sus4", group: "sus", name: "sus4", w: 0.8, tones: [[0, 1], [5, 4], [7, 5]], std: ["sus4"], sym: [] },
+  { id: "sus2", group: "sus", name: "sus2", w: 0.3, tones: [[0, 1], [2, 2], [7, 5]], std: ["sus2"], sym: [] },
 
-  { id: "M7", group: "seventh", name: "M7", w: 2.6, tones: [...T3, [11, 7]], std: ["M7"], sym: ["△7", "△"], seventh: true, ten: ["9", "#11", "13"] },
-  { id: "m7", group: "seventh", name: "m7", w: 3, tones: [...t3, [10, 7]], std: ["m7"], sym: ["-7"], seventh: true, ten: ["9", "11"] },
-  { id: "dom7", group: "seventh", name: "7", w: 3, tones: [...T3, [10, 7]], std: ["7"], sym: [], seventh: true, ten: ["b9", "9", "#9", "#11", "b13", "13"], dominant: true },
+  { id: "M7", group: "seventh", name: "M7", w: 2.7, tones: [...T3, [11, 7]], std: ["M7"], sym: ["△7", "△"], seventh: true, ten: ["9", "#11", "13"] },
+  { id: "m7", group: "seventh", name: "m7", w: 2.7, tones: [...t3, [10, 7]], std: ["m7"], sym: ["-7"], seventh: true, ten: ["9", "11"] },
+  { id: "dom7", group: "seventh", name: "7", w: 2.7, tones: [...T3, [10, 7]], std: ["7"], sym: [], seventh: true, ten: ["b9", "9", "#9", "#11", "b13", "13"], dominant: true },
   { id: "7sus4", group: "seventh", name: "7sus4", w: 1.8, tones: [[0, 1], [5, 4], [7, 5], [10, 7]], std: ["7sus4"], sym: [], seventh: true, ten: ["b9", "9", "13"] },
-  { id: "aug7", group: "seventh", name: "aug7", w: 1.2, tones: [[0, 1], [4, 3], [8, 5], [10, 7]], std: ["aug7"], sym: ["+7"], seventh: true, ten: ["9", "#11"] },
-  { id: "dim7", group: "seventh", name: "dim7", w: 1.5, tones: [[0, 1], [3, 3], [6, 5], [9, 7]], std: ["dim7"], sym: ["°7"], seventh: true, ten: [] },
+  { id: "aug7", group: "seventh", name: "aug7", w: 1, tones: [[0, 1], [4, 3], [8, 5], [10, 7]], std: ["aug7"], sym: ["+7"], seventh: true, ten: ["9", "#11"] },
+  { id: "dim7", group: "seventh", name: "dim7", w: 1.8, tones: [[0, 1], [3, 3], [6, 5], [9, 7]], std: ["dim7"], sym: ["°7"], seventh: true, ten: [] },
   // m7(♭5): (♭5)가 이미 텐션처럼 읽혀서 텐션은 1개까지
-  { id: "m7b5", group: "seventh", name: "m7(♭5)", w: 2, tones: [[0, 1], [3, 3], [6, 5], [10, 7]], std: ["m7(♭5)"], sym: ["ø7", "ø", "-7(♭5)"], seventh: true, ten: ["9", "11", "b13"], maxTen: 1 },
-  { id: "mM7", group: "seventh", name: "mM7", w: 1, tones: [...t3, [11, 7]], std: ["mM7"], sym: ["-△7", "m△7"], seventh: true, ten: ["9", "11"], maxTen: 1 },
+  { id: "m7b5", group: "seventh", name: "m7(♭5)", w: 2.4, tones: [[0, 1], [3, 3], [6, 5], [10, 7]], std: ["m7(♭5)"], sym: ["ø7", "ø", "-7(♭5)"], seventh: true, ten: ["9", "11", "b13"], maxTen: 1 },
+  { id: "mM7", group: "seventh", name: "mM7", w: 1.2, tones: [...t3, [11, 7]], std: ["mM7"], sym: ["-△7", "m△7"], seventh: true, ten: ["9", "11"], maxTen: 1 },
   // augM7은 M7(♯5)로도 씀 — ♯5 표기는 도미넌트 계열만 쓰는 규칙의 유일한 예외 (사용자 요청 2026-11-05)
   { id: "augM7", group: "seventh", name: "augM7", w: 1, tones: [[0, 1], [4, 3], [8, 5], [11, 7]], std: ["augM7", "M7(♯5)"], sym: ["+△7"], seventh: true, ten: [] },
 
   { id: "6", group: "sixth", name: "6", w: 1.5, tones: [...T3, [9, 6]], std: ["6"], sym: [] },
-  { id: "m6", group: "sixth", name: "m6", w: 1.3, tones: [...t3, [9, 6]], std: ["m6"], sym: ["-6"] },
+  { id: "m6", group: "sixth", name: "m6", w: 2, tones: [...t3, [9, 6]], std: ["m6"], sym: ["-6"] },
 
-  { id: "add9", group: "add", name: "add9", w: 2, tones: [...T3, [2, 9]], std: ["add9"], sym: [] },
-  { id: "madd9", group: "add", name: "madd9", w: 1.3, tones: [...t3, [2, 9]], std: ["madd9"], sym: ["-add9"] },
-  { id: "69", group: "add", name: "6(9)", w: 1.2, tones: [...T3, [9, 6], [2, 9]], std: ["6(9)"], sym: [] },
+  { id: "add9", group: "add", name: "add9", w: 1.3, tones: [...T3, [2, 9]], std: ["add9"], sym: [] },
+  { id: "madd9", group: "add", name: "madd9", w: 0.9, tones: [...t3, [2, 9]], std: ["madd9"], sym: ["-add9"] },
+  { id: "69", group: "add", name: "6(9)", w: 0.6, tones: [...T3, [9, 6], [2, 9]], std: ["6(9)"], sym: [] },
   // 마이너 6(9): 1 ♭3 5 6 9 (Cm6/9 — 2026-11-08 사용자 요청, 두 페이지 모두. 처음 설정에서는 꺼짐)
-  { id: "m69", group: "add", name: "m6(9)", w: 1, tones: [...t3, [9, 6], [2, 9]], std: ["m6(9)"], sym: ["-6(9)"] },
+  { id: "m69", group: "add", name: "m6(9)", w: 0.4, tones: [...t3, [9, 6], [2, 9]], std: ["m6(9)"], sym: ["-6(9)"] },
 
   // 텐션 코드: 3음·7음·맨 위 텐션은 필수, 5음과 중간 텐션은 생략 가능. M13·13에는 11을 쓰지 않음
-  { id: "M9", group: "tension", name: "M9", w: 1.8, tones: [[0, 1], [4, 3], O5, [11, 7], [2, 9]], std: ["M9"], sym: ["△9"], seventh: true, ten: ["#11", "13"] },
-  { id: "M13", group: "tension", name: "M13", w: 1.2, tones: [[0, 1], [4, 3], O5, [11, 7], O9, [9, 13]], std: ["M13"], sym: ["△13"], seventh: true, ten: ["#11"] },
-  { id: "m9", group: "tension", name: "m9", w: 2, tones: [[0, 1], [3, 3], O5, [10, 7], [2, 9]], std: ["m9"], sym: ["-9"], seventh: true, ten: ["11"] },
-  { id: "m11", group: "tension", name: "m11", w: 1.5, tones: [[0, 1], [3, 3], O5, [10, 7], O9, [5, 11]], std: ["m11"], sym: ["-11"], seventh: true, ten: [] },
-  { id: "dom9", group: "tension", name: "9", w: 2.2, tones: [[0, 1], [4, 3], O5, [10, 7], [2, 9]], std: ["9"], sym: [], seventh: true, ten: ["#11", "b13", "13"], dominant: true },
-  { id: "dom13", group: "tension", name: "13", w: 2, tones: [[0, 1], [4, 3], O5, [10, 7], O9, [9, 13]], std: ["13"], sym: [], seventh: true, ten: ["b9", "#9", "#11"], dominant: true },
+  { id: "M9", group: "tension", name: "M9", w: 0.63, tones: [[0, 1], [4, 3], O5, [11, 7], [2, 9]], std: ["M9"], sym: ["△9"], seventh: true, ten: ["#11", "13"] },
+  { id: "M13", group: "tension", name: "M13", w: 0.42, tones: [[0, 1], [4, 3], O5, [11, 7], O9, [9, 13]], std: ["M13"], sym: ["△13"], seventh: true, ten: ["#11"] },
+  { id: "m9", group: "tension", name: "m9", w: 0.7, tones: [[0, 1], [3, 3], O5, [10, 7], [2, 9]], std: ["m9"], sym: ["-9"], seventh: true, ten: ["11"] },
+  { id: "m11", group: "tension", name: "m11", w: 0.525, tones: [[0, 1], [3, 3], O5, [10, 7], O9, [5, 11]], std: ["m11"], sym: ["-11"], seventh: true, ten: [] },
+  { id: "dom9", group: "tension", name: "9", w: 0.77, tones: [[0, 1], [4, 3], O5, [10, 7], [2, 9]], std: ["9"], sym: [], seventh: true, ten: ["#11", "b13", "13"], dominant: true },
+  { id: "dom13", group: "tension", name: "13", w: 0.7, tones: [[0, 1], [4, 3], O5, [10, 7], O9, [9, 13]], std: ["13"], sym: [], seventh: true, ten: ["b9", "#9", "#11"], dominant: true },
 ];
 const BY_ID = Object.fromEntries(TYPES.map(t => [t.id, t]));
 
