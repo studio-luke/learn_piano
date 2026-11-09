@@ -1,10 +1,13 @@
-// ===== 연습 — 피아노 건반 (C3~C5, 2옥타브) =====
+// ===== 연습 — 피아노 건반 (C3~C5, 2옥타브 / MIDI 입력 모드에서는 88건반 A0~C8) =====
 // 건반을 그리고, 마우스·터치·컴퓨터 키보드 입력을 받아요. 어떤 건반이 눌렸는지는 selected(MIDI 번호 집합)에 있어요.
+// MIDI 건반 입력은 pages/practice.js가 받아서 select()로 바꿔요(소리·채점 연결은 페이지가 함).
 import { Engine } from "../core/engine.js";
 import { t } from "../i18n/index.js";
 import { $ } from "../common/dom.js";
 
-export const LOW = 48, HIGH = 72;   // C3 ~ C5 (MIDI 번호)
+export const LOW = 48, HIGH = 72;             // C3 ~ C5 (MIDI 번호) — 보통 건반
+export const FULL_LOW = 21, FULL_HIGH = 108;  // A0 ~ C8 — MIDI 입력 모드의 88건반 (2026-11-09)
+let lo = LOW, hi = HIGH;                       // 지금 그려진 범위
 const WHITE_PCS = Engine.WHITE;
 const NAMES = Engine.PC_NAMES;
 
@@ -44,24 +47,7 @@ export function pcLabel(pc) {
  */
 export function initKeyboard(onToggle) {
   const kb = $("keyboard");
-  let whiteIndex = 0;
-  for (let m = LOW; m <= HIGH; m++) {
-    const pc = m % 12, oct = Math.floor(m / 12) - 1;
-    const isWhite = WHITE_PCS.includes(pc);
-    const el = document.createElement("button");
-    el.type = "button";
-    el.className = "key " + (isWhite ? "white" : "black");
-    el.dataset.midi = m;
-    el.dataset.pc = pc;
-    const label = isWhite ? NAMES[pc] + (pc === 0 ? oct : "") : NAMES[pc].split("/")[0];
-    el.innerHTML = `<span class="lbl">${label}</span><span class="kbd-lbl">${KEY_CHARS[m - LOW].toUpperCase()}</span>`;
-    el.setAttribute("aria-label", NAMES[pc] + oct);
-    el.setAttribute("aria-pressed", "false");
-    if (isWhite) whiteIndex++;
-    else el.style.left = `calc(100% / 15 * ${whiteIndex} - 100% / 15 * 0.33)`;   // 검은 건반: 두 흰 건반 사이
-    kb.appendChild(el);
-    keyEls.set(m, el);
-  }
+  drawKeys();
 
   // 마우스: 누르는 순간 입력. 터치·펜: 손을 뗄 때 입력, 10px 넘게 움직였으면 스크롤로 보고 무시
   // (예전에는 화면을 스크롤하다 건반이 눌리는 문제가 있었음)
@@ -94,6 +80,60 @@ export function initKeyboard(onToggle) {
     onToggle(m, on);
   }
   return { toggle };
+}
+
+/** 지금 범위(lo~hi)로 건반을 새로 그림. 흰 건반 수(--whites)에 맞춰 검은 건반 폭·위치를 계산 */
+function drawKeys() {
+  const kb = $("keyboard");
+  kb.textContent = ""; keyEls.clear();
+  let whites = 0;
+  for (let m = lo; m <= hi; m++) if (WHITE_PCS.includes(m % 12)) whites++;
+  kb.style.setProperty("--whites", whites);
+  let whiteIndex = 0;
+  for (let m = lo; m <= hi; m++) {
+    const pc = m % 12, oct = Math.floor(m / 12) - 1;
+    const isWhite = WHITE_PCS.includes(pc);
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "key " + (isWhite ? "white" : "black");
+    el.dataset.midi = m;
+    el.dataset.pc = pc;
+    const label = isWhite ? NAMES[pc] + (pc === 0 ? oct : "") : NAMES[pc].split("/")[0];
+    const ch = KEY_CHARS[m - LOW];   // 컴퓨터 키 (C3~C5에만 있음)
+    el.innerHTML = `<span class="lbl">${label}</span>` + (ch ? `<span class="kbd-lbl">${ch.toUpperCase()}</span>` : "");
+    el.setAttribute("aria-label", NAMES[pc] + oct);
+    el.setAttribute("aria-pressed", "false");
+    if (isWhite) whiteIndex++;
+    else el.style.left = `calc(100% / ${whites} * ${whiteIndex} - 100% / ${whites} * 0.33)`;   // 검은 건반: 두 흰 건반 사이
+    kb.appendChild(el);
+    keyEls.set(m, el);
+  }
+}
+
+/**
+ * 88건반(true) / 보통 2옥타브(false)로 바꿈 — MIDI 입력 모드 (2026-11-09).
+ * 보통 건반으로 돌아갈 때 C3~C5 밖에서 고른 건반은 선택에서 빠짐 (소리는 페이지가 멈춤)
+ */
+export function setFull(full) {
+  const [a, b] = full ? [FULL_LOW, FULL_HIGH] : [LOW, HIGH];
+  if (a === lo && b === hi) return;
+  lo = a; hi = b;
+  for (const m of [...selected]) if (m < lo || m > hi) selected.delete(m);
+  const kb = $("keyboard");
+  kb.classList.toggle("full", full);
+  kb.setAttribute("aria-label", t(full ? "kbAriaFull" : "kbAria"));
+  kb.dataset.i18nAria = full ? "kbAriaFull" : "kbAria";   // 언어를 바꿀 때도 맞는 이름으로
+  drawKeys();
+  setView(view);
+}
+
+/** 지금 화면 건반으로 고를 수 있는 음인지 (보통 건반이면 C3~C5, 88건반이면 전부) */
+export const selectable = m => m >= lo && m <= hi;
+
+/** MIDI 입력용: 건반 하나를 고르거나 풂 — 소리·채점 연결 없이 표시만 (페이지가 따로 처리) */
+export function select(m, on) {
+  if (on) selected.add(m); else selected.delete(m);
+  renderKeys();
 }
 
 /** 그릴 때 쓸 문제 상태를 바꾸고(새 문제, 정답 확인 등) 검은 건반 이름을 다시 붙임 */

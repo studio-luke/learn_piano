@@ -77,6 +77,8 @@
         <label class="check"><input type="checkbox" id="optLabels"> <span data-i18n="showLabels">건반에 음이름 표시</span></label>
         <label class="check"><input type="checkbox" id="optSound" checked> <span data-i18n="sound">건반 누를 때 소리</span></label>
         <label class="check pc-only"><input type="checkbox" id="optKbd"> <span data-i18n="kbdInput">키보드로 건반 입력</span></label>
+        <!-- MIDI 입력 모드: 88건반 표시 (컴퓨터에서만). 연결 상태·지원 안 하는 브라우저 안내는 #midiStatus (pages/practice.js) -->
+        <label class="check pc-only" id="midiOpt"><input type="checkbox" id="optMidi"> <span data-i18n="midiMode">MIDI 입력 모드</span><small class="midi-status" id="midiStatus"></small></label>
         <label class="check"><input type="checkbox" id="optTimerShow"> <span data-i18n="timerShow">(타이머) 시간 표시</span></label>
       </div>
     </section>

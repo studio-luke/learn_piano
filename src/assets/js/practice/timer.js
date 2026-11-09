@@ -89,6 +89,9 @@ export function renderTimer() {
   $("timerBtnTime").textContent = timer.on && c && cfg.S.timerShow !== false ? text.replace("⏱ ", "") : "";
 }
 
+/** 사용자 입력이 있었음 (5분 무입력 판단용) — 클릭·키 입력은 자동, 그 밖의 입력(MIDI 건반)은 페이지가 부름 */
+export function markInput() { if (timer.cur && timer.cur.end == null) timer.cur.last = Date.now(); }
+
 /**
  * 타이머 버튼·도움말·시계 연결.
  * @param h.beforeOff()        끄기 직전 (지금 문제 정리)
@@ -112,10 +115,9 @@ export function initTimer(h, c) {
   $("optTimerShow").checked = cfg.S.timerShow !== false;
   $("optTimerShow").onchange = e => { cfg.S.timerShow = e.target.checked; cfg.save(); renderTimer(); };
 
-  // 아무 키나 클릭이든 "입력"으로 침 (5분 무입력 판단용)
-  const touch = () => { if (timer.cur && timer.cur.end == null) timer.cur.last = Date.now(); };
-  document.addEventListener("pointerdown", touch, true);
-  document.addEventListener("keydown", touch, true);
+  // 아무 키나 클릭이든 "입력"으로 침 (5분 무입력 판단용). MIDI 건반은 페이지가 markInput()을 부름
+  document.addEventListener("pointerdown", markInput, true);
+  document.addEventListener("keydown", markInput, true);
 
   // 0.25초마다: 표시 갱신, 5분 무입력 확인 (탭이 뒤로 가 있어도 Date.now로 재므로 돌아오면 바로 맞춰짐)
   setInterval(() => {

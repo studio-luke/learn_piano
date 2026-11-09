@@ -2,17 +2,18 @@
 // 각 부분을 만들고 서로 연결해요.
 //   settings.js  출제 설정 카드        keyboard.js  건반        audio.js  소리
 //   quiz.js      문제 흐름·채점·기록    timer.js     타이머
-// 그리고 키보드 단축키, 회원 기능(계정 설정·누적 기록·다시 풀기)과의 연결을 여기서 해요.
+// 그리고 키보드 단축키, MIDI 건반(input/midi.js), 회원 기능(계정 설정·누적 기록·다시 풀기)과의 연결을 여기서 해요.
 import { startPage } from "../common/layout.js";
 import { Account } from "../account/account.js";
 import { hooks as authHooks, isOpen as authOpen } from "../account/auth-dialog.js";
-import { onLangChange } from "../i18n/index.js";
-import { $ } from "../common/dom.js";
+import { t, onLangChange } from "../i18n/index.js";
+import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
 import { S, IS_PC, initSettings, syncSettingsUI, replaceSettings, save } from "../practice/settings.js";
-import { initKeyboard, setKeyLabels, selected, renderKeys, CODE_TO_MIDI } from "../practice/keyboard.js";
+import { initKeyboard, setKeyLabels, selected, renderKeys, CODE_TO_MIDI, LOW, HIGH, setFull, selectable, select } from "../practice/keyboard.js";
 import { Sound } from "../practice/audio.js";
-import { initTimer, setTimer, renderTimer, timerSettings } from "../practice/timer.js";
+import { initTimer, setTimer, renderTimer, timerSettings, markInput } from "../practice/timer.js";
+import { Midi, midiSelection } from "../input/midi.js";
 import {
   state, stats, renderStats, newQuestion, tryNext, check, reveal, keysChanged,
   startReview, stopReview, inReview, renderPrompt, renderFeedback, renderReview, timerHooks,
@@ -26,9 +27,15 @@ initSettings(newQuestion);
 const kb = initKeyboard((m, on) => { if (on) { if (S.sound) Sound.note(m); } else Sound.stop(m); keysChanged(); });
 /** 건반 선택 모두 해제 ([지우기]·Esc·Backspace) — 해제하는 음의 소리도 멈춤 */
 const clearKeys = () => { for (const m of selected) Sound.stop(m); selected.clear(); renderKeys(); };
+/** MIDI 입력 모드(88건반)가 켜져 있는지 — 컴퓨터 + Web MIDI를 지원하는 브라우저에서만 */
+const midiMode = () => !!S.midi && IS_PC && Midi.supported;
 const syncToggles = () => {
   $("optLabels").checked = S.labels; $("optSound").checked = S.sound; $("optKbd").checked = S.kbd;
-  setKeyLabels(S.labels, !!S.kbd && IS_PC);
+  // MIDI 입력 모드에서는 컴퓨터 키보드로 건반 입력이 꺼짐 (88건반에 키를 다 붙일 수 없어서) — 체크는 회색으로
+  $("optMidi").checked = midiMode(); $("optKbd").disabled = midiMode();
+  setFull(midiMode());
+  document.querySelector(".layout").classList.toggle("midi-full", midiMode());
+  setKeyLabels(S.labels, !!S.kbd && IS_PC && !midiMode());
 };
 $("optLabels").onchange = e => { S.labels = e.target.checked; syncToggles(); save(); };
 $("optSound").onchange = e => { S.sound = e.target.checked; save(); };
@@ -65,11 +72,80 @@ document.addEventListener("keydown", e => {
   } else if (e.code === "Escape" || e.code === "Backspace") { e.preventDefault(); clearKeys(); }
   else if (e.code === "KeyN" || e.code === "ArrowRight") { e.preventDefault(); tryNext(); }
   else if (e.code === "KeyG") { e.preventDefault(); reveal(); }
-  else if (S.kbd && IS_PC && e.code in CODE_TO_MIDI) {
+  else if (S.kbd && IS_PC && !midiMode() && e.code in CODE_TO_MIDI) {
     e.preventDefault();
     if (!e.repeat) kb.toggle(CODE_TO_MIDI[e.code]);   // 키를 누르고 있어도 한 번만
   }
 }, true);
+
+// ---------- MIDI 건반 (2026-11-09 사용자 요청, 연결·권한은 input/midi.js) ----------
+// - MIDI 입력은 "MIDI 입력 모드" 체크와 상관없이 동작해요. 체크는 88건반을 보여주고 모든 음을 고를 수 있게 하는 것.
+//   권한은 처음 한 번 체크를 켤 때 묻고, 한 번 허용한 브라우저면 페이지를 열 때 자동으로 연결(Midi.autoConnect)
+// - 보통 건반(C3~C5)일 때 범위 밖 음: 소리만 내고 고르지 않음 + "한 옥타브 아래 음으로 눌러주세요" 같은 안내
+// - 고르는 규칙은 "latch": 누르면 선택, 떼도 유지, 모든 건반을 뗀 뒤 다시 누르면 새 화음으로 교체
+// - 소리는 "건반 누를 때 소리" 설정을 따름(소리 없는 마스터 키보드도 있어서). 세기·떼기·서스테인 페달 반영(audio.js noteOn 등)
+// - Safari 등 지원하지 않는 브라우저: 체크를 꺼진 모양으로, 누르면 "Chrome이나 Edge에서 열어 주세요" 안내
+{
+  const pick = midiSelection("latch", {
+    add: m => select(m, true),
+    remove: m => select(m, false),
+    clear: () => { selected.clear(); renderKeys(); },   // 새 화음 시작 — 소리는 건반을 뗄 때 이미 줄어들고 있어서 따로 멈추지 않음
+  });
+  /** 보통 건반 범위(C3~C5) 밖의 음 → 옥타브 이동 안내 문구 키 (A0~C8이면 최대 세 옥타브, 그보다 멀면 범위 안내) */
+  const octaveMsg = m => {
+    const n = m > HIGH ? Math.ceil((m - HIGH) / 12) : Math.ceil((LOW - m) / 12);
+    return n > 3 ? "octOut" : (m > HIGH ? "octDown" : "octUp") + n;
+  };
+  let soundTipShown = false;
+  Midi.on("noteon", (m, vel) => {
+    // 로그인 창 등이 열려 있으면 꺼짐 (컴퓨터 키보드 입력과 같은 규칙)
+    if (authOpen() || document.querySelector("dialog[open]")) return;
+    markInput();   // 타이머의 5분 무입력 판단
+    if (S.sound) {
+      Sound.noteOn(m, vel);
+      // 화면을 한 번도 누르지 않았으면 브라우저가 소리를 막음(MIDI 입력은 "사용자가 눌렀다"로 인정되지 않음) → 한 번만 안내
+      setTimeout(() => { if (!soundTipShown && !Sound.running()) { soundTipShown = true; toast(t("midiClickForSound")); } }, 300);
+    }
+    if (!selectable(m)) { if (!midiMode()) toast(t(octaveMsg(m)), 2000); return; }
+    pick.down(m);
+    keysChanged();
+  });
+  Midi.on("noteoff", m => { Sound.noteOff(m); if (selectable(m)) pick.up(m); });
+  Midi.on("pedal", on => Sound.pedal(on));
+  Midi.on("state", () => { renderMidi(); if (Midi.devices.length) Sound.loadFull(); });   // 건반이 연결되면 88건반 녹음도 미리 받기
+
+  // MIDI 입력 모드 켜기/끄기 — 켤 때 아직 권한이 없으면 브라우저가 권한 창을 띄움. 거부하면 다시 끔
+  $("optMidi").onchange = async e => {
+    S.midi = e.target.checked; save(); syncToggles(); renderMidi();
+    if (S.midi && !(await Midi.connect())) { S.midi = false; save(); syncToggles(); renderMidi(); toast(t("midiDenied")); }
+  };
+  // 지원하지 않는 브라우저: 체크는 켜지지 않고 안내만 ([다음 문제] 막기처럼 꺼진 모양이지만 누를 수 있음)
+  if (!Midi.supported) {
+    $("midiOpt").classList.add("is-off");
+    $("midiOpt").addEventListener("click", e => { e.preventDefault(); toast(t("midiUnsupported")); });
+  }
+  // 시작: MIDI 입력 모드가 켜져 있던 기기면 연결(권한이 없으면 물음), 아니면 전에 허용한 브라우저일 때만 조용히 연결
+  if (midiMode()) Midi.connect().then(ok => { if (!ok) { S.midi = false; save(); syncToggles(); renderMidi(); } });
+  else Midi.autoConnect();
+}
+/**
+ * 체크 옆 작은 글씨: "● MIDI 연결됨"(초록 점) / "● 연결된 MIDI 건반 없음"(빨간 점, 모드가 켜져 있을 때) / 지원 안 하는 브라우저 안내.
+ * 연결됨은 기기 이름 없이 초록 점과 짧은 문구만, 이름은 마우스를 올리면 보이는 툴팁으로 (2026-11-09 사용자 결정 —
+ * MODX처럼 한 기기가 포트 여러 개로 잡히면 "MODX 포트 1, MODX 포트 2, …"로 너무 길어져서)
+ */
+function renderMidi() {
+  const el = $("midiStatus");
+  const on = Midi.state === "ready" && Midi.devices.length > 0;
+  const none = !on && Midi.state === "ready" && midiMode();
+  let text = "";
+  if (!Midi.supported) text = t("midiUseChrome");
+  else if (on) text = t("midiConnected");
+  else if (none) text = t("midiNoDevice");
+  el.textContent = text;
+  el.classList.toggle("on", on);
+  el.classList.toggle("none", none);
+  if (on) el.title = Midi.devices.join("\n"); else el.removeAttribute("title");
+}
 
 // ---------- 폰 세로 안내 (한 번 닫으면 다시 안 나옴, 보이는 곳은 CSS가 정함) ----------
 $("rotateTip").hidden = store.get("rotateTip") === "closed";
@@ -98,7 +174,7 @@ $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; store.set("r
 initTimer(timerHooks, { mode: "play", S, save, sessionSettings: review => timerSettings(S, review, { optD: !!S.optD }) });
 
 // ---------- 언어가 바뀌면 JS로 그린 문구를 다시 ----------
-onLangChange(() => { syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys(); renderReview(); renderTimer(); });
+onLangChange(() => { syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys(); renderReview(); renderTimer(); renderMidi(); });
 
 // ---------- 회원 기능과 연결 ----------
 // 사이드바의 "틀린 문제 다시 풀기": 이 페이지에서는 바로 시작
@@ -127,5 +203,5 @@ Account.on("signedOut", () => {
 });
 
 // ---------- 시작 ----------
-syncSettingsUI(); syncToggles(); renderStats();
+syncSettingsUI(); syncToggles(); renderStats(); renderMidi();
 newQuestion();

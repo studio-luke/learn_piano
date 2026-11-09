@@ -7,8 +7,8 @@ export const PW_MIN = 8, NICK_MAX = 20, NAME_MAX = 50;
 /** 탈퇴 유예 기간(일). supabase/schema.sql의 interval '7 days' 두 곳과 같아야 함 */
 export const GRACE_DAYS = 7;
 
-// 계정에 올리지 않고 기기마다 따로 두는 설정 (폰에는 컴퓨터 키보드가 없으니까)
-const LOCAL_ONLY = ["kbd", "kbdTouched"];
+// 계정에 올리지 않고 기기마다 따로 두는 설정 (폰에는 컴퓨터 키보드·MIDI 건반이 없으니까)
+const LOCAL_ONLY = ["kbd", "kbdTouched", "midi"];
 // 모든 회원이 꼭 가져야 하는 프로필 항목. 항목이 늘면 여기에 넣고, 예전 회원은 다음 로그인 때 "정보 추가 입력" 창에서 채워요
 // (순서는 docs/supabase-setup.md "회원가입 항목 추가").
 const REQUIRED = ["full_name"];

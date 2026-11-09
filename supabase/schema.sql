@@ -465,7 +465,8 @@ alter table public.practice_log add column if not exists mode text not null defa
 alter table public.practice_log add column if not exists hinted boolean not null default false;
 create index if not exists practice_log_user_mode_day on public.practice_log (user_id, mode, day);
 -- 2026-11-09: the first wrong answer the student gave (null on right answers and on records from before this).
---   랜덤 코드 연습 'play': the pressed keys as MIDI numbers, low to high ("48,52,55"); 코드 추론하기 'name': the typed text.
+--   랜덤 코드 연습 'play': the pressed keys as MIDI numbers, low to high ("48,52,55" — A0–C8 = 21–108 since the
+--   88-key MIDI input mode, 2026-11-09); 코드 추론하기 'name': the typed text.
 --   '' = wrong without submitting anything (정답 확인, skipped with the timer on, 5 minutes idle)
 alter table public.practice_log add column if not exists answer text;
 alter table public.timer_sessions add column if not exists mode text not null default 'play' check (mode in ('play', 'name'));
@@ -573,10 +574,11 @@ begin
   if (select count(*) from public.practice_log where user_id = uid and day = p_day) >= 1000 then
     return;
   end if;
-  -- the answer: only on wrong answers; keys must be C3–C5 (48–72), at most 25; typed text at most 40 characters
+  -- the answer: only on wrong answers; at most 40 characters; keys must be A0–C8 (21–108 — 88-key MIDI input mode,
+  -- 2026-11-09; was C3–C5), at most 10 keys (the site does not submit more — 2026-11-09; 10 keys always fit in 40 characters)
   if p_first or char_length(coalesce(ans, '')) > 40
-     or (p_mode = 'play' and ans <> '' and (ans !~ '^[0-9]{2}(,[0-9]{2}){0,24}$'
-         or exists (select 1 from unnest(string_to_array(ans, ',')) k where k::int not between 48 and 72))) then
+     or (p_mode = 'play' and ans <> '' and (ans !~ '^[0-9]{2,3}(,[0-9]{2,3}){0,9}$'
+         or exists (select 1 from unnest(string_to_array(ans, ',')) k where k::int not between 21 and 108))) then
     ans := null;
   end if;
 

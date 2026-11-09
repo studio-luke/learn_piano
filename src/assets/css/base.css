@@ -20,6 +20,7 @@
   --ok-deep: #365A27;
   --warn: #9A5A12;        /* 오답·경고 */
   --warn-soft: #FBE8D0;
+  --danger: #B8432F;      /* 빨간 상태 점 (MIDI 건반 없음 등, 2026-11-09) */
   --key-white: #FFFDF8;   /* 건반 */
   --key-white-edge: #D8C7AE;
   --key-black: #3A271C;
@@ -36,7 +37,7 @@
   :root:not([data-theme="light"]) {
     --bg: #1E1612; --surface: #2A1F19; --sunken: #352821; --ink: #F3E6D6; --muted: #B9A38F; --line: #43332A;
     --accent: #E07A52; --accent-ink: #2A1209; --accent-deep: #A9512F; --accent-soft: #46271B;
-    --ok: #8DBE72; --ok-soft: #253222; --ok-deep: #5E8F48; --warn: #E8A65A; --warn-soft: #3A2A17;
+    --ok: #8DBE72; --ok-soft: #253222; --ok-deep: #5E8F48; --warn: #E8A65A; --warn-soft: #3A2A17; --danger: #E8786A;
     --key-white: #EFE4D4; --key-white-edge: #A48F78; --key-black: #120C09; --key-lbl: #806A59; --key-black-lbl: #EFE4D4;
     --card-shadow: none;
     color-scheme: dark;
@@ -45,7 +46,7 @@
 :root[data-theme="dark"] {
   --bg: #1E1612; --surface: #2A1F19; --sunken: #352821; --ink: #F3E6D6; --muted: #B9A38F; --line: #43332A;
   --accent: #E07A52; --accent-ink: #2A1209; --accent-deep: #A9512F; --accent-soft: #46271B;
-  --ok: #8DBE72; --ok-soft: #253222; --ok-deep: #5E8F48; --warn: #E8A65A; --warn-soft: #3A2A17;
+  --ok: #8DBE72; --ok-soft: #253222; --ok-deep: #5E8F48; --warn: #E8A65A; --warn-soft: #3A2A17; --danger: #E8786A;
   --key-white: #EFE4D4; --key-white-edge: #A48F78; --key-black: #120C09; --key-lbl: #806A59; --key-black-lbl: #EFE4D4;
   --card-shadow: none;
   color-scheme: dark;

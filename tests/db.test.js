@@ -186,13 +186,15 @@ test("db: two practices kept apart by mode (play / name)", async () => {
   const ans = (mode, q, sym, first, answer) => as(S1, "select public.record_attempt($1, $2, $3, current_date, false, null, null, null, $4, false, $5)", [q, sym, first, mode, answer]);
   await ans("play", "M7", "CM7", false, "48,52,55,58");
   await ans("play", "M7", "C♯M7", false, "");          // 제출 안 함
-  await ans("play", "M7", "DM7", false, "48,99");       // 범위 밖 → 버림
+  await ans("play", "M7", "DM7", false, "48,109");      // 범위 밖(C8 위) → 버림
+  await ans("play", "M7", "E♭M7", false, "21,100,101,102,103,104,105,106,107,108");   // 88건반 MIDI 입력 모드 (2026-11-09): A0–C8, 10개까지 — 가장 긴 경우 38자
+  await ans("play", "M7", "EM7", false, "48,50,52,53,55,57,59,60,62,64,65");   // 11개 → 버림 (사이트도 제출하지 않음)
   await ans("name", "dom7", "C7(9)", false, "Cm7(9)");
   await ans("name", "dom7", "D♭7(9)", true, "C7");      // 정답이면 저장 안 함
-  r = await db.query("select symbol, answer from public.practice_log where symbol in ('CM7','C♯M7','DM7','C7(9)','D♭7(9)') order by id");
-  ok(JSON.stringify(r.rows.map(x => x.answer)) === JSON.stringify(["48,52,55,58", "", null, "Cm7(9)", null]), "answer 저장 규칙 " + JSON.stringify(r.rows));
+  r = await db.query("select symbol, answer from public.practice_log where symbol in ('CM7','C♯M7','DM7','E♭M7','EM7','C7(9)','D♭7(9)') order by id");
+  ok(JSON.stringify(r.rows.map(x => x.answer)) === JSON.stringify(["48,52,55,58", "", null, "21,100,101,102,103,104,105,106,107,108", null, "Cm7(9)", null]), "answer 저장 규칙 " + JSON.stringify(r.rows));
   const wa = async (mode, quals, root, ten, who = S1) => (await as(who, "select public.wrong_answers($1, '7d', current_date, null, null, $2, $3, $4, $5) w", [S1, mode, quals, root, ten])).rows[0].w;
-  let w = await wa("play", ["M7"], null, null); ok(w.total === 3 && w.items[0].symbol === "DM7" && w.items[2].answer === "48,52,55,58", "코드 종류 줄의 오답 " + JSON.stringify(w));
+  let w = await wa("play", ["M7"], null, null); ok(w.total === 5 && w.items[0].symbol === "EM7" && w.items[4].answer === "48,52,55,58", "코드 종류 줄의 오답 " + JSON.stringify(w));
   w = await wa("all", null, 1, null); ok(w.total === 1 && w.items[0].symbol === "C♯M7", "베이스 줄(C♯/D♭ = 1) — 정답인 D♭7(9)는 빠짐");
   w = await wa("all", ["dom7", "dom9", "dom13"], null, "9"); ok(w.total === 1 && w.items[0].answer === "Cm7(9)" && w.items[0].mode === "name", "텐션 줄의 오답");
   r = await as(A, "select public.student_overview($1, current_date, 'all') o", [S1]); ok(r.rows[0].o.recent[0].hasOwnProperty("answer"), "최근 문제에 answer");

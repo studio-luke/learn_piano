@@ -217,7 +217,23 @@ export function renderNext() {
   $("btnNext").classList.toggle("is-off", off);
   $("btnNext").setAttribute("aria-disabled", String(off));
 }
-keyHooks.rendered = renderNext;   // 건반을 누르거나 지울 때마다
+
+// ---------- 건반은 최대 10개 (2026-11-09 사용자 요청) ----------
+// 11개 이상 눌려 있으면 [제출]을 꺼진 모양으로(누를 수는 있음 — 누르거나 Enter면 안내만), 11번째 건반을 누르는 순간에도 안내.
+// 10개인 이유: 열 손가락, 그리고 오답 기록(DB 40자)에 어떤 건반 조합이든 들어감 — 가장 긴 경우(E7~C8 9개 + 1개)도 38자
+// 마우스·컴퓨터 키보드·MIDI 건반 모두 같은 규칙 (88건반 MIDI 입력 모드에서 손바닥으로 여러 건반이 눌리는 경우 등)
+export const MAX_KEYS = 10;
+const tooMany = () => selected.size > MAX_KEYS;
+let lastCount = 0;   // 지난번 그릴 때 눌려 있던 건반 수 — 늘어났을 때만 안내하려고
+function renderCheck() {
+  const off = tooMany();
+  $("btnCheck").classList.toggle("is-off", off);
+  $("btnCheck").setAttribute("aria-disabled", String(off));
+  if (off && selected.size > lastCount && state.q && !state.locked) toast(t("tooManyKeys"), 2000);
+  lastCount = selected.size;
+}
+
+keyHooks.rendered = () => { renderNext(); renderCheck(); };   // 건반을 누르거나 지울 때마다
 /** [다음 문제] 버튼·N·→: 막혀 있으면 안내만, 아니면 새 문제 */
 export function tryNext() {
   if (nextBlocked()) return toast(t("clearFirst"), 2000);   // 2초 뒤 흐려지며 사라짐 (2026-11-08 사용자 요청)
@@ -241,6 +257,7 @@ export function keysChanged() {
 export function check() {
   const q = state.q; if (!q || state.locked) return;
   if (!selected.size) { setFeedback("info", () => t("pickFirst")); return; }
+  if (tooMany()) return toast(t("tooManyKeys"), 2000);   // 11개 이상: 채점하지 않고 안내만
   const g = Engine.grade(selected, q);
   if (!state.attempted) { state.attempted = true; finish(q, g.correct, [...selected].sort((a, b) => a - b).join(",")); }
   // 처음엔 틀렸다가 맞힘: 타이머가 켜져 있으면 맞힐 때까지의 시간 (꺼져 있으면 timer.cur가 없어 시간을 잴 수 없음)

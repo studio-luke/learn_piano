@@ -47,7 +47,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
   teacher/index.html, student.html   선생님 — 학생 목록·학생 기록
   terms.html  privacy.html  이용약관·개인정보처리방침
   favicon.svg  favicon-32.png  apple-touch-icon.png   파비콘 (오븐 창 속 8분음표. svg가 원본)
-  assets/sounds/piano/   피아노 녹음 14개 (C·D♯·F♯·A, C3~D♯6 — practice/audio.js가 재생)
+  assets/sounds/piano/   피아노 녹음 30개 (C·D♯·F♯·A, A0~C8 — practice/audio.js가 재생. C3~D♯6 14개는 바로, 나머지 16개는 MIDI 건반을 쓸 때만 받음)
   assets/css/
     base.css        공통: 색·글꼴 토큰(테마, 다크 모드), 머리글·바닥글, ☰ 왼쪽 메뉴, 도움말(?), 버튼·체크박스·알림
     home.css        홈: 소개, 학습 메뉴 카드
@@ -74,7 +74,8 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     account/helpers.js      회원 기능의 작은 규칙 (오류 문구, 공개 키 확인 등 — 테스트용으로 분리)
     practice/settings.js    출제 설정 상태와 카드, 설정 잠금
     practice/keyboard.js    건반 그리기와 마우스·터치·키보드 입력
-    practice/audio.js       피아노 소리 (녹음 파일 재생, 받기 전에는 합성음)
+    practice/audio.js       피아노 소리 (녹음 파일 재생, 받기 전에는 합성음, MIDI 건반의 누름·뗌·서스테인 페달)
+    input/midi.js           MIDI 건반 입력 (Web MIDI 연결·권한, 누름·뗌·페달 이벤트, 선택 규칙 latch/hold) — 건반 입력이 필요한 모든 페이지가 함께 씀
     practice/timer.js       타이머 (시계, 버튼, 도움말, 5분 규칙)
     practice/quiz.js        문제 흐름: 출제 → 채점 → 기록, 틀린 문제 다시 풀기
     stats/data.js           통계 계산 (기간, 그래프 칸, 표 묶기 — 순수 함수)
@@ -123,6 +124,7 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - 언어: 언어별 페이지는 주소의 언어, 그 밖에는 저장된 선택 → 브라우저 언어 → 영어. 로그인하면 계정의 사용 언어로 맞춤(언어별 페이지면 그 언어 주소로 이동). 음이름(C D E…)과 코드 기호는 모든 언어에서 동일. en/ja/zh는 AI 번역 — 현지 음악인 검수 권장
 - 디자인: "크림 & 코코아" 테마. 다크 모드는 기기 설정을 따름
 - 반응형: 데스크톱 2단, 폰 세로(하단 고정 버튼 줄), 폰 가로(높이 520px 이하, 좌우 분할)
+- MIDI 건반(Web MIDI): https 또는 localhost에서만 동작, Safari는 미지원. 처음 한 번은 "MIDI 입력 모드"를 켤 때 권한을 묻고, 허용한 뒤로는 페이지를 열면 자동 연결(모드를 꺼도 MIDI 입력은 됨). 모드를 켜면 88건반·모든 음 입력, 끄면 C3~C5 밖의 음은 소리만 나고 옥타브 이동 안내
 - 단축키(데스크톱): Enter 제출(끝난 문제면 다음 문제), G 정답 확인, Space 재생, Esc 지우기, N 다음 문제(풀던 문제에 건반이 눌려 있으면 막힘 — 먼저 지우기). 키보드로 건반 입력: C3부터 q2w3er5t6y7ui9o0p[=]k,l./ (물리 키 기준이라 한글 입력 상태에서도 동작)
 
 ## 아직 없는 것
@@ -141,7 +143,7 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - [x] 개인 학습 통계 기능 (마이페이지: 정답·오답, 코드 종류·베이스·텐션별, 날짜별, 틀린 문제 다시 풀기)
 - [x] 선생님이 학생의 학습 상태를 조회할 수 있는 페이지 (학생 기록)
 - [ ] 선생님으로 가입 (필요해지면)
-- [ ] 미디 입력 인식 구현
+- [x] 미디 입력 인식 구현 (랜덤 코드 연습 — 컴퓨터의 Chrome·Edge, MIDI 입력 모드에서는 88건반)
 - [ ] 건반(&악보)을 보고 코드 맞추기
 - [ ] BPM 설정 후 랜덤 코드가 자동으로 넘어가는 '랜덤 코드 초견' 페이지 만들기 (완전 무작위 순서 / 조표 설정 기능)
 - [ ] 보이스리딩 학습 페이지
@@ -152,7 +154,7 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 
 ## 사용한 자료
 
-- 피아노 소리: [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) — Alexander Holm, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 14개 음만 골라 mp3로 사용(Tone.js가 배포하는 변환본)
+- 피아노 소리: [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) — Alexander Holm, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 단3도마다 30개 음(A0~C8)을 mp3로 사용(Tone.js가 배포하는 변환본)
 
 ## 문의
 

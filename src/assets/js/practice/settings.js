@@ -9,6 +9,7 @@
 //   adv          [심화] 묶음 펼침
 //   labels, sound, timerShow   건반 음이름 표시, 소리, 지난 시간 표시
 //   kbd, kbdTouched            키보드로 건반 입력(기기별 — 계정에 안 올림), 사용자가 직접 바꿨는지
+//   midi                       MIDI 입력 모드 — 88건반 표시(기기별 — 계정에 안 올림, 2026-11-09)
 import { Engine } from "../core/engine.js";
 import { Account } from "../account/account.js";
 import { t, applyI18n } from "../i18n/index.js";
@@ -29,7 +30,7 @@ export const DEFAULTS = {
     add9: true, madd9: true,
   },
   optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
-  labels: false, sound: true, adv: false, kbd: IS_PC, kbdTouched: false, timerShow: true,
+  labels: false, sound: true, adv: false, kbd: IS_PC, kbdTouched: false, midi: false, timerShow: true,
 };
 
 /** 지금 출제 설정. 다른 파일이 이 객체를 계속 참조하므로 새 객체로 바꾸지 말고 replaceSettings()로 내용만 바꿀 것 */
@@ -45,9 +46,9 @@ export function migrate(o) {
   return o;
 }
 
-/** S의 내용을 통째로 바꿈 (기본값 + 새 값). 계정 설정을 받을 때 씀 — 기기별 설정(kbd)은 그대로 둠 */
+/** S의 내용을 통째로 바꿈 (기본값 + 새 값). 계정 설정을 받을 때 씀 — 기기별 설정(kbd, midi)은 그대로 둠 */
 export function replaceSettings(remote) {
-  const keep = { kbd: S.kbd, kbdTouched: S.kbdTouched };
+  const keep = { kbd: S.kbd, kbdTouched: S.kbdTouched, midi: S.midi };
   for (const k of Object.keys(S)) delete S[k];
   Object.assign(S, structuredClone(DEFAULTS), migrate({ ...remote }), keep);
   saveLocal();
