@@ -55,7 +55,7 @@
       return null;
     },
     practice_summary({ p_user, p_range, p_today, p_from, p_to, p_mode }) {
-      const M = p_mode || "play", inM = r => (r.mode || "play") === M;
+      const M = p_mode || "play", inM = r => M === "all" || (r.mode || "play") === M;   // "all" = 두 연습 합산 (2026-11-09)
       const t = new Date(p_today + "T00:00:00Z");
       const since = p_range === "custom" ? new Date(p_from + "T00:00:00Z") : p_range === "7d" ? new Date(t - 6 * 864e5) : p_range === "30d" ? new Date(t - 29 * 864e5) : new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() - 11, 1));
       const s0 = since.toISOString().slice(0, 10), until = p_range === "custom" ? p_to : p_today;
@@ -65,7 +65,7 @@
       const group = (key) => { const m = new Map(); for (const r of rows) for (const k of [].concat(key(r))) { const g = m.get(k) || { n: 0, ok: 0, sum: 0, t: 0 }; g.n++; g.ok += r.first_try ? 1 : 0; if (r.duration_ms != null) { g.sum += r.duration_ms; g.t++; } g.ms = g.t ? Math.round(g.sum / g.t) : null; m.set(k, g); } return m; };
       const tens = r => { const imp = { "7alt": ["alt"], M9: ["9"], m9: ["9"], dom9: ["9"], M13: ["13"], dom13: ["13"], m11: ["11"] }[r.quality] || []; const m = r.symbol.match(/\(([^)]*)\)$/); return imp.concat(m ? m[1].split(",").filter(x => !(r.quality === "m7b5" && x === "♭5")) : []); };
       const timed = db.practice_log.filter(r => inM(r) && r.user_id === p_user && r.duration_ms != null);
-      const st = M === "play" ? db.practice_stats.find(x => x.user_id === p_user) : (n => n ? { total: n, first_correct: rows.filter(r => r.first_try).length, streak: 1, best_streak: 2 } : null)(db.practice_log.filter(r => inM(r) && r.user_id === p_user).length);
+      const st = M === "play" ? db.practice_stats.find(x => x.user_id === p_user) : M === "all" ? (() => { const l = db.practice_log.filter(r => r.user_id === p_user); let run = 0, best = 0; for (const r of l) { run = r.first_try ? run + 1 : 0; best = Math.max(best, run); } return l.length ? { total: l.length, first_correct: l.filter(r => r.first_try).length, streak: run, best_streak: best } : null; })() : (n => n ? { total: n, first_correct: rows.filter(r => r.first_try).length, streak: 1, best_streak: 2 } : null)(db.practice_log.filter(r => inM(r) && r.user_id === p_user).length);
       return {
         since: s0, firstDay: all[0] || null, practiceDays: [...new Set(all)],
         totals: st ? { total: st.total, first: st.first_correct, streak: st.streak, best: st.best_streak } : null,
@@ -74,23 +74,23 @@
         byQuality: [...group(r => r.quality)].map(([q, g]) => ({ q, ...g })),
         byRoot: [...group(r => r.symbol.match(/^[A-G][♯♭]?/)[0])].map(([r, g]) => ({ r, ...g })),
         byDay: [...group(r => monthly ? r.day.slice(0, 8) + "01" : r.day)].map(([d, g]) => ({ d, ...g })).sort((a, b) => a.d < b.d ? -1 : 1),
-        review: db.review_queue.filter(x => x.user_id === p_user && (x.mode || "play") === M).map(x => ({ symbol: x.symbol, q: x.quality, hits: x.hits })),
+        review: db.review_queue.filter(x => x.user_id === p_user && (M === "all" || (x.mode || "play") === M)).map(x => ({ symbol: x.symbol, q: x.quality, hits: x.hits, mode: x.mode || "play" })),
       };
     },
     student_overview({ p_user, p_today, p_mode }) {
       const M = p_mode || "play";
-      const rows = db.practice_log.filter(r => r.user_id === p_user && (r.mode || "play") === M);
+      const rows = db.practice_log.filter(r => r.user_id === p_user && (M === "all" || (r.mode || "play") === M));
       const g = key => { const m = new Map(); for (const r of rows) { const k = key(r); const x = m.get(k) || { n: 0, ok: 0 }; x.n++; x.ok += r.first_try ? 1 : 0; m.set(k, x); } return m; };
       const wk = new Map(); for (const r of rows) if (r.day > day(7)) wk.set(r.day, (wk.get(r.day) || 0) + 1);
       const pr = db.profiles.find(p => p.id === p_user);
       return { nickname: pr.nickname, full_name: pr.full_name, sessions: 4, abandoned: 2, joined: "2026-03-02T09:00:00Z", byQuality: [...g(r => r.quality)].map(([q, x]) => ({ q, ...x })),
         byRoot: [...g(r => r.symbol.match(/^[A-G][♯♭]?/)[0])].map(([r, x]) => ({ r, ...x })),
         days: new Set(rows.map(r => r.day)).size, lastDay: rows.length ? rows[rows.length - 1].day : null,
-        week: [...wk].map(([d, n]) => ({ d, n })), recent: rows.slice(-50).reverse().map(r => ({ d: r.day, symbol: r.symbol, q: r.quality, first: r.first_try, review: !!r.review, ms: r.duration_ms ?? null, hint: !!r.hinted })), byTension: [] };
+        week: [...wk].map(([d, n]) => ({ d, n })), recent: rows.slice(-50).reverse().map(r => ({ d: r.day, symbol: r.symbol, q: r.quality, first: r.first_try, review: !!r.review, ms: r.duration_ms ?? null, hint: !!r.hinted, mode: r.mode || "play" })), byTension: [] };
     },
     student_list({ p_mode } = {}) {
       const M = p_mode || "play";
-      return db.profiles.filter(p => p.role === "student").map(p => { const mine = db.practice_log.filter(l => l.user_id === p.id && (l.mode || "play") === M); const s = M === "play" ? (db.practice_stats.find(x => x.user_id === p.id) || {}) : { total: mine.length, first_correct: mine.filter(l => l.first_try).length }; const days = mine.map(l => l.day).sort(); return { id: p.id, nickname: p.nickname, full_name: p.full_name, total: s.total || 0, first_correct: s.first_correct || 0, last_day: days[days.length - 1] || null }; });
+      return db.profiles.filter(p => p.role === "student").map(p => { const mine = db.practice_log.filter(l => l.user_id === p.id && (M === "all" || (l.mode || "play") === M)); const s = M === "play" ? (db.practice_stats.find(x => x.user_id === p.id) || {}) : { total: mine.length, first_correct: mine.filter(l => l.first_try).length }; const days = mine.map(l => l.day).sort(); return { id: p.id, nickname: p.nickname, full_name: p.full_name, total: s.total || 0, first_correct: s.first_correct || 0, last_day: days[days.length - 1] || null }; });
     },
     start_timer_session({ p_settings }) { window.__sessions = (window.__sessions || []).concat([{ id: (window.__sessions || []).length + 1, settings: p_settings, ended: false }]); return window.__sessions.length; },
     end_timer_session({ p_session, p_abandoned }) { const x = window.__sessions[p_session - 1]; x.ended = true; x.abandoned = (x.abandoned || 0) + (p_abandoned || 0); return null; },

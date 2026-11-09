@@ -691,9 +691,25 @@ $$;
 -- the same rule as src/stats.js). firstDay = the first practice day, the earliest date the calendar allows;
 -- practiceDays = every date with practice (all time), marked with a dot on that calendar.
 -- A student may ask only for their own; the admin for anyone.
+-- 전체 통계 (2026-11-09): totals over both practices. total / first add up; the streaks are counted again from the log in
+-- answer order (practice_log.id), because two separate per-practice streaks can't simply be added
+create or replace function public.all_totals(p_user uuid)
+returns jsonb language sql stable security definer set search_path = '' as $$
+  with seq as (
+    select first_try, count(*) filter (where not first_try) over (order by id) as g   -- g = misses so far = which run of right answers
+    from public.practice_log where user_id = p_user),
+  runs as (select g, count(*) filter (where first_try) as len from seq group by g)
+  select case when exists (select 1 from public.practice_stats where user_id = p_user) then jsonb_build_object(
+    'total', (select sum(total) from public.practice_stats where user_id = p_user),
+    'first', (select sum(first_correct) from public.practice_stats where user_id = p_user),
+    'streak', coalesce((select len from runs order by g desc limit 1), 0),
+    'best', coalesce((select max(len) from runs), 0)) end;
+$$;
+revoke execute on function public.all_totals(uuid) from public, anon, authenticated;   -- only practice_summary calls it
+
 drop function if exists public.practice_summary(uuid, text, date);   -- before the custom range was added
 drop function if exists public.practice_summary(uuid, text, date, date, date);   -- before p_mode (2026-11-08)
--- p_mode: which practice ('play' 랜덤 코드 연습 / 'name' 코드 추론하기) — the two are shown on separate tabs
+-- p_mode: which practice ('play' 랜덤 코드 연습 / 'name' 코드 추론하기 / 'all' 둘을 합친 전체 통계 — 2026-11-09) — shown on separate tabs
 create or replace function public.practice_summary(p_user uuid, p_range text, p_today date,
   p_from date default null, p_to date default null, p_mode text default 'play')
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
@@ -705,6 +721,9 @@ declare
 begin
   if auth.uid() is null or (p_user <> auth.uid() and not public.is_admin()) then
     raise exception 'not allowed';
+  end if;
+  if coalesce(p_mode, '') not in ('play', 'name', 'all') then
+    raise exception 'bad mode';
   end if;
   if today is null or today not between current_date - 1 and current_date + 1 then
     today := current_date;
@@ -721,33 +740,34 @@ begin
   return jsonb_build_object(
     'since', since,
     'until', until,
-    'firstDay', (select min(day) from public.practice_log where user_id = p_user and mode = p_mode),
+    'firstDay', (select min(day) from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
     'practiceDays', coalesce((select jsonb_agg(d order by d) from (
-      select distinct day as d from public.practice_log where user_id = p_user and mode = p_mode) pd), '[]'::jsonb),
-    'totals', (select jsonb_build_object('total', total, 'first', first_correct, 'streak', streak, 'best', best_streak)
-      from public.practice_stats where user_id = p_user and mode = p_mode),
+      select distinct day as d from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode)) pd), '[]'::jsonb),
+    'totals', case when p_mode = 'all' then public.all_totals(p_user) else (select jsonb_build_object('total', total, 'first', first_correct, 'streak', streak, 'best', best_streak)
+      from public.practice_stats where user_id = p_user and mode = p_mode) end,
     -- average time per question (all time), over the questions that have a time
     -- review (틀린 문제 다시 풀기) times are kept but left out of every average: those few questions repeat
     'time', (select jsonb_build_object('ms', round(avg(duration_ms) filter (where not review)), 't', count(duration_ms) filter (where not review))
-      from public.practice_log where user_id = p_user and mode = p_mode),
+      from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
     -- per row: n questions, ok right first try, ms average time, t questions with a time
     'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok, 'ms', ms, 't', tc)) from (
       select quality, count(*) as n, count(*) filter (where first_try) as ok, round(avg(duration_ms) filter (where not review)) as ms, count(duration_ms) filter (where not review) as tc
-      from public.practice_log where user_id = p_user and mode = p_mode and day between since and until group by quality) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode) and day between since and until group by quality) x), '[]'::jsonb),
     'byRoot', coalesce((select jsonb_agg(jsonb_build_object('r', r, 'n', n, 'ok', ok, 'ms', ms, 't', tc)) from (
       select public.chord_root(symbol) as r, count(*) as n, count(*) filter (where first_try) as ok, round(avg(duration_ms) filter (where not review)) as ms, count(duration_ms) filter (where not review) as tc
-      from public.practice_log where user_id = p_user and mode = p_mode and day between since and until group by 1) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode) and day between since and until group by 1) x), '[]'::jsonb),
     -- per chord type and tension (M7's 9 apart from m7's 9); src/stats.js folds M9 / 13 … into their seventh chord
     'byTension', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'x', x, 'n', n, 'ok', ok, 'ms', ms, 't', tc)) from (
       select quality, x, count(*) as n, count(*) filter (where first_try) as ok, round(avg(duration_ms) filter (where not review)) as ms, count(duration_ms) filter (where not review) as tc
       from public.practice_log, unnest(public.chord_tensions(quality, symbol)) as x
-      where user_id = p_user and mode = p_mode and day between since and until group by quality, x) x), '[]'::jsonb),
+      where user_id = p_user and (p_mode = 'all' or mode = p_mode) and day between since and until group by quality, x) x), '[]'::jsonb),
     'byDay', coalesce((select jsonb_agg(jsonb_build_object('d', d, 'n', n, 'ok', ok) order by d) from (
       select case when monthly then date_trunc('month', day)::date else day end as d,
         count(*) as n, count(*) filter (where first_try) as ok
-      from public.practice_log where user_id = p_user and mode = p_mode and day between since and until group by 1) y), '[]'::jsonb),
-    'review', coalesce((select jsonb_agg(jsonb_build_object('symbol', symbol, 'q', quality, 'hits', hits) order by added_at)
-      from public.review_queue where user_id = p_user and mode = p_mode), '[]'::jsonb)
+      from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode) and day between since and until group by 1) y), '[]'::jsonb),
+    -- mode: which practice the wrong question belongs to (the 전체 통계 tab lists the two practices apart)
+    'review', coalesce((select jsonb_agg(jsonb_build_object('symbol', symbol, 'q', quality, 'hits', hits, 'mode', mode) order by added_at)
+      from public.review_queue where user_id = p_user and (p_mode = 'all' or mode = p_mode)), '[]'::jsonb)
   );
 end;
 $$;
@@ -765,6 +785,9 @@ begin
   if not public.is_admin() then
     raise exception 'not allowed';
   end if;
+  if coalesce(p_mode, '') not in ('play', 'name', 'all') then
+    raise exception 'bad mode';
+  end if;
   if today is null or today not between current_date - 1 and current_date + 1 then
     today := current_date;
   end if;
@@ -772,26 +795,26 @@ begin
     'nickname', (select nickname from public.profiles where id = p_user),
     'full_name', (select full_name from public.profiles where id = p_user),
     'joined', (select created_at from public.profiles where id = p_user),
-    'sessions', (select count(*) from public.timer_sessions where user_id = p_user and mode = p_mode),
-    'abandoned', (select coalesce(sum(abandoned), 0) from public.timer_sessions where user_id = p_user and mode = p_mode),
+    'sessions', (select count(*) from public.timer_sessions where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
+    'abandoned', (select coalesce(sum(abandoned), 0) from public.timer_sessions where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
     'byQuality', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'n', n, 'ok', ok)) from (
       select quality, count(*) as n, count(*) filter (where first_try) as ok
-      from public.practice_log where user_id = p_user and mode = p_mode group by quality) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode) group by quality) x), '[]'::jsonb),
     'byRoot', coalesce((select jsonb_agg(jsonb_build_object('r', r, 'n', n, 'ok', ok)) from (
       select public.chord_root(symbol) as r, count(*) as n, count(*) filter (where first_try) as ok
-      from public.practice_log where user_id = p_user and mode = p_mode group by 1) x), '[]'::jsonb),
+      from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode) group by 1) x), '[]'::jsonb),
     'byTension', coalesce((select jsonb_agg(jsonb_build_object('q', quality, 'x', x, 'n', n, 'ok', ok)) from (
       select quality, x, count(*) as n, count(*) filter (where first_try) as ok
       from public.practice_log, unnest(public.chord_tensions(quality, symbol)) as x
-      where user_id = p_user and mode = p_mode group by quality, x) x), '[]'::jsonb),
-    'days', (select count(distinct day) from public.practice_log where user_id = p_user and mode = p_mode),
-    'lastDay', (select max(day) from public.practice_log where user_id = p_user and mode = p_mode),
+      where user_id = p_user and (p_mode = 'all' or mode = p_mode) group by quality, x) x), '[]'::jsonb),
+    'days', (select count(distinct day) from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
+    'lastDay', (select max(day) from public.practice_log where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
     'week', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'n', n) order by day) from (
       select day, count(*) as n from public.practice_log
-      where user_id = p_user and mode = p_mode and day between today - 6 and today group by day) w), '[]'::jsonb),
-    'recent', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'first', first_try, 'review', review, 'ms', duration_ms, 'hint', hinted) order by id desc) from (
-      select id, day, symbol, quality, first_try, review, duration_ms, hinted from public.practice_log
-      where user_id = p_user and mode = p_mode order by id desc limit 50) r), '[]'::jsonb)
+      where user_id = p_user and (p_mode = 'all' or mode = p_mode) and day between today - 6 and today group by day) w), '[]'::jsonb),
+    'recent', coalesce((select jsonb_agg(jsonb_build_object('d', day, 'symbol', symbol, 'q', quality, 'first', first_try, 'review', review, 'ms', duration_ms, 'hint', hinted, 'mode', mode) order by id desc) from (
+      select id, day, symbol, quality, first_try, review, duration_ms, hinted, mode from public.practice_log
+      where user_id = p_user and (p_mode = 'all' or mode = p_mode) order by id desc limit 50) r), '[]'::jsonb)
   );
 end;
 $$;
@@ -799,14 +822,17 @@ revoke execute on function public.student_overview(uuid, date, text) from public
 grant execute on function public.student_overview(uuid, date, text) to authenticated;
 
 -- the admin's student list (empty for everyone else)
--- p_mode: which practice's numbers ('play' / 'name', 2026-11-08)
+-- p_mode: which practice's numbers ('play' / 'name', 2026-11-08; 'all' both added up, 2026-11-09)
 drop function if exists public.student_list();   -- before p_mode
 create or replace function public.student_list(p_mode text default 'play')
 returns table (id uuid, nickname text, full_name text, total integer, first_correct integer, last_day date)
 language sql stable security definer set search_path = '' as $$
-  select p.id, p.nickname, p.full_name, coalesce(s.total, 0), coalesce(s.first_correct, 0),
-    (select max(l.day) from public.practice_log l where l.user_id = p.id and l.mode = p_mode)
-  from public.profiles p left join public.practice_stats s on s.user_id = p.id and s.mode = p_mode
+  select p.id, p.nickname, p.full_name, coalesce(s.total, 0)::integer, coalesce(s.first_correct, 0)::integer,
+    (select max(l.day) from public.practice_log l where l.user_id = p.id and (p_mode = 'all' or l.mode = p_mode))
+  from public.profiles p left join (
+    -- 'all': the two practices added up (2026-11-09)
+    select x.user_id, sum(x.total) as total, sum(x.first_correct) as first_correct from public.practice_stats x
+    where p_mode = 'all' or x.mode = p_mode group by x.user_id) s on s.user_id = p.id
   where public.is_admin() and p.role = 'student' and p.deleted_at is null
   order by p.nickname;
 $$;

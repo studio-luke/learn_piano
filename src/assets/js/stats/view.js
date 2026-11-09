@@ -4,7 +4,7 @@
 import { Engine } from "../core/engine.js";
 import { t, locale } from "../i18n/index.js";
 import { esc, chordHTML } from "../common/dom.js";
-import { localDay, parseDay, addDays, monthAdd, period, buckets, qualityRows, rootRows, tensionRows, timeText, pct } from "./data.js";
+import { localDay, parseDay, addDays, monthAdd, period, buckets, qualityRows, rootRows, tensionRows, timeText, pct, sortRows } from "./data.js";
 
 /** "2026-11-05" → 현재 언어의 날짜 글자 (opts: toLocaleDateString 옵션) */
 export const dateText = (d, opts) => parseDay(d).toLocaleDateString(locale(), { timeZone: "UTC", ...opts });
@@ -57,11 +57,40 @@ export function chartHTML(data) {
   return `<div class="st-chart-wrap"><span class="st-max">${max}</span><div class="st-chart${dense}">${bars}</div><div class="st-x${dense}">${xs}</div></div>${legend}`;
 }
 
-// 결과 표 하나 (코드 종류 / 베이스 / 텐션). 평균 시간이 없는 줄은 빈칸
-function tableHTML(head, rows, name) {
+// ---------- 표 정렬 상태 (2026-11-09 사용자 요청, 계산은 data.js sortRows) ----------
+// 표마다(type·root·tension) 따로 기억. 페이지에 있는 동안 기간·탭을 바꿔도 유지, 새로고침하면 기본으로.
+// 같은 열을 누를 때마다: 숫자 열은 내림차순 → 오름차순 → 기본(정답률 낮은 순),
+// 이름 열은 원래 순서(음악 순서) → 거꾸로 → 기본. 다른 열을 누르면 그 열의 첫 단계부터.
+const sorts = {};   // 표 id → { key, dir } (없으면 기본)
+function nextSort(cur, key) {
+  const first = key === "name" ? "asc" : "desc";
+  if (!cur || cur.key !== key) return { key, dir: first };
+  if (cur.dir === first) return { key, dir: first === "asc" ? "desc" : "asc" };
+  return null;
+}
+/** 표 머리를 눌렀으면 정렬을 바꾸고 true (페이지가 다시 그림) */
+export function sortClicked(e) {
+  const b = e.target.closest("[data-sort]");
+  if (!b) return false;
+  const [id, key] = b.dataset.sort.split(":");
+  const s = nextSort(sorts[id], key);
+  if (s) sorts[id] = s; else delete sorts[id];
+  return true;
+}
+
+// 결과 표 하나 (코드 종류 / 베이스 / 텐션). 평균 시간이 없는 줄은 빈칸. id = 정렬 상태를 기억할 이름
+function tableHTML(id, head, rows, name) {
   if (!rows.length) return "";
+  const s = sorts[id];
+  rows = sortRows(rows, s);
+  // 열 머리 = 정렬 버튼. 지금 정렬한 열에 ▼(내림)·▲(오름), aria-sort로 화면 낭독기에도 알림
+  const th = (key, label, cls = "") => {
+    const on = s && s.key === key;
+    const aria = on ? ` aria-sort="${s.dir === "asc" ? "ascending" : "descending"}"` : "";
+    return `<th${cls ? ` class="${cls}"` : ""}${aria}><button type="button" class="st-sort${on ? " on" : ""}" data-sort="${id}:${key}">${esc(label)}<i aria-hidden="true">${on ? (s.dir === "asc" ? "▲" : "▼") : ""}</i></button></th>`;
+  };
   return `<div class="st-scroll-x"><table class="st-table">
-    <thead><tr><th>${esc(head)}</th><th class="num">${esc(t("colCount"))}</th><th class="num">${esc(t("sCorrect"))}</th><th class="num">${esc(t("sWrong"))}</th><th>${esc(t("sRate"))}</th><th class="num">${esc(t("colTime"))}</th></tr></thead>
+    <thead><tr>${th("name", head)}${th("n", t("colCount"), "num")}${th("ok", t("sCorrect"), "num")}${th("no", t("sWrong"), "num")}${th("rate", t("sRate"))}${th("time", t("colTime"), "num")}</tr></thead>
     <tbody>${rows.map(r => `<tr><td class="st-type">${chordHTML(name(r))}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num">${r.n - r.ok}</td>
       <td><span class="st-rate"><i style="width:${pct(r.ok, r.n)}%"></i></span><span class="st-rate-n">${pct(r.ok, r.n)}%</span></td>
       <td class="num">${r.t ? esc(sec(r.ms)) : ""}</td></tr>`).join("")}</tbody></table></div>`;
@@ -74,39 +103,54 @@ export const helpHTML = (labelKey, textKey) =>
 /** 세 가지 표: 코드 종류(텐션 제외), 베이스, 텐션 (선택한 기간) */
 export function tablesHTML(data) {
   const parts = [
-    ["byTypeH", tableHTML(t("colType"), qualityRows(data.byQuality, Engine.TYPES), r => typeName(r.q)), `<small>${esc(t("byTypeNote"))}</small>`],
-    ["byRootH", tableHTML(t("colRoot"), rootRows(data.byRoot), r => rootName(r.pc)), ""],
+    ["byTypeH", tableHTML("type", t("colType"), qualityRows(data.byQuality, Engine.TYPES), r => typeName(r.q)), `<small>${esc(t("byTypeNote"))}</small>`],
+    ["byRootH", tableHTML("root", t("colRoot"), rootRows(data.byRoot), r => rootName(r.pc)), ""],
     // 텐션을 어떻게 세는지는 ? 버튼 설명으로
-    ["byTensionH", tableHTML(t("colTension"), tensionRows(data.byTension, Engine.TYPES), tensionName), helpHTML("tensionHelpLabel", "byTensionNote")],
+    ["byTensionH", tableHTML("tension", t("colTension"), tensionRows(data.byTension, Engine.TYPES), tensionName), helpHTML("tensionHelpLabel", "byTensionNote")],
   ].filter(p => p[1]);
   return parts.map(([h, table, extra]) => `<div class="st-part"><h4>${esc(t(h))} ${extra}</h4>${table}</div>`).join("");
 }
 
-/** 틀린 문제 목록 (●는 다시 풀기에서 처음 채점에 맞힌 횟수, 2번이면 목록에서 빠짐). withButton: 다시 풀기 버튼 */
-// ---------- 연습 탭 [랜덤 코드 연습 | 코드 추론하기] (4-3, 2026-11-08) ----------
-// 마이페이지·학생 목록·학생 기록이 함께 써요. 고른 탭은 주소 ?mode=name에 남겨서 새로고침·뒤로 가기·링크 공유 때 그대로.
-// 메뉴로 들어오면(주소에 mode가 없으면) 랜덤 코드 연습부터. "play"·"name"은 DB practice_log.mode와 같은 값
-export const MODES = ["play", "name"];
+// ---------- 연습 탭 [전체 통계 | 랜덤 코드 연습 | 코드 추론하기] (4-3 2026-11-08, 전체 통계 2026-11-09) ----------
+// 마이페이지·학생 목록·학생 기록이 함께 써요. 고른 탭은 주소 ?mode=play / ?mode=name에 남겨서 새로고침·뒤로 가기·링크 공유 때 그대로.
+// 메뉴로 들어오면(주소에 mode가 없으면) 전체 통계부터. "play"·"name"은 DB practice_log.mode와 같은 값, "all"은 둘을 합친 것
+export const MODES = ["all", "play", "name"];
+/** 연습 이름 (탭 글자·틀린 문제 묶음 제목) */
+export const modeName = m => t(m === "all" ? "statsAll" : m === "name" ? "navNameTrainer" : "navTrainer");
 /** 주소의 ?mode → 지금 고른 연습 */
-export const currentMode = () => (new URLSearchParams(location.search).get("mode") === "name" ? "name" : "play");
+export const currentMode = () => { const m = new URLSearchParams(location.search).get("mode"); return m === "play" || m === "name" ? m : "all"; };
 /** 고른 연습을 주소에 남김 (기록을 새로 쌓지 않고 지금 주소만 바꿈) */
 export function setModeInUrl(mode) {
   const u = new URL(location.href);
-  if (mode === "name") u.searchParams.set("mode", "name"); else u.searchParams.delete("mode");
+  if (mode === "all") u.searchParams.delete("mode"); else u.searchParams.set("mode", mode);
   history.replaceState(history.state, "", u.pathname + u.search + u.hash);
 }
 /** 탭 버튼 줄 */
 export const modeTabsHTML = mode => `<div class="st-modes" role="tablist" aria-label="${esc(t("modeTabsAria"))}">${MODES.map(m =>
-  `<button type="button" role="tab" class="st-mode" data-mode="${m}" aria-selected="${m === mode}">${esc(t(m === "name" ? "navNameTrainer" : "navTrainer"))}</button>`).join("")}</div>`;
-/** 탭을 눌렀으면 그 연습("play" | "name"), 아니면 null */
+  `<button type="button" role="tab" class="st-mode" data-mode="${m}" aria-selected="${m === mode}">${esc(modeName(m))}</button>`).join("")}</div>`;
+/** 탭을 눌렀으면 그 연습("all" | "play" | "name"), 아니면 null */
 export const modeClicked = e => { const b = e.target.closest(".st-mode"); return b ? b.dataset.mode : null; };
 
-export function reviewHTML(data, withButton) {
+/**
+ * 틀린 문제 카드 (●는 다시 풀기에서 처음 채점에 맞힌 횟수, 2번이면 목록에서 빠짐).
+ * 전체 통계 탭(mode "all")은 연습별로 나눠 보여주고 연습마다 [다시 풀기] (2026-11-09 사용자 결정).
+ * withButton: [다시 풀기] 버튼 (마이페이지만) — 버튼의 data-review-mode = 이동할 연습
+ */
+export function reviewHTML(data, withButton, mode) {
   const rv = data.review || [];
-  const chips = rv.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${chordHTML(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");
-  return `<section class="st-card"><div class="st-head"><h3>${esc(t("reviewH"))} <span class="st-count">${rv.length}</span></h3>
-    ${withButton && rv.length ? `<button class="btn primary" type="button" id="statsReview">${esc(t("reviewStart"))}</button>` : ""}</div>
-    ${rv.length ? `<p class="note">${esc(t("reviewNote"))}</p><div class="st-chips">${chips}</div>` : `<p class="st-empty">${esc(t("reviewEmpty"))}</p>`}</section>`;
+  const chips = list => list.map(r => `<span class="st-chip" title="${esc(typeName(r.q))}">${chordHTML(r.symbol)}<i aria-hidden="true">${"●".repeat(r.hits)}${"○".repeat(Math.max(0, 2 - r.hits))}</i></span>`).join("");
+  const button = m => `<button class="btn primary" type="button" data-review-mode="${m}">${esc(t("reviewStart"))}</button>`;
+  let inner;
+  if (!rv.length) inner = `<p class="st-empty">${esc(t("reviewEmpty"))}</p>`;
+  else if (mode === "all") {
+    inner = `<p class="note">${esc(t("reviewNote"))}</p>` + ["play", "name"].map(m => {
+      const list = rv.filter(r => (r.mode || "play") === m);
+      if (!list.length) return "";
+      return `<div class="st-review-group"><div class="st-head"><h4>${esc(modeName(m))} <span class="st-count">${list.length}</span></h4>${withButton ? button(m) : ""}</div><div class="st-chips">${chips(list)}</div></div>`;
+    }).join("");
+  } else inner = `<p class="note">${esc(t("reviewNote"))}</p><div class="st-chips">${chips(rv)}</div>`;
+  const headBtn = withButton && rv.length && mode !== "all" ? button(mode) : "";
+  return `<section class="st-card"><div class="st-head"><h3>${esc(t("reviewH"))} <span class="st-count">${rv.length}</span></h3>${headBtn}</div>${inner}</section>`;
 }
 
 /**

@@ -170,6 +170,18 @@ test("db: two practices kept apart by mode (play / name)", async () => {
   r = await as(A, "select public.student_overview($1, current_date, 'name') o", [S1]); const o = r.rows[0].o;
   ok(o.recent.length === 6 && o.recent.some(x => x.hint === true) && o.sessions === 1, "선생님 화면(코드 추론): 최근 문제에 힌트 표시, 세션 수 " + o.sessions);
   r = await as(A, "select * from public.student_list('name')"); ok(r.rows[0].total === 6, "학생 목록(코드 추론)");
+  // 전체 통계 (2026-11-09): 두 연습을 합침, 연속은 기록 순서대로 다시 셈, 틀린 문제·최근 문제에 연습 구분
+  r = await as(S1, "select public.practice_summary($1, '7d', current_date, null, null, 'all') s", [S1]); const al = r.rows[0].s;
+  r = await db.query("select first_try from public.practice_log where user_id=$1 order by id", [S1]);
+  let run = 0, best = 0; for (const x of r.rows) { run = x.first_try ? run + 1 : 0; best = Math.max(best, run); }
+  const firsts = r.rows.filter(x => x.first_try).length;
+  ok(al.totals.total === 10 && al.totals.first === firsts && al.totals.streak === run && al.totals.best === best, "전체 통계 합계·연속 " + JSON.stringify(al.totals));
+  ok(al.byQuality.reduce((a, x) => a + x.n, 0) === 10 && al.review.length === 1 && al.review[0].mode === "play", "전체 통계 표·틀린 문제(연습 구분)");
+  r = await as(A, "select public.student_overview($1, current_date, 'all') o", [S1]); const oa = r.rows[0].o;
+  ok(oa.recent.length === 10 && oa.recent.some(x => x.mode === "play") && oa.recent.some(x => x.mode === "name") && oa.sessions === 2, "선생님 화면(전체) " + oa.sessions);
+  r = await as(A, "select * from public.student_list('all')"); ok(r.rows[0].total === 10 && r.rows[0].first_correct === firsts, "학생 목록(전체) " + JSON.stringify(r.rows[0]));
+  e = null; try { await as(S1, "select public.practice_summary($1, '7d', current_date, null, null, 'x')", [S1]); } catch (x) { e = x; } ok(e, "모르는 연습 구분은 통계에서도 거절");
+  e = null; try { await as(S1, "select public.all_totals($1)", [S1]); } catch (x) { e = x; } ok(e, "all_totals는 브라우저에서 직접 못 부름");
   r = await as(S1, "select mode, total from public.practice_stats where user_id=$1 and mode='name'", [S1]); ok(r.rows.length === 1, "학생은 자기 누적 숫자를 연습별로 읽음(RLS)");
   // name_settings는 본인만 고칠 수 있음
   await as(S1, "update public.profiles set name_settings = '{\"optInv\":true}' where id = $1", [S1]);

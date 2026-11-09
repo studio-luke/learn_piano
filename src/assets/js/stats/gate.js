@@ -5,6 +5,7 @@ import { Account } from "../account/account.js";
 import { open as openAuth } from "../account/auth-dialog.js";
 import { t } from "../i18n/index.js";
 import { esc } from "../common/dom.js";
+import { pageUrl, ROUTES } from "../common/sitemap.js";
 
 /**
  * 지금 이 페이지를 보여줘도 되는지.
@@ -26,4 +27,16 @@ export function gateHTML(need) {
 /** 안내 상자의 [로그인] 버튼 */
 export function wireGate(root) {
   root.addEventListener("click", e => { if (e.target.closest("[data-open-login]")) openAuth("login"); });
+}
+
+/**
+ * 로그아웃하면 홈으로 이동 (마이페이지·선생님 페이지 — 로그인해야 볼 수 있는 화면, 2026-11-09 사용자 요청).
+ * 로그인 창이 열려 있으면 닫힐 때 이동: 탈퇴 신청 뒤의 "○일에 삭제돼요" 안내처럼 창에 남은 글을 읽을 수 있게.
+ */
+export function leaveOnSignOut() {
+  Account.on("signedOut", () => {
+    const go = () => { location.href = pageUrl(ROUTES.home); };
+    const dlg = document.getElementById("authDlg");
+    if (dlg && dlg.open) dlg.addEventListener("close", go, { once: true }); else go();
+  });
 }

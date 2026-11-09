@@ -161,3 +161,23 @@ test("stats: tensions per chord type (tension chords under their seventh), avera
   const unit = n => n + "s";
   assert.deepStrictEqual([Stats.timeText(null, unit), Stats.timeText(12340, unit), Stats.timeText(65000, unit), Stats.timeText(300000, unit)], ["", "12.3s", "1:05", "5:00"]);
 });
+
+test("stats: table sorting — default rate low first, column sorts, no-time rows last (2026-11-09)", () => {
+  const rows = [
+    { id: "a", n: 10, ok: 9, t: 2, ms: 3000 },
+    { id: "b", n: 4, ok: 1, t: 0, ms: null },
+    { id: "c", n: 8, ok: 2, t: 3, ms: 9000 },
+    { id: "d", n: 2, ok: 1, t: 1, ms: 1000 },
+  ];
+  const ids = s => Stats.sortRows(rows, s).map(r => r.id).join("");
+  assert.strictEqual(ids(null), "cbda", "기본: 정답률 낮은 순, 같으면(b·c 25%) 많이 푼 것 먼저");
+  assert.strictEqual(ids({ key: "n", dir: "desc" }), "acbd");
+  assert.strictEqual(ids({ key: "n", dir: "asc" }), "dbca");
+  assert.strictEqual(ids({ key: "no", dir: "desc" }), "cbda", "오답 많은 순, 같으면(a·d 1개) 기본 순서");
+  assert.strictEqual(ids({ key: "rate", dir: "desc" }), "adcb");
+  assert.strictEqual(ids({ key: "time", dir: "desc" }), "cadb", "시간 없는 줄은 맨 아래");
+  assert.strictEqual(ids({ key: "time", dir: "asc" }), "dacb", "오름차순이어도 시간 없는 줄은 맨 아래");
+  assert.strictEqual(ids({ key: "name", dir: "asc" }), "abcd");
+  assert.strictEqual(ids({ key: "name", dir: "desc" }), "dcba");
+  assert.strictEqual(rows.map(r => r.id).join(""), "abcd", "원래 배열은 그대로");
+});

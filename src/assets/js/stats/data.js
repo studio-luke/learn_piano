@@ -109,5 +109,33 @@ export function timeText(ms, unit) {
 export const weakest = (rows, n = 3) => rows.filter(r => r.n >= WEAK_MIN && r.ok < r.n)
   .sort((a, b) => a.ok / a.n - b.ok / b.n || b.n - a.n).slice(0, n);
 
+// ---------- 표 정렬 (2026-11-09 사용자 요청) ----------
+// 기본: 정답률 낮은 순(약한 것 먼저), 같으면 많이 푼 것 먼저, 그래도 같으면 원래 순서(음악 순서).
+// 열 머리를 누르면 그 열로 정렬 — 누르는 순서는 view.js nextSort. 평균 시간이 없는 줄은 어느 방향이든 맨 아래.
+/** 정렬할 수 있는 열: name(코드·베이스·텐션 이름 = 원래 순서), n(연습), ok(정답), no(오답), rate(정답률), time(평균 시간) */
+export const SORT_KEYS = ["name", "n", "ok", "no", "rate", "time"];
+const SORT_VAL = { n: r => r.n, ok: r => r.ok, no: r => r.n - r.ok, rate: r => (r.n ? r.ok / r.n : 0), time: r => (r.t ? r.ms : null) };
+
+/**
+ * 표의 줄 정렬 (원래 배열은 그대로 두고 새 배열).
+ * @param rows  qualityRows / rootRows / tensionRows의 결과 (이미 음악 순서)
+ * @param sort  { key, dir: "asc" | "desc" } 또는 null(기본 정렬)
+ */
+export function sortRows(rows, sort) {
+  const list = rows.map((r, i) => ({ r, i }));
+  const base = (a, b) => SORT_VAL.rate(a.r) - SORT_VAL.rate(b.r) || b.r.n - a.r.n || a.i - b.i;
+  let cmp = base;
+  if (sort && sort.key === "name") cmp = (a, b) => (sort.dir === "asc" ? a.i - b.i : b.i - a.i);
+  else if (sort && SORT_VAL[sort.key]) {
+    const v = SORT_VAL[sort.key], sign = sort.dir === "asc" ? 1 : -1;
+    cmp = (a, b) => {
+      const x = v(a.r), y = v(b.r);
+      if (x == null || y == null) return (x == null) - (y == null) || base(a, b);   // 값 없는 줄은 아래로
+      return (x - y) * sign || base(a, b);
+    };
+  }
+  return list.sort(cmp).map(x => x.r);
+}
+
 /** 퍼센트 (0으로 나누면 0) */
 export const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
