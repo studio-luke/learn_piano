@@ -8,7 +8,7 @@
 // (예전 schema에서 업그레이드하는 경우는 검사하지 않음 — 큰 변경 때는 그때의 예전 schema.sql로 따로 확인)
 import test from "node:test";
 import assert from "node:assert";
-import { bootDb, addUsers, asUser, A, S1, S2 } from "./db/harness.js";
+import { bootDb, addUsers, asUser, schemaSQL, A, S1, S2 } from "./db/harness.js";
 
 const ok = (cond, msg) => assert.ok(cond, msg);
 const spec = JSON.stringify({ l: 0, a: 0, type: "dom7", tens: [], alt: false, head: "7", items: [] });
@@ -264,4 +264,33 @@ test("db: member ID — random 8-character code per member, read-only, given to 
   await db.exec(schemaSQL());
   r = await db.query("select member_code from public.profiles");
   ok(r.rows.every(x => /^[2-9A-HJ-NP-Z]{8}$/.test(x.member_code)) && new Set(r.rows.map(x => x.member_code)).size === 3, "예전 회원에게 ID " + JSON.stringify(r.rows));
+});
+
+// 2026-11-10: add9·madd9 이름에 괄호 (Cadd9 → C(add9), Cmadd9 → Cm(add9)). 괄호는 텐션으로 세지 않고, 예전 기록은 schema.sql을 다시 실행하면 새 이름으로
+test("db: add9 names with parentheses — not counted as tensions, old records renamed", async () => {
+  const db = await bootDb();
+  await addUsers(db);
+  let r = await db.query("select public.chord_tensions('madd9', 'Cm(add9)') a, public.chord_tensions('add9', 'D♭(add9)') b, public.chord_tensions('madd9', 'E-(add9)') c");
+  ok(r.rows[0].a.length === 0 && r.rows[0].b.length === 0 && r.rows[0].c.length === 0, "(add9)은 텐션 아님 " + JSON.stringify(r.rows[0]));
+  r = await db.query(`select public.fits_settings('{"types": {"madd9": true}, "optC": false}'::jsonb, 'madd9', 'Cm(add9)') ok`);
+  ok(r.rows[0].ok === true, "텐션 옵션이 꺼진 타이머 세션에서도 Cm(add9) 시간 인정");
+
+  // 예전 이름의 기록 — S1은 같은 코드가 예전·새 이름 둘 다 틀린 문제 목록에 있음
+  const oldSpec = h => JSON.stringify({ l: 0, a: 0, type: "madd9", tens: [], alt: false, head: h, items: [] });
+  await db.query(`insert into public.practice_log (user_id, day, quality, symbol, first_try, mode) values
+    ($1, current_date, 'madd9', 'Cmadd9', false, 'play'), ($1, current_date, 'add9', 'F♯add9', true, 'name'),
+    ($1, current_date, 'madd9', 'E-add9', false, 'play'), ($1, current_date, 'madd9', 'Cm(add9)', false, 'play'),
+    ($1, current_date, 'm7', 'Cm7', true, 'play')`, [S1]);
+  await db.query(`insert into public.review_queue (user_id, mode, symbol, quality, spec, hits) values
+    ($1, 'play', 'Cmadd9', 'madd9', $2::jsonb, 1), ($1, 'play', 'Cm(add9)', 'madd9', $3::jsonb, 0), ($1, 'play', 'E-add9', 'madd9', $4::jsonb, 0)`,
+    [S1, oldSpec("madd9"), JSON.stringify({ l: 0, a: 0, type: "madd9", tens: [], alt: false, head: "m", items: ["add9"] }), JSON.stringify({ ...JSON.parse(oldSpec("-add9")), l: 2 })]);
+  await db.exec(schemaSQL());
+  r = await db.query("select symbol from public.practice_log where user_id = $1 order by id", [S1]);
+  ok(JSON.stringify(r.rows.map(x => x.symbol)) === JSON.stringify(["Cm(add9)", "F♯(add9)", "E-(add9)", "Cm(add9)", "Cm7"]), "기록 이름 " + JSON.stringify(r.rows));
+  r = await db.query("select symbol, spec from public.review_queue where user_id = $1 order by symbol", [S1]);
+  ok(r.rows.length === 2 && r.rows[0].symbol === "Cm(add9)" && r.rows[1].symbol === "E-(add9)", "틀린 문제는 한 이름에 한 줄 " + JSON.stringify(r.rows));
+  ok(r.rows[1].spec.head === "-" && r.rows[1].spec.items[0] === "add9", "다시 풀기 정보도 새 표기 " + JSON.stringify(r.rows[1].spec));
+  await db.exec(schemaSQL());   // 다시 실행해도 그대로
+  r = await db.query("select count(*)::int n from public.practice_log where symbol like '%((add9))%' or symbol like '%(add9)(add9)%'");
+  ok(r.rows[0].n === 0, "두 번 실행해도 괄호가 겹치지 않음");
 });

@@ -77,8 +77,10 @@ const TYPES = [
   { id: "6", group: "sixth", name: "6", w: 1.5, tones: [...T3, [9, 6]], std: ["6"], sym: [] },
   { id: "m6", group: "sixth", name: "m6", w: 2, tones: [...t3, [9, 6]], std: ["m6"], sym: ["-6"] },
 
-  { id: "add9", group: "add", name: "add9", w: 1.3, tones: [...T3, [2, 9]], std: ["add9"], sym: [] },
-  { id: "madd9", group: "add", name: "madd9", w: 0.9, tones: [...t3, [2, 9]], std: ["madd9"], sym: ["-add9"] },
+  // add9 표기: 괄호를 붙여 C(add9)·Cm(add9) — 괄호 부분은 텐션처럼 작게 위로 (2026-11-10 사용자 요청, 예전 Cadd9·Cmadd9).
+  // 예전 이름으로 저장된 기록은 schema.sql이 새 이름으로 바꾸고, 다시 풀기 정보(spec)는 rebuild가 맞춤
+  { id: "add9", group: "add", name: "(add9)", w: 1.3, tones: [...T3, [2, 9]], std: ["(add9)"], sym: [] },
+  { id: "madd9", group: "add", name: "m(add9)", w: 0.9, tones: [...t3, [2, 9]], std: ["m(add9)"], sym: ["-(add9)"] },
   { id: "69", group: "add", name: "6(9)", w: 0.6, tones: [...T3, [9, 6], [2, 9]], std: ["6(9)"], sym: [] },
   // 마이너 6(9): 1 ♭3 5 6 9 (Cm6/9 — 2026-11-08 사용자 요청, 두 페이지 모두. 처음 설정에서는 꺼짐)
   { id: "m69", group: "add", name: "m6(9)", w: 0.4, tones: [...t3, [9, 6], [2, 9]], std: ["m6(9)"], sym: ["-6(9)"] },
@@ -226,6 +228,8 @@ function rebuild(sp, s) {
   if (!type || !Number.isInteger(sp.l) || sp.l < 0 || sp.l > 6 || !Number.isInteger(sp.a) || Math.abs(sp.a) > 2) return null;
   const tens = Array.isArray(sp.tens) ? sp.tens : [];
   if (!tens.every(t => t in TEN) || !Array.isArray(sp.items) || typeof sp.head !== "string") return null;
+  // 2026-11-10 전에 저장된 add9·madd9 (head "add9" / "madd9" / "-add9", items 없음) → 지금 표기 (head "" / "m" / "-", items ["add9"])
+  if ((type.id === "add9" || type.id === "madd9") && !sp.items.length && /add9$/.test(sp.head)) sp = { ...sp, head: sp.head.slice(0, -4), items: ["add9"] };
   const alt = !!sp.alt && type.id === "dom7";
   const parts = buildTones(type, { l: sp.l, a: sp.a }, tens, alt, s);
   return parts && question(type, { l: sp.l, a: sp.a }, tens, alt, sp.head, sp.items.map(String), parts);

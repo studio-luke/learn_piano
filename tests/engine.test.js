@@ -122,3 +122,16 @@ test("the next question never has the same root (key) as the previous one, unles
   prev = E.generate(cAndG);
   for (let i = 0; i < 50; i++) { const q = E.generate(cAndG, Math.random, prev); assert.notStrictEqual(q.rootPc, prev.rootPc); prev = q; }
 });
+
+test("engine: add9 chords are written with parentheses — C(add9), Cm(add9), symbols C-(add9) (2026-11-10)", async () => {
+  const { Engine } = await import("../src/assets/js/core/engine.js");
+  const s = (id, optD = false) => ({ types: { [id]: true }, optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD, optE: false });
+  const seen = new Set();
+  for (let i = 0; i < 400; i++) { const q = Engine.generate(s("add9")); seen.add(q.head + "|" + q.items.join(",")); assert.ok(q.symbol.endsWith("(add9)"), q.symbol); }
+  for (let i = 0; i < 400; i++) { const q = Engine.generate(s("madd9", true)); seen.add(q.head + "|" + q.items.join(",")); }
+  assert.deepStrictEqual([...seen].sort(), ["-|add9", "m|add9", "|add9"]);
+  // 예전에 저장된 다시 풀기 정보(head "madd9", items 없음)도 새 표기로
+  const q = Engine.rebuild({ l: 0, a: 0, type: "madd9", tens: [], alt: false, head: "madd9", items: [] }, s("madd9"));
+  assert.strictEqual(q.symbol, "Cm(add9)");
+  assert.strictEqual(Engine.rebuild({ l: 4, a: 0, type: "add9", tens: [], alt: false, head: "add9", items: [] }, s("add9")).symbol, "G(add9)");
+});
