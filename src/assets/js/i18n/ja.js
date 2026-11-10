@@ -383,7 +383,7 @@ export default {
   improvBars1: "1小節",
   improvBars2: "2小節",
   improvSlash: "分数コードを許可",
-  improvSlashSoon: "近日追加予定です。",
+  improvSlashSub: "転回形（C/E、Cm7/B♭）とハイブリッドコード（B♭/C、D/C）が約4つに1つの割合で出ます。",
   improvRotateTip: "スマホを横にすると、コードを大きく表示できます。",
   nameEyebrow: "このコードは何でしょう？",
   listenHTML: "▶ 聴いてみる",

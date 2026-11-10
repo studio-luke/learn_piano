@@ -8,7 +8,7 @@
 // S의 항목
 //   types, optB, bases, optC, cMax, optD, optE   랜덤 코드 연습과 같은 뜻 (practice/settings.js) — 처음 코드 종류만 다름
 //   bars    한 코드당 마디수 "0.5" | "1" | "2" (기본 "1")
-//   slash   분수코드 허용 (기본 켜짐 — 출제 규칙은 4단계에서 정해 연결, 그 전까지는 체크만 보이고 비활성)
+//   slash   분수코드 허용 (기본 켜짐 — 전위형·하이브리드 코드를 약 25%, improv/slash.js)
 //   adv     [심화] 묶음 펼침
 import { Engine } from "../core/engine.js";
 import { applyI18n, t } from "../i18n/index.js";
@@ -87,6 +87,7 @@ export function initSettings() {
   $("rCMax2").onchange = () => { S.cMax = 2; changed(); };
   $("rOptD").onchange = e => { S.optD = e.target.checked; changed(); };
   $("rOptE").onchange = e => { S.optE = e.target.checked; changed(); };
+  $("rOptSlash").onchange = e => { S.slash = e.target.checked; changed(); };
   $("rAdvToggle").onclick = () => { S.adv = !S.adv; changed(); };
   syncSettingsUI();
 }

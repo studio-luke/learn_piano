@@ -67,7 +67,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     pages/naming.js         코드 추론하기 페이지 (trainer/chords-name/)
     pages/improv.js         코드 초견 페이지 (trainer/chord-improv/, 모양은 css/improv.css)
     improv/metronome.js keys.js   코드 초견의 메트로놈(박을 소리 장치 시계에 미리 예약, 카운트인)·88건반(누르는 동안만 선택, 컴퓨터만)
-    improv/random.js settings.js timing.js   코드 초견의 무작위 코드 모드(이전·현재·다음 코드)·출제 설정·마디수 계산
+    improv/random.js settings.js timing.js slash.js   코드 초견의 무작위 코드 모드(이전·현재·다음 코드)·출제 설정·마디수 계산·분수코드 출제
     i18n/index.js           언어 고르기, t("키") 문구 함수, data-i18n 속성 채우기
     i18n/ko.js en.js ja.js zh.js   화면 문구 (ko가 원문, 네 파일의 키가 같아야 함)
     common/layout.js        모든 페이지의 머리글·바닥글·☰ 왼쪽 메뉴·도움말(?)과 페이지 시작(startPage)

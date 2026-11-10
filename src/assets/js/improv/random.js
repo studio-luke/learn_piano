@@ -4,7 +4,7 @@
 // 연주하는 사람이 미리 준비할 수 있게 "다음 코드"를 늘 보여줘요. 카운트인 동안에는 현재 자리에 3·2·1·GO, 다음 자리에 첫 코드.
 // 설정을 바꾸면 이미 보이는 다음 코드는 그대로, 그다음에 새로 뽑는 코드부터 적용 (사용자 결정 2026-11-10).
 // "한 코드당 마디수"도 마찬가지로 코드가 현재 자리에 올 때의 값으로 그 코드의 길이를 정함.
-import { Engine } from "../core/engine.js";
+import * as Slash from "./slash.js";
 import { t } from "../i18n/index.js";
 import { $, symbolHTML } from "../common/dom.js";
 import { S, WEIGHTS } from "./settings.js";
@@ -15,8 +15,11 @@ let countLabel = null;                      // 카운트인 중이면 "3" "2" "1
 let playing = false;
 let n = 0, chordStart = 0, span = BEATS;    // 본 연주의 박 번호, 지금 코드가 시작된 박, 지금 코드의 길이(박)
 
-/** 새 코드 하나 — 앞 코드(현재 자리에 올 코드)와 같은 베이스는 피함. 가중치는 코드 초견 전용(settings.js WEIGHTS) */
-const draw = after => Engine.generate({ ...S, weights: WEIGHTS }, Math.random, after && !after.error ? after : null);
+/**
+ * 새 코드 하나 — 앞 코드(현재 자리에 올 코드)와 같은 맨 아래 음은 피함. 가중치는 코드 초견 전용(settings.js WEIGHTS).
+ * "분수코드 허용"이면 약 25%가 분수코드 (improv/slash.js)
+ */
+const draw = after => Slash.generate({ ...S, weights: WEIGHTS }, Math.random, after && !after.error ? after : null);
 
 /**
  * 시작: 첫 코드를 미리 뽑아 "다음" 자리에 둠 (카운트인 동안 보고 준비하게).

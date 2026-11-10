@@ -383,7 +383,7 @@ export default {
   improvBars1: "1 小节",
   improvBars2: "2 小节",
   improvSlash: "允许分数和弦",
-  improvSlashSoon: "即将推出。",
+  improvSlashSub: "大约每 4 个和弦中有 1 个是转位（C/E、Cm7/B♭）或混合和弦（B♭/C、D/C）。",
   improvRotateTip: "把手机横过来，和弦会显示得更大。",
   nameEyebrow: "这是什么和弦？",
   listenHTML: "▶ 试听",

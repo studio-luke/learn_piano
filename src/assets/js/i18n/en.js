@@ -383,7 +383,7 @@ export default {
   improvBars1: "1 bar",
   improvBars2: "2 bars",
   improvSlash: "Allow slash chords",
-  improvSlashSoon: "Coming soon.",
+  improvSlashSub: "About one chord in four becomes an inversion (C/E, Cm7/B♭) or a hybrid chord (B♭/C, D/C).",
   improvRotateTip: "Turn your phone sideways to see the chords bigger.",
   nameEyebrow: "What chord is this?",
   listenHTML: "▶ Listen",

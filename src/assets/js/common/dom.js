@@ -23,9 +23,11 @@ export const chipHTML = s => (s.startsWith("(") ? esc(s) : chordHTML(s));
  */
 export function symbolHTML(q) {
   const base = q.rootName + q.head;
-  if (q.items.length < 2) return base + (q.items.length ? `<span class="sup">(${q.items[0]})</span>` : "");
+  // 분수코드(코드 초견, improv/slash.js)면 끝에 "/베이스" — 보통 크기로 (2026-11-10)
+  const bass = q.bass ? `<span class="slash-bass">/${q.bass}</span>` : "";
+  if (q.items.length < 2) return base + (q.items.length ? `<span class="sup">(${q.items[0]})</span>` : "") + bass;
   const col = q.items.slice().reverse().map(x => `<span>${x}</span>`).join("");
-  return `${base}<span class="stack" style="--n:${q.items.length}" aria-hidden="true"><span class="paren">(</span><span class="col">${col}</span><span class="paren">)</span></span>`;
+  return `${base}<span class="stack" style="--n:${q.items.length}" aria-hidden="true"><span class="paren">(</span><span class="col">${col}</span><span class="paren">)</span></span>${bass}`;
 }
 
 let toastTimer, toastFade;
