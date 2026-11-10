@@ -385,6 +385,7 @@ export default {
   improvSlash: "分数コードを許可",
   improvSlashSub: "転回形（C/E、Cm7/B♭）とハイブリッドコード（B♭/C、D/C）が約4つに1つの割合で出ます。",
   improvRotateTip: "スマホを横にすると、コードを大きく表示できます。",
+  improvScrollTip: "下にスクロールすると、出てくるコードを選べます",
   nameEyebrow: "このコードは何でしょう？",
   listenHTML: "▶ 聴いてみる",
   kbAriaName: "ピアノ鍵盤（F3–D6）",

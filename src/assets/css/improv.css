@@ -106,7 +106,6 @@
   .im-row.idle { grid-template-areas: "cur"; }
   .im-slot.cur .im-chord { font-size: clamp(56px, 18vw, 84px); }
   .im-slot.prev .im-chord, .im-slot.next .im-chord { font-size: clamp(30px, 10vw, 44px); }
-  .im-rotate { margin-bottom: -4px; }
   .im-transport { gap: 10px; }
   .im-play { min-width: 0; }
 }
@@ -118,4 +117,14 @@
   .im-slot.cur .im-chord { font-size: clamp(60px, 27vh, 120px); }
   .im-slot.prev .im-chord, .im-slot.next .im-chord { font-size: clamp(30px, 13vh, 56px); }
   .im-tag { font-size: 11px; }
+}
+
+/* ---------- 연습 카드와 출제 설정 사이: "가로로 돌리면…" 안내 + 그 위에 겹친 "▼ 아래로 내리면…" 알약 (폰 세로에서만) ----------
+   두 요소를 같은 칸(grid-area 1/1)에 겹쳐 둠 — 알약이 보이는 동안은 알약이 안내를 덮고, 알약이 사라지면 안내가 보임.
+   보이고 숨기는 조건은 practice.css의 폰 세로 미디어 쿼리(.rotate-tip / .scroll-tip), 알약을 언제 없앨지는 pages/improv.js */
+.im-between { display: none; }
+@media (max-width: 600px) and (orientation: portrait) {
+  .im-between { display: grid; place-items: center; min-height: 40px; }
+  .im-between > * { grid-area: 1 / 1; }
+  .im-between .scroll-tip { position: relative; bottom: auto; z-index: 2; }
 }

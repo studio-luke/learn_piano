@@ -385,6 +385,7 @@ export default {
   improvSlash: "Allow slash chords",
   improvSlashSub: "About one chord in four becomes an inversion (C/E, Cm7/B♭) or a hybrid chord (B♭/C, D/C).",
   improvRotateTip: "Turn your phone sideways to see the chords bigger.",
+  improvScrollTip: "Scroll down to choose which chords appear",
   nameEyebrow: "What chord is this?",
   listenHTML: "▶ Listen",
   kbAriaName: "Piano keyboard (F3–D6)",

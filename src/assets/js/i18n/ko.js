@@ -386,6 +386,7 @@ export default {
   improvSlash: "분수코드 허용",
   improvSlashSub: "전위형(C/E, Cm7/B♭)과 하이브리드 코드(B♭/C, D/C)가 약 4개 중 1개꼴로 나와요.",
   improvRotateTip: "폰을 가로로 돌리면 코드를 더 크게 볼 수 있어요.",
+  improvScrollTip: "아래로 내리면 등장할 코드를 고를 수 있어요",
   nameEyebrow: "이 코드는 무엇일까요?",
   listenHTML: "▶ 들어보기",
   kbAriaName: "피아노 건반 (F3–D6)",

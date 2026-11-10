@@ -385,6 +385,7 @@ export default {
   improvSlash: "允许分数和弦",
   improvSlashSub: "大约每 4 个和弦中有 1 个是转位（C/E、Cm7/B♭）或混合和弦（B♭/C、D/C）。",
   improvRotateTip: "把手机横过来，和弦会显示得更大。",
+  improvScrollTip: "向下滚动即可选择要出现的和弦",
   nameEyebrow: "这是什么和弦？",
   listenHTML: "▶ 试听",
   kbAriaName: "钢琴键盘（F3–D6）",

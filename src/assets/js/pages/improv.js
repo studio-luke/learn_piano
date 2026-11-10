@@ -65,6 +65,7 @@ function showMode(m) {
     if (SHEETS[x]) SHEETS[x].hidden = x !== m;
   }
   document.querySelector(".im-layout").classList.toggle("no-sheet", !SHEETS[m]);
+  scrollTip.show(m === "random");   // 아래쪽 scrollTip — showMode는 그것을 만든 뒤에만 불림
   renderDots(null);
 }
 
@@ -274,6 +275,26 @@ function renderMidi() {
 }
 
 initSettings();
+
+// ---------- 폰 세로 첫 방문: 출제 설정이 아래에 있다고 알려주는 알약 (2026-11-10 사용자 요청) ----------
+// 연습 카드와 출제 설정 사이, "가로로 돌리면…" 안내 위에 겹쳐 뜸. 코드 추론하기(pages/naming.js)와 같은 방식이고 따로 기억(chordoven.improvScrollTip).
+// 출제 설정 제목이 화면 위쪽 40% 안에 한 번 들어오거나(= 아래로 내려서 봄) 알약을 누르면 다시 안 나옴. 알약은 CSS가 폰 세로에서만.
+// 다른 두 페이지는 "위쪽 65%"인데, 이 페이지는 연습 카드가 짧아서 출제 설정 제목이 처음부터 화면 아래쪽에 보임 → 65%면 알약이 뜨자마자 사라졌음
+// 8마디 모드에서는 무작위 코드 모드의 출제 설정이 없으니 숨김(showMode)
+const scrollTip = (() => {
+  const tip = $("scrollTip");
+  const head = document.querySelector("#sheetRandom h2");
+  let active = false;
+  const seen = "IntersectionObserver" in window ? new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) done(); }, { rootMargin: "0px 0px -60% 0px" }) : null;
+  function done() { active = false; tip.hidden = true; store.set("improvScrollTip", "seen"); if (seen) seen.disconnect(); }
+  if (store.get("improvScrollTip") !== "seen" && head && seen) {
+    active = true;
+    seen.observe(head);
+    $("scrollTipGo").onclick = () => { done(); $("sheetRandom").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    $("scrollTipX").onclick = done;   // ×: 스크롤하지 않고 닫기 (다시 안 나옴)
+  }
+  return { show: on => { tip.hidden = !(active && on); } };
+})();
 
 // 출제 설정 공유 링크(?preset=…, 2026-11-10): 관리자에게 [🔗 이 설정으로 링크 만들기], 링크로 들어오면 바꿀지 묻기 (common/share-settings.js).
 // 무작위 코드 모드의 출제 설정만 담음 — 코드 종류, 특정 베이스, 텐션, 기호 표기, 복잡한 음 표현, 분수코드, 한 코드당 마디수.

@@ -55,8 +55,6 @@
     <div class="im-layout">
       <section class="im-card" aria-label="연습" data-i18n-aria="deskAria">
         <!-- 무작위 코드 모드: 이전 · 현재 · 다음 코드 + 박 점 (pages/improv.js). 카운트인 동안에는 현재 자리에 3·2·1·GO, 다음 자리에 첫 코드 -->
-        <!-- 폰 세로에서만 보이는 안내 (보이는 곳은 practice.css .rotate-tip 미디어 쿼리 — 폭 600px 이하 세로). 닫기 없이 늘 보임 (2026-11-10 사용자 요청) -->
-        <p class="rotate-tip im-rotate" data-i18n="improvRotateTip">폰을 가로로 돌리면 코드를 더 크게 볼 수 있어요.</p>
         <div class="im-panel" id="panelRandom" role="tabpanel" aria-labelledby="tabRandom">
           <div class="im-row" aria-live="off">
             <div class="im-slot prev"><span class="im-tag" data-i18n="improvPrev">이전</span><div class="symbol im-chord" id="chPrev"></div></div>
@@ -88,6 +86,14 @@
           <button class="btn primary im-play" id="btnPlay" type="button" aria-pressed="false"><span id="btnPlayText">▶ 시작</span></button>
         </div>
       </section>
+
+      <!-- 연습 카드와 출제 설정 사이 (폰 세로에서만 보임 — practice.css .rotate-tip·.scroll-tip 미디어 쿼리, 2026-11-10 사용자 요청):
+           "폰을 가로로 돌리면…" 안내(닫기 없이 늘 보임)와, 그 위에 겹쳐 떠 있는 "▼ 아래로 내리면…" 알약(출제 설정을 한 번 보면 다시 안 나옴).
+           랜덤 코드 연습에서 두 안내가 같은 자리에 겹치는 것과 같은 모양 -->
+      <div class="im-between">
+        <p class="rotate-tip" data-i18n="improvRotateTip">폰을 가로로 돌리면 코드를 더 크게 볼 수 있어요.</p>
+        <div class="scroll-tip" id="scrollTip" hidden><button class="scroll-tip-go" id="scrollTipGo" type="button"><span class="scroll-tip-arrow" aria-hidden="true">▼</span><span data-i18n="improvScrollTip">아래로 내리면 등장할 코드를 고를 수 있어요</span></button><button class="scroll-tip-x" id="scrollTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></div>
+      </div>
 
       <!-- 무작위 코드 모드의 출제 설정 (코드 종류 칩은 improv/settings.js가 그림). 모양은 랜덤 코드 연습과 같음 -->
       <aside class="sheet" id="sheetRandom" aria-label="출제 설정" data-i18n-aria="settings">
