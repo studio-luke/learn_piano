@@ -226,7 +226,7 @@ test("improv prog: chord mix with slash chords off — 7th ≈ 85.8%, 6th 8%, ra
   assert.strictEqual(pct(["sus4", "sus2"]), 0);
 });
 
-test("improv prog: 18% slash chords when allowed; notation odds M 10% · m 50% · dim/aug 90% symbols; max-count split ratios (2026-11-10)", async () => {
+test("improv prog: 18% slash chords when allowed; notation odds M 10% · m 50% · dim/aug 60% symbols; max-count split ratios (2026-11-10)", async () => {
   const P = await import("../src/assets/js/improv/progression.js");
   const on = chordsOf(await progs({ slash: true }, 2000));
   const sl = 100 * on.filter(c => c.q.bass).length / on.length;
@@ -235,7 +235,7 @@ test("improv prog: 18% slash chords when allowed; notation odds M 10% · m 50% �
   const N = 20000, st = { M: 0, m: 0, dim: 0, aug: 0 };
   for (let i = 0; i < N; i++) { const s = P.randomStyle(Math.random); st.M += s.M === "△"; st.m += s.m === "-"; st.dim += s.dim === "°"; st.aug += s.aug === "+"; }
   const near = (v, want) => assert.ok(Math.abs(100 * v / N - want) < 2, (100 * v / N).toFixed(1) + " ≈ " + want);
-  near(st.M, 10); near(st.m, 50); near(st.dim, 90); near(st.aug, 90);
+  near(st.M, 10); near(st.m, 50); near(st.dim, 60); near(st.aug, 60);
   const c = {}; let n = 0;
   for (const p of await progs({ count: "high" }, 3000)) for (const b of p.bars) { const k = b.map(x => x.len).join("+"); c[k] = (c[k] || 0) + 1; n++; }
   const share = k => 100 * (c[k] || 0) / n;
@@ -264,4 +264,19 @@ test("improv prog: long chord names (length ≥ 6) only in slots of half a bar o
     }
   }
   assert.ok(longs / total > 0.08, "긴 코드도 나옴 " + (100 * longs / total).toFixed(1));
+});
+
+test("improv prog: if dim or aug lands on a one-beat slot, that chart writes it with the symbol (° / +) everywhere (2026-11-10)", async () => {
+  let forced = 0, free = 0, wordDim = 0;
+  for (const p of await progs({ count: "high", tension: "2" }, 3000)) {
+    const all = p.bars.flat();
+    const oneDim = all.some(c => c.len === 1 && (c.q.type === "dim" || c.q.type === "dim7"));
+    const oneAug = all.some(c => c.len === 1 && ["aug", "aug7", "augM7"].includes(c.q.type) && !c.q.head.startsWith("M7"));
+    if (oneDim) { forced++; assert.strictEqual(p.style.dim, "°"); assert.ok(all.every(c => !c.q.head.includes("dim")), all.map(c => c.q.symbol).join(" ")); }
+    if (oneAug) { assert.strictEqual(p.style.aug, "+"); assert.ok(all.every(c => !c.q.head.includes("aug"))); }
+    if (!oneDim && all.some(c => c.q.type === "dim7")) { free++; if (p.style.dim === "dim") wordDim++; }
+  }
+  assert.ok(forced > 50, "1박 dim이 나온 악보 " + forced);
+  // 1박에 없으면 60% 확률 그대로 → 글자 dim도 나옴
+  assert.ok(free > 100 && wordDim / free > 0.25 && wordDim / free < 0.55, (100 * wordDim / free).toFixed(0) + "% 글자");
 });

@@ -75,9 +75,10 @@ function pickBy(list, w, rnd) {
 
 /**
  * 진행 하나에 쓸 기호 표기 — M·m·dim·aug 각각 글자와 기호 중 하나 (ø는 쓰지 않음).
- * 기호가 될 확률(사용자 결정 2026-11-10): M → △ 10%, m → - 50%, dim → ° 90%, aug → + 90% (dim·aug는 글자가 길어서 대부분 기호로)
+ * 기호가 될 확률(사용자 결정 2026-11-10): M → △ 10%, m → - 50%, dim → ° 60%, aug → + 60%.
+ * 단 dim·aug 코드가 하나라도 1박짜리 자리에 오면 그 악보 전체에서 그 기호를 씀(generateProgression — 1박 자리는 좁아서)
  */
-export const SYMBOL_ODDS = { M: 0.1, m: 0.5, dim: 0.9, aug: 0.9 };
+export const SYMBOL_ODDS = { M: 0.1, m: 0.5, dim: 0.6, aug: 0.6 };
 export const randomStyle = rnd => ({
   M: rnd() < SYMBOL_ODDS.M ? "△" : "M", m: rnd() < SYMBOL_ODDS.m ? "-" : "m",
   dim: rnd() < SYMBOL_ODDS.dim ? "°" : "dim", aug: rnd() < SYMBOL_ODDS.aug ? "+" : "aug",
@@ -170,12 +171,26 @@ export function generateProgression(o, rnd = Math.random) {
         q = c.error ? c : restyle(c, style);
         if (longOk || !isLong(q)) break;
       }
-      const before = bar[bar.length - 1];
-      const upper = x => x.rootName + x.label;
-      bar.push({ q, start, len, short: !!(before && q.bass && upper(before.q) === upper(q)) });
+      bar.push({ q, raw: c, start, len });
       prev = q; start += len;
     }
     bars.push(bar);
   }
-  return { meter, style, bars };
+  // dim·aug가 하나라도 1박짜리 자리에 오면 이 악보에서는 반드시 기호(°·+)로 (사용자 결정 2026-11-10 — 1박 자리는 좁아서).
+  // 기호로 바꾸면 이름이 짧아지기만 하므로 위의 긴 코드 자리 규칙은 그대로 지켜짐
+  const oneBeat = bars.flat().filter(x => x.len === 1 && !x.raw.error);
+  const restyled = { ...style };
+  if (oneBeat.some(x => x.raw.head.includes("dim"))) restyled.dim = "°";
+  if (oneBeat.some(x => x.raw.head.includes("aug"))) restyled.aug = "+";
+  const upper = x => x.rootName + x.label;
+  for (const bar of bars) {
+    bar.forEach((x, i) => {
+      if (!x.raw.error) x.q = restyle(x.raw, restyled);
+      const before = bar[i - 1];
+      // "/B♭" 줄임: 같은 마디에서 바로 앞과 위 코드가 같고 베이스만 다름
+      x.short = !!(before && x.q.bass && upper(before.q) === upper(x.q));
+      delete x.raw;
+    });
+  }
+  return { meter, style: restyled, bars };
 }
