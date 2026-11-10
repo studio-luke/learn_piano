@@ -33,19 +33,28 @@ test("improv random: bars per chord → beats per chord (½ = 2, 1 = 4, 2 = 8, u
   assert.deepStrictEqual(["0.5", "1", "2", 1, "x"].map(spanBeats), [2, 4, 8, 4, 4]);
 });
 
-test("improv random: page-only weights bring mM7 + aug7 + augM7 to about 9–10% of the default chord set", async () => {
+test("improv random: page-only weights — rare chords ~5% of the default set, triads ~2% and tension chords under 10% when everything is on", async () => {
   const { Engine } = await import("../src/assets/js/core/engine.js");
-  const { WEIGHTS } = await import("../src/assets/js/improv/settings.js");
-  const { DEFAULTS } = await import("../src/assets/js/improv/settings.js");
+  const Slash = await import("../src/assets/js/improv/slash.js");
+  const { DEFAULTS, WEIGHTS } = await import("../src/assets/js/improv/settings.js");
   const on = Object.keys(DEFAULTS.types).filter(id => DEFAULTS.types[id]);
   assert.deepStrictEqual([...on].sort(), ["6", "7sus4", "M7", "add9", "aug7", "augM7", "dim7", "dom7", "m6", "m7", "m7b5", "mM7", "madd9"]);
-  const s = { types: Object.fromEntries(on.map(id => [id, true])), optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false, weights: WEIGHTS };
-  const N = 40000; let n = 0;
-  for (let i = 0; i < N; i++) if (["mM7", "aug7", "augM7"].includes(Engine.generate(s).type)) n++;
-  const pct = 100 * n / N;
-  assert.ok(pct > 8.8 && pct < 10.6, pct.toFixed(1));
+  const share = (types, slash, ids, N = 40000) => {
+    const s = { ...structuredClone(DEFAULTS), types, slash, weights: WEIGHTS };
+    let n = 0, prev = null;
+    for (let i = 0; i < N; i++) { const q = Slash.generate(s, Math.random, prev); prev = q; if (!q.slash && ids.includes(q.type)) n++; }
+    return 100 * n / N;
+  };
+  const rare = ["mM7", "aug7", "augM7"], all = Object.fromEntries(Engine.TYPES.map(x => [x.id, true]));
+  const r = share(DEFAULTS.types, true, rare);
+  assert.ok(r > 4.3 && r < 5.9, "희귀 3종 " + r.toFixed(1));
+  const tri = share(all, false, ["maj", "min", "dim", "aug"]);
+  assert.ok(tri < 3, "3화음 " + tri.toFixed(1));
+  const ten = share(all, false, ["M9", "M13", "m9", "m11", "dom9", "dom13"]);
+  assert.ok(ten < 10, "텐션 코드 " + ten.toFixed(1));
+  assert.ok(["maj", "min", "dim", "aug"].every(id => WEIGHTS[id] >= 0.05 && WEIGHTS[id] <= 0.2));
   // 다른 연습이 쓰는 원래 가중치는 그대로
-  assert.deepStrictEqual(["mM7", "aug7", "augM7"].map(id => Engine.BY_ID[id].w), [1.2, 1, 1]);
+  assert.deepStrictEqual(["mM7", "aug7", "augM7", "maj", "M9"].map(id => Engine.BY_ID[id].w), [1.2, 1, 1, 1, 0.63]);
 });
 
 // ---------- 분수코드 (improv/slash.js, 2026-11-10) ----------
