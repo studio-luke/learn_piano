@@ -13,7 +13,7 @@
 import { Engine } from "../core/engine.js";
 import { Account } from "../account/account.js";
 import { t, applyI18n } from "../i18n/index.js";
-import { $, toast, chordHTML } from "../common/dom.js";
+import { $, toast, chipHTML } from "../common/dom.js";
 import { store } from "../common/storage.js";
 
 /** 마우스·트랙패드가 있는 기기 = 컴퓨터 (키보드로 건반 입력을 기본으로 켬) */
@@ -86,7 +86,7 @@ export function initSettings(changed) {
     box.className = "group";
     box.innerHTML = `<div class="group-head"><h3 data-i18n="g_${g.id}"></h3><button class="linkbtn" type="button" data-group="${g.id}" data-i18n="groupAll"></button></div>` +
       (g.note ? `<p class="note" data-i18n="g_${g.id}Note"></p>` : "") +
-      `<div class="chips">${types.map(x => `<label class="chip"><input type="checkbox" id="type-${x.id}" data-type="${x.id}"><span>${chordHTML(x.name)}</span></label>`).join("")}</div>`;
+      `<div class="chips">${types.map(x => `<label class="chip"><input type="checkbox" id="type-${x.id}" data-type="${x.id}"><span>${chipHTML(x.name)}</span></label>`).join("")}</div>`;
     tg.appendChild(box);
   }
   applyI18n(tg);   // 방금 만든 묶음 제목·[전체] 버튼에 문구 넣기

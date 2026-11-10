@@ -656,6 +656,24 @@ do $$ begin
   end if;
 end $$;
 
+-- 2026-11-10: add9 chords are now written with parentheses — Cadd9 → C(add9), Cmadd9 → Cm(add9), C-add9 → C-(add9)
+-- (the part in parentheses is shown small and raised, like a tension). Rename the old records so each chord keeps one name
+-- in the stats and the 틀린 문제 list. Safe to run again: only names that still end in a bare "add9" change.
+-- Run once more after the site is deployed, to catch records the old site wrote in between.
+update public.practice_log set symbol = regexp_replace(symbol, 'add9$', '(add9)')
+  where quality in ('add9', 'madd9') and symbol ~ 'add9$' and symbol !~ '\(add9\)$';
+-- 틀린 문제 list: the key includes the name, so if the new name is already listed, drop the old row first
+delete from public.review_queue o
+  where o.quality in ('add9', 'madd9') and o.symbol ~ 'add9$' and o.symbol !~ '\(add9\)$'
+    and exists (select 1 from public.review_queue n where n.user_id = o.user_id and n.mode = o.mode
+                  and n.symbol = regexp_replace(o.symbol, 'add9$', '(add9)'));
+-- spec (how the page asks it again): head "madd9", items [] → head "m", items ["add9"] (engine.js rebuild also does this)
+update public.review_queue set symbol = regexp_replace(symbol, 'add9$', '(add9)'),
+  spec = case when spec ->> 'head' ~ 'add9$' and coalesce(jsonb_array_length(spec -> 'items'), 0) = 0
+    then spec || jsonb_build_object('head', regexp_replace(spec ->> 'head', 'add9$', ''), 'items', jsonb_build_array('add9'))
+    else spec end
+  where quality in ('add9', 'madd9') and symbol ~ 'add9$' and symbol !~ '\(add9\)$';
+
 alter table public.practice_log enable row level security;
 alter table public.timer_sessions enable row level security;
 alter table public.practice_stats enable row level security;
@@ -818,7 +836,7 @@ returns text[] language sql immutable set search_path = '' as $$
       else '{}'::text[] end) as x
     union all
     select trim(t) from unnest(string_to_array(substring(symbol from '\(([^)]*)\)$'), ',')) as t
-    where not (quality = 'm7b5' and trim(t) = '♭5') and not (quality = 'augM7' and trim(t) = '♯5') and quality not in ('69', 'm69')
+    where not (quality = 'm7b5' and trim(t) = '♭5') and not (quality = 'augM7' and trim(t) = '♯5') and quality not in ('69', 'm69', 'add9', 'madd9')
   ) s where x <> '';
 $$;
 

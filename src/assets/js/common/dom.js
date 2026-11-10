@@ -12,6 +12,10 @@ export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;"
  *  esc()를 먼저 거치므로 DB에서 온 코드 이름에 그대로 써도 안전. 모양은 base.css의 .ch-ten (2026-11-07 사용자 요청) */
 export const chordHTML = s => esc(s).replace(/\(([^()]*)\)$/, '<sup class="ch-ten">($1)</sup>');
 
+/** 출제 설정 칩의 코드 종류 이름: chordHTML과 같되 괄호로 시작하는 이름("(add9)")은 작게 올리지 않고 보통 글씨로 —
+ *  앞에 글자가 없어 칩 전체가 작게 보였음 (2026-11-10 사용자 요청). m(add9)·m7(♭5)·6(9) 등은 그대로 작게 위로 */
+export const chipHTML = s => (s.startsWith("(") ? esc(s) : chordHTML(s));
+
 /**
  * 문제 코드 기호(엔진이 만든 문제 q)를 큰 글씨용 HTML로: 괄호 부분은 윗첨자처럼 작게 위로, 괄호 안 항목이 2개 이상이면
  * 재즈 차트처럼 세로로 쌓음(높은 텐션이 위) (2026-11-07 사용자 요청). 모양은 practice.css의 .symbol .sup / .stack.

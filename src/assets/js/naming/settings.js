@@ -14,7 +14,7 @@ import { Engine } from "../core/engine.js";
 import { NAME_TYPES } from "../core/naming.js";
 import { Account } from "../account/account.js";
 import { t, applyI18n } from "../i18n/index.js";
-import { $, chordHTML, toast } from "../common/dom.js";
+import { $, toast, chipHTML } from "../common/dom.js";
 import { store } from "../common/storage.js";
 
 const KEY = "nameSettings.v1";
@@ -66,7 +66,7 @@ export function initSettings(changed) {
     const box = document.createElement("div");
     box.className = "group";
     box.innerHTML = `<div class="group-head"><h3 data-i18n="g_${g}"></h3><button class="linkbtn" type="button" data-group="${g}" data-i18n="groupAll"></button></div>` +
-      `<div class="chips">${types.map(x => `<label class="chip"><input type="checkbox" id="type-${x.id}" data-type="${x.id}"><span>${chordHTML(x.name)}</span></label>`).join("")}</div>`;
+      `<div class="chips">${types.map(x => `<label class="chip"><input type="checkbox" id="type-${x.id}" data-type="${x.id}"><span>${chipHTML(x.name)}</span></label>`).join("")}</div>`;
     tg.appendChild(box);
   }
   applyI18n(tg);
