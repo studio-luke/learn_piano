@@ -17,7 +17,10 @@ import { Sound } from "../practice/audio.js";
 import { Midi } from "../input/midi.js";
 import { createMetronome, clampBpm, BPM_MIN, BPM_MAX } from "../improv/metronome.js";
 import { initKeys, press } from "../improv/keys.js";
-import { initSettings, syncSettingsUI } from "../improv/settings.js";
+import { initSettings, syncSettingsUI, presetSource, applyPreset } from "../improv/settings.js";
+import { initPresetLink } from "../common/share-settings.js";
+import { Engine } from "../core/engine.js";
+import { ROUTES } from "../common/sitemap.js";
 import * as Random from "../improv/random.js";
 
 startPage({ title: "navImprov" });
@@ -271,6 +274,19 @@ function renderMidi() {
 }
 
 initSettings();
+
+// 출제 설정 공유 링크(?preset=…, 2026-11-10): 관리자에게 [🔗 이 설정으로 링크 만들기], 링크로 들어오면 바꿀지 묻기 (common/share-settings.js).
+// 무작위 코드 모드의 출제 설정만 담음 — 코드 종류, 특정 베이스, 텐션, 기호 표기, 복잡한 음 표현, 분수코드, 한 코드당 마디수.
+// 링크는 무작위 코드 모드(주소에 mode 없음)로 열림. 템포는 담지 않음(출제 설정이 아니라서). 이 페이지 설정은 계정에 올리지 않아서 consume()은 쓰지 않음
+initPresetLink({
+  spec: { route: ROUTES.improv, types: Engine.TYPES.map(x => x.id), flags: ["B", "C", "D", "E", "S", "H", "L"] },
+  S: presetSource,
+  apply(p) {
+    if (mode !== "random") TABS.random.click();   // 8마디 모드를 보고 있었으면 무작위 코드 모드로
+    applyPreset(p);
+  },
+});
+
 onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); if (metro.running) Random.render(); });
 showMode(modeFromUrl());
 renderPlay();

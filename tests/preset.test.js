@@ -76,3 +76,23 @@ test("베이스가 비어 있어도 됨, 링크에 없는 옵션은 꺼짐", () 
   assert.deepStrictEqual(p.bases, Array(12).fill(false));
   assert.deepStrictEqual([p.optB, p.optC, p.optD, p.optE], [false, false, false, false]);
 });
+
+// 코드 초견 무작위 코드 모드 (2026-11-10): 분수코드 S, 한 코드당 ½마디 H · 2마디 L (둘 다 없으면 1마디)
+test("preset: chord sight-reading — slash chords and bars per chord travel in the link", async () => {
+  const { encodePreset: enc, decodePreset: dec } = await import("../src/assets/js/common/preset.js");
+  const { Engine } = await import("../src/assets/js/core/engine.js");
+  const { DEFAULTS } = await import("../src/assets/js/improv/settings.js");
+  const spec = { route: "trainer/chord-improv/", types: Engine.TYPES.map(x => x.id), flags: ["B", "C", "D", "E", "S", "H", "L"] };
+  const src = (bars, slash) => ({ ...structuredClone(DEFAULTS), bars, slash, barsHalf: bars === "0.5", barsTwo: bars === "2" });
+  for (const [bars, slash, flags] of [["0.5", true, "SH"], ["1", true, "S"], ["2", false, "L"], ["1", false, ""]]) {
+    const v = enc(src(bars, slash), spec);
+    assert.ok(v.endsWith("-" + flags), v);
+    const p = dec(v, spec);
+    assert.strictEqual(p.slash, slash);
+    assert.strictEqual(p.barsHalf ? "0.5" : p.barsTwo ? "2" : "1", bars);
+    assert.deepStrictEqual(Object.keys(p.types).filter(id => p.types[id]).sort(), Object.keys(DEFAULTS.types).filter(id => DEFAULTS.types[id]).sort());
+  }
+  // 다른 페이지의 링크에는 S·H·L이 없음 → 랜덤 코드 연습 링크를 코드 초견에서 읽으면 분수코드 꺼짐, 1마디
+  const p = dec("1-M7.m7-0-1-BC", spec);
+  assert.ok(p.optB && p.optC && !p.slash && !p.barsHalf && !p.barsTwo);
+});

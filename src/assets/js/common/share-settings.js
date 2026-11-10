@@ -8,6 +8,7 @@
 //   - 버전 "1": 형식을 바꾸면 2로 올리고 1도 계속 읽을 것(이미 보낸 링크가 있어서)
 //   - 코드 종류는 순서 번호가 아니라 id(engine.js TYPES)로 담음 → 코드 종류가 늘어도 예전 링크가 그대로 맞음
 //   - 옵션 글자: B(특정 베이스만) C(세븐코드 텐션) D(기호 표기 혼용) E(복잡한 음 표현) I(자리바꿈 허용)
+//                코드 초견 무작위 코드 모드: S(분수코드 허용) H(한 코드당 ½마디) L(2마디) — H·L이 없으면 1마디 (2026-11-10)
 //   - 주소는 언어 없는 입구(/trainer/chords/)로 만듦 → 받는 사람 기기의 언어로 열림. 입구가 ?preset을 넘겨줌(build.js entryPage)
 //   - 글자는 영문·숫자·.·-만 → 메신저에서 잘리거나 바뀌지 않음
 //
@@ -56,7 +57,8 @@ async function copyLink(url) {
 /**
  * 공유 링크 연결: 버튼(관리자만 보임)과, 이 페이지를 ?preset 주소로 열었을 때의 확인 창.
  * @param spec    PresetSpec
- * @param S       그 페이지의 출제 설정 객체(읽기만 — 링크 만들 때)
+ * @param S       그 페이지의 출제 설정 객체(읽기만 — 링크 만들 때), 또는 그런 객체를 돌려주는 함수
+ *                (코드 초견처럼 링크에 담기 전에 값을 바꿔야 할 때 — 마디수 "0.5" → barsHalf)
  * @param apply   (설정 일부) => void  [바꾸기]를 눌렀을 때 페이지가 S에 넣고 화면·저장(기기+계정)·새 문제까지 처리
  * @returns {{ pending: boolean, consume(): boolean }}
  *   pending   주소에 ?preset이 있었는지 (페이지가 ?review=1과 함께 왔을 때 다시 풀기를 시작하지 않으려고)
@@ -69,7 +71,7 @@ export function initPresetLink({ spec, S, apply }) {
   const btn = $("presetBtn");
   const showBtn = () => { btn.hidden = !Account.isAdmin(); };
   Account.on("change", showBtn); showBtn();
-  btn.onclick = () => copyLink(presetUrl(S, spec));
+  btn.onclick = () => copyLink(presetUrl(typeof S === "function" ? S() : S, spec));
 
   // 주소에 ?preset이 있으면: 주소창에서 먼저 지우고(새로고침해도 다시 묻지 않게) 확인 창
   const params = new URLSearchParams(location.search);

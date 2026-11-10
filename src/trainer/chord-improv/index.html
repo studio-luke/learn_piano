@@ -91,7 +91,8 @@
 
       <!-- 무작위 코드 모드의 출제 설정 (코드 종류 칩은 improv/settings.js가 그림). 모양은 랜덤 코드 연습과 같음 -->
       <aside class="sheet" id="sheetRandom" aria-label="출제 설정" data-i18n-aria="settings">
-        <h2 data-i18n="settings">출제 설정</h2>
+        <!-- 제목 줄: 오른쪽에 출제 설정 공유 링크 버튼(관리자에게만 보임, common/share-settings.js — 랜덤 코드 연습과 같음) -->
+        <div class="sheet-head"><h2 data-i18n="settings">출제 설정</h2><button class="linkbtn preset-btn" id="presetBtn" type="button" hidden data-i18n="presetMake">🔗 이 설정으로 링크 만들기</button></div>
         <p class="note" data-i18n="improvApplyNext">연주 중에 바꾼 설정은 그다음 코드부터 적용돼요.</p>
 
         <div class="opt">

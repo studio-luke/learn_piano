@@ -101,6 +101,24 @@ export function initSettings() {
 
 function changed() { syncSettingsUI(); save(); }
 
+/**
+ * 출제 설정 공유 링크(common/share-settings.js)에 담을 값: S에 마디수를 켜짐/꺼짐 두 개로 더한 것
+ * (링크의 옵션 글자는 켜짐/꺼짐만 담아서 — H ½마디, L 2마디, 둘 다 없으면 1마디)
+ */
+export const presetSource = () => ({ ...S, barsHalf: S.bars === "0.5", barsTwo: S.bars === "2" });
+
+/**
+ * 공유 링크의 [바꾸기]: 링크의 설정을 넣고(마디수는 barsHalf·barsTwo에서 되돌림) 화면·저장.
+ * 템포·MIDI 소리 등 기기별 값은 그대로. 연주 중이면 이미 보이는 다음 코드 다음부터 적용(다른 설정 변경과 같음)
+ */
+export function applyPreset(p) {
+  const { barsHalf, barsTwo, ...rest } = p;
+  Object.assign(S, rest);
+  S.bars = barsHalf ? "0.5" : barsTwo ? "2" : "1";
+  if (S.optD || S.optE) S.adv = true;   // [심화] 옵션이 켜져 있으면 펼쳐서 보여 줌 (랜덤 코드 연습과 같음)
+  changed();
+}
+
 /** S에 맞게 체크·펼침·경고를 다시 그림 (언어를 바꿀 때도) */
 export function syncSettingsUI() {
   Engine.TYPES.forEach(x => { $("r-type-" + x.id).checked = !!S.types[x.id]; });

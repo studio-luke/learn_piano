@@ -4,8 +4,9 @@
 export const PRESET_PARAM = "preset";
 const VERSION = "1";
 const MAX_LEN = 600;   // 이보다 긴 값은 읽지 않음 (코드 종류를 전부 골라도 200자 안팎)
-// 옵션 글자 ↔ 설정 이름
-const FLAGS = { B: "optB", C: "optC", D: "optD", E: "optE", I: "optInv" };
+// 옵션 글자 ↔ 설정 이름 (켜짐/꺼짐). 코드 초견(2026-11-10): S 분수코드 허용, H ½마디·L 2마디(둘 다 없으면 1마디) —
+// 마디수는 켜짐/꺼짐이 아니라서 페이지가 barsHalf·barsTwo로 바꿔 넘기고 받아서 되돌림(pages/improv.js)
+const FLAGS = { B: "optB", C: "optC", D: "optD", E: "optE", I: "optInv", S: "slash", H: "barsHalf", L: "barsTwo" };
 
 /**
  * 페이지별 규칙 (어떤 코드 종류·옵션을 담을 수 있는지).
