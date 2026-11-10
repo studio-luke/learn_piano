@@ -157,7 +157,7 @@ test("improv slash: option B filters the chord before the slash; the lowest note
 // ---------- 8마디 코드진행 (improv/progression.js, 5단계 2026-11-10) ----------
 const progs = async (o, n = 300) => {
   const P = await import("../src/assets/js/improv/progression.js");
-  return Array.from({ length: n }, () => P.generateProgression({ tension: "off", slash: true, count: "mid", level: "highmid", meters: false, ...o }));
+  return Array.from({ length: n }, () => P.generateProgression({ tension: "off", slash: true, count: "mid", level: 2, chance: 2, meters: false, ...o }));
 };
 const chordsOf = ps => ps.flatMap(p => p.bars.flat());
 
@@ -186,7 +186,7 @@ test("improv prog: time signatures — 4/4 only unless the option is on, then al
   assert.ok(c["4/4"] > c["6/8"] && c["6/8"] > c["9/8"]);
 });
 
-test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-only tension chords; 7alt only with tensions; C♭ the only odd root", async () => {
+test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-only tension chords; 7alt only with tensions; tidy root spelling", async () => {
   const P = await import("../src/assets/js/improv/progression.js");
   for (const p of await progs({ tension: "hard" }, 500)) {
     const heads = p.bars.flat().map(c => c.q.head);
@@ -204,8 +204,11 @@ test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-on
   assert.ok(!off.some(c => c.q.group === "tension" || c.q.alt || c.q.tens.length), "텐션 꺼짐");
   assert.ok(!one.some(c => c.q.group === "tension") && one.some(c => c.q.alt) && one.every(c => c.q.tens.length <= 1), "최대 1개");
   assert.ok(hard.some(c => c.q.group === "tension") && hard.filter(c => c.q.group === "tension").every(c => c.q.tens.length <= 1), "HARD");
-  const roots = new Set(chordsOf(await progs({ slash: false }, 2000)).map(c => c.q.rootName));
-  assert.ok(roots.has("C♭") && !["E♯", "B♯", "F♭", "C♯", "D♯", "G♯", "A♯", "G♭"].some(r => roots.has(r)), [...roots].join(" "));
+  // 근음 철자: 조를 따르되 겹변화표·E♯·B♯·F♭은 쉬운 이름으로 (C♭은 G♭장조·E♭단조에서만, 아주 드물게)
+  const roots = chordsOf(await progs({ slash: false }, 3000)).map(c => c.q.rootName);
+  assert.ok(roots.every(r => !/[𝄪𝄫]/.test(r) && !["E♯", "B♯", "F♭"].includes(r)), [...new Set(roots)].join(" "));
+  const cflat = roots.filter(r => r === "C♭").length / roots.length;
+  assert.ok(cflat < 0.01, "C♭ " + (100 * cflat).toFixed(2) + "%");
   // 기호 표기 바꾸기
   const q = { rootName: "C", head: "mM7", items: [], bass: null };
   assert.strictEqual(P.restyle(q, { M: "△", m: "-", dim: "dim", aug: "aug" }).symbol, "C-△7");
@@ -213,38 +216,86 @@ test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-on
   assert.strictEqual(P.restyle({ ...q, head: "m", items: ["add9"], bass: "E♭" }, { M: "M", m: "-", dim: "dim", aug: "aug" }).symbol, "C-(add9)/E♭");
 });
 
-test("improv prog: chord mix with slash chords off — 7th ≈ 85.8%, 6th 8%, rare three 1.2%, 6(9) ~0.5%, triads 2.7%, add 1.8%, no sus (2026-11-10)", async () => {
-  const cs = chordsOf(await progs({ slash: false }, 3000));
-  const pct = ids => 100 * cs.filter(c => ids.includes(c.q.type)).length / cs.length;
-  const near = (v, want, tol, name) => assert.ok(Math.abs(v - want) <= tol, name + " " + v.toFixed(2) + " ≈ " + want);
-  near(pct(["M7", "m7", "dom7", "m7b5", "7sus4", "dim7"]), 85.8, 1.5, "7화음");
-  near(pct(["6", "m6"]), 8, 0.8, "6화음");
-  near(pct(["mM7", "aug7", "augM7"]), 1.2, 0.35, "드문 3종");
-  near(pct(["69", "m69"]), 0.5, 0.25, "6(9)");
-  near(pct(["maj", "min", "dim", "aug"]), 2.7, 0.5, "3화음");
-  near(pct(["add9", "madd9"]), 1.8, 0.4, "add");
-  assert.strictEqual(pct(["sus4", "sus2"]), 0);
+// ---------- 코드진행 문법 (improv/grammar.js, 6단계 난이도 1·2 — 2026-11-11) ----------
+test("improv grammar: level 1 = one key's diatonic chords (+ V7sus4, minor V7·VII°7); ImM7 only in the line cliché; level 2 adds secondary dominants, II-minor, diminished", async () => {
+  const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10, 11];   // 단조는 VII°7(이끔음) 포함
+  const { Engine } = await import("../src/assets/js/core/engine.js");
+  for (const chance of [1, 2]) {
+    for (const p of await progs({ level: 1, chance, slash: false }, 400)) {
+      const tonic = Engine.pcOf(p.key.l, p.key.a), sc = p.key.minor ? MINOR : MAJOR;
+      for (const c of p.bars.flat()) {
+        assert.strictEqual(c.q.kind, "dia", c.q.symbol);
+        assert.ok(sc.includes((c.q.rootPc - tonic + 12) % 12), p.key.name + " " + c.q.symbol);
+        assert.ok(!["sus4", "sus2"].includes(c.q.type), c.q.symbol);
+        if (c.q.type === "mM7") assert.ok(/^cliche/.test(c.q.pattern), "ImM7은 클리셰로만 " + c.q.symbol);
+      }
+    }
+  }
+  const kinds = new Set(chordsOf(await progs({ level: 2, chance: 2 }, 400)).map(c => c.q.kind));
+  for (const k of ["dia", "sec", "ii", "dim"]) assert.ok(kinds.has(k), k);
 });
 
-test("improv prog: 18% slash chords when allowed; notation odds M 10% · m 50% · dim/aug 60% symbols; max-count split ratios (2026-11-10)", async () => {
+test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), halves never identical, at most 2 non-diatonic in a row on level 2", async () => {
+  const { countIIV } = await import("../src/assets/js/improv/grammar.js");
+  for (const [chance, need] of [[1, 2], [2, 1]]) {
+    let ok = 0, N = 300;
+    for (const p of await progs({ level: 2, chance }, N)) {
+      const flat = p.bars.flat().map(c => c.q);
+      if (countIIV(flat) >= need) ok++;
+      const half = (a, b) => p.bars.slice(a, b).map(bar => bar.map(c => c.q.symbol).join(" ")).join("|");
+      assert.notStrictEqual(half(0, 4), half(4, 8));
+      let run = 0, max = 0; for (const q of flat) { run = q.kind === "dia" || q.kind === "surprise" ? 0 : run + 1; max = Math.max(max, run); }
+      assert.ok(max <= 2, "연속 " + max);
+    }
+    assert.ok(ok / N > 0.95, "II-V 조건 " + ok + "/" + N);
+  }
+});
+
+test("improv grammar: dominant 7ths mostly on weak beats (~80%), chance 4 is random within the level's chords", async () => {
+  const DOM = ["dom7", "7sus4", "dom9", "dom13"];
+  for (const chance of [1, 2, 3]) {
+    let weak = 0, all = 0;
+    for (const p of await progs({ level: 2, chance, slash: false }, 800)) {
+      p.bars.forEach((bar, b) => bar.forEach((c, i) => {
+        if (!DOM.includes(c.q.type)) return;
+        all++;
+        const strong = bar.length === 1 ? b % 2 === 0 : i % 2 === 0;
+        if (!strong) weak++;
+      }));
+    }
+    assert.ok(weak / all > 0.72 && weak / all < 0.86, "개연성 " + chance + " 약박 " + (100 * weak / all).toFixed(1));
+  }
+  const rand = chordsOf(await progs({ level: 2, chance: 4 }, 600));
+  const dim = rand.filter(c => c.q.type === "dim7").length / rand.length;
+  assert.ok(dim < 0.15, "무작위에서 dim7 " + (100 * dim).toFixed(1));
+  assert.ok(chordsOf(await progs({ level: 1, chance: 4 }, 300)).every(c => c.q.kind === "dia"), "난이도 1 무작위는 다이아토닉만");
+});
+
+test("improv prog: ~18% slash chords when allowed; notation odds M 10% · m 50% · dim/aug 60% symbols; max-count split ratios (2026-11-10)", async () => {
   const P = await import("../src/assets/js/improv/progression.js");
-  const on = chordsOf(await progs({ slash: true }, 2000));
-  const sl = 100 * on.filter(c => c.q.bass).length / on.length;
-  assert.ok(sl > 16.5 && sl < 19.5, "분수코드 " + sl.toFixed(1));
-  assert.ok(on.every(c => !["sus4", "sus2"].includes(c.q.type)), "분수코드 위 코드에도 sus 없음");
+  // 분수코드(베이스 진행용 전위형 + V7sus4의 하이브리드): 켰을 때 전체의 약 18% (개연성 1~3 평균), 끄면 없음
+  for (const chance of [1, 2, 3]) {
+    const on = chordsOf(await progs({ slash: true, chance }, 800));
+    const sl = 100 * on.filter(c => c.q.bass).length / on.length;
+    assert.ok(sl > 12 && sl < 24, "개연성 " + chance + " 분수코드 " + sl.toFixed(1));
+  }
+  assert.ok(chordsOf(await progs({ slash: false }, 300)).every(c => !c.q.bass));
+  // sus 코드(3음 없음)의 전위형은 5음 베이스만
+  const sus = chordsOf(await progs({ slash: true }, 1500)).filter(c => /sus/.test(c.q.type) && c.q.bass);
+  assert.ok(sus.every(c => (c.q.bassPc - c.q.rootPc + 12) % 12 === 7), sus.map(c => c.q.symbol).join(" "));
   const N = 20000, st = { M: 0, m: 0, dim: 0, aug: 0 };
   for (let i = 0; i < N; i++) { const s = P.randomStyle(Math.random); st.M += s.M === "△"; st.m += s.m === "-"; st.dim += s.dim === "°"; st.aug += s.aug === "+"; }
   const near = (v, want) => assert.ok(Math.abs(100 * v / N - want) < 2, (100 * v / N).toFixed(1) + " ≈ " + want);
   near(st.M, 10); near(st.m, 50); near(st.dim, 60); near(st.aug, 60);
   const c = {}; let n = 0;
-  for (const p of await progs({ count: "high" }, 3000)) for (const b of p.bars) { const k = b.map(x => x.len).join("+"); c[k] = (c[k] || 0) + 1; n++; }
+  for (const p of await progs({ count: "high", chance: 3 }, 3000)) for (const b of p.bars) { const k = b.map(x => x.len).join("+"); c[k] = (c[k] || 0) + 1; n++; }   // 개연성 3 = 화성 리듬 가속 없음
   const share = k => 100 * (c[k] || 0) / n;
   assert.ok(Math.abs(share("2+1+1") - 10) < 1.2 && Math.abs(share("1+1+2") - 4) < 0.8 && Math.abs(share("1+1+1+1") - 2) < 0.6, JSON.stringify(c));
   // 코드 둘인 마디 중: 3+1 8% · 1+3 1% (나머지 2+2)
   const two = share("2+2") + share("3+1") + share("1+3");
   assert.ok(Math.abs(100 * share("3+1") / two - 8) < 1.2 && Math.abs(100 * share("1+3") / two - 1) < 0.6, JSON.stringify(c));
   // 3펄스 마디(3/4·9/8): 1+1+1은 1%
-  const P3 = (await progs({ count: "high", meters: true }, 6000)).filter(p => p.meter.pulses === 3).flatMap(p => p.bars);
+  const P3 = (await progs({ count: "high", meters: true, chance: 3 }, 6000)).filter(p => p.meter.pulses === 3).flatMap(p => p.bars);
   const ones = 100 * P3.filter(b => b.length === 3).length / P3.length;
   assert.ok(P3.length > 1000 && ones < 2, "1+1+1 " + ones.toFixed(2));
 });
