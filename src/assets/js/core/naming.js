@@ -50,13 +50,23 @@ const degOf = t => (t.ten ? E.TEN[t.ten][1] : t.deg);
 //   3화음·sus·6·add             근음·3음·5음 같은 비율 (모양이 적어서 자리바꿈을 더 연습), add9·madd9의 9음 5
 // 11·13(6)·♯9·♭9, sus의 4음·2음은 베이스에 두지 않음.
 // 9음 베이스는 7화음에 텐션이 9 하나뿐일 때(aug7 제외)와 add9·madd9에서만, 그리고 3음이 바로 다음 음(2도 위)이어야 함
-// aug7·augM7의 ♯5도 베이스에 두지 않음 — 온음음계 모양이 되어 근음이 들리지 않음 (aug 3화음은 대칭이라 그대로, 2026-11-10)
+// 증화음 소리가 나는 7화음(aug7·augM7, 5음을 뺀 7(♭13))은 근음만 베이스 — 다른 음이 베이스면 아래가 증3화음·온음음계
+// 모양이 되어 근음이 들리지 않음 (G–B–E♭–D♭ = E♭7(♭13)이 G 계열로 들림). aug 3화음은 대칭이라 그대로 (2026-11-10)
+// mM7은 7음 베이스 안 됨 (M7은 그대로, 2026-11-10)
+// mM7(11)은 5음 베이스도 안 됨 — 5음 위에 장3도(7음)·단7도(11음)가 생겨 5음이 근음인 도미넌트 7처럼 들림 (2026-11-10)
 const BASS_7TH = { 1: 40, 3: 20, 5: 15, 7: 20, 9: 5 };
 const BASS_OTHER = { 1: 1, 3: 1, 5: 1 };
 const NINE_BASS = 5 / 95;   // 3화음 쪽 비율(합 3)에 맞춘 9음 몫 — 전체의 5%
 
+/** 증화음 소리가 나는 7화음인지: aug7·augM7, 또는 완전5도 없이 ♭13이 있는 7화음 */
+const augSound = (q, tones) => q.type === "aug7" || q.type === "augM7"
+  || (tones.some(x => x.ten === "b13") && !tones.some(x => x.semi === 7 && x.deg === 5) && tones.some(x => x.deg === 3 && x.semi === 4));
+
 /** 이 음을 베이스에 둘 비중 (0이면 베이스로 쓰지 않음) */
 function bassWeight(q, t, tones) {
+  if (augSound(q, tones)) return t.semi === 0 && !t.ten ? 1 : 0;
+  if (q.type === "mM7" && t.deg === 7) return 0;
+  if (q.type === "mM7" && t.deg === 5 && !t.ten && tones.some(x => x.ten === "11")) return 0;
   const seventh = tones.some(x => x.role !== "tension" && x.deg === 7);
   const third = tones.some(x => x.role !== "tension" && x.deg === 3);
   if (t.ten || degOf(t) === 9) {
@@ -68,7 +78,6 @@ function bassWeight(q, t, tones) {
     }
     return q.type === "add9" || q.type === "madd9" ? 3 * NINE_BASS : 0;
   }
-  if (t.deg === 5 && (q.type === "aug7" || q.type === "augM7")) return 0;
   return (seventh ? BASS_7TH : BASS_OTHER)[t.deg] || 0;   // 6음(deg 6), sus의 4음·2음은 0
 }
 
@@ -80,6 +89,35 @@ function m9Free(order, offs) {
     if (d > 12 && d % 12 === 1 && !m9ok(order[i], order[j])) return false;
   }
   return true;
+}
+
+// 2도(1~2반음)가 세 번 이어지는 4음 뭉침은 피함 — 코드음을 찾기 어려움 (G♯–A–B–C♯, E–F–G–A♭, 2026-11-10).
+// 2도 하나·둘 이어짐(B–C–E–G, C–D–E–G)은 허용
+function clusterFree(offs) {
+  let run = 0;
+  for (let i = 1; i < offs.length; i++) {
+    run = offs[i] - offs[i - 1] <= 2 ? run + 1 : 0;
+    if (run >= 3) return false;
+  }
+  return true;
+}
+
+// M7·mM7: 맨 위 음이 근음이고 바로 아래가 장7음(단2도 아래)이면 버림 — 이끔음이 근음으로 해결되는 선율처럼 들려
+// 근음이 코드의 근음이 아니라 도착음으로 들림 (A3–G4–F5–C♯6–D6 = DmM7(11), 2026-11-10). 안쪽의 B–C(B–C–E–G)는 그대로
+function topResolves(q, order, offs) {
+  if (q.type !== "M7" && q.type !== "mM7") return false;
+  const n = order.length, top = order[n - 1], below = order[n - 2];
+  return top.semi === 0 && !top.ten && below.semi === 11 && offs[n - 1] - offs[n - 2] === 1;
+}
+
+// 두 손으로 잡을 수 있는 배치만: 아래쪽 음들은 왼손, 위쪽 음들은 오른손으로 나눠 잡을 때 각 손의 폭이 9도(14반음) 이내
+// (G♭3–F4 | B♭4–E♭5–D6처럼 오른손이 10도를 잡아야 하는 배치는 버림, 2026-11-10)
+const HAND = 14;
+function playable(offs) {
+  const n = offs.length;
+  if (offs[n - 1] - offs[0] <= HAND) return true;   // 한 손으로도 됨
+  for (let k = 1; k < n; k++) if (offs[k - 1] - offs[0] <= HAND && offs[n - 1] - offs[k] <= HAND) return true;
+  return false;
 }
 
 // 순서 → 맨 아래 음에서 몇 반음 위인지: 앞 음보다 1~11반음 위의 같은 음이름 자리 (pc가 모두 달라서 하나뿐)
@@ -110,7 +148,9 @@ function pickWeighted(items, w, rnd) {
  *     1) 5음 생략을 먼저 정함 — 생략할 수 있는 5음(텐션이 붙은 코드)은 50% 확률로 뺌, 단 mM7은 늘 보여줌
  *     2) 남은 음 가운데서 베이스를 비율대로 고름 (생략한 5음이 베이스가 되는 일은 없음)
  *     3) 나머지 음을 무작위 순서로 베이스 위에 쌓음 — 각 음은 바로 앞 음보다 높고 한 옥타브 안
- *        (사용자 요청 2026-11-08). 단9도가 생기는 순서는 버림. 단2도는 허용(재즈에서 즐겨 쓰는 B–C–E–G 같은 배치)
+ *        (사용자 요청 2026-11-08). 단9도가 생기는 순서, 2도가 세 번 이어지는 4음 뭉침,
+ *        M7·mM7에서 장7음 바로 위(단2도) 맨 위 음이 근음인 배치, 두 손이 각각 9도 안에 잡을 수 없는 배치는 버림.
+ *        단2도는 허용(재즈에서 즐겨 쓰는 B–C–E–G 같은 배치)
  * @returns 음 목록 (낮은 음부터)
  */
 export function voice(q, inv, rnd = Math.random) {
@@ -143,7 +183,7 @@ export function voice(q, inv, rnd = Math.random) {
     const orders = permutations(rest).map(r => [bassTone, ...r]).filter(order => {
       if (ninthBass && order[1].deg !== 3) return false;   // 9음 베이스: 3음이 바로 위 (2도 위)
       const offs = offsetsOf(order);
-      return offs[offs.length - 1] <= HIGH - LOW && m9Free(order, offs);
+      return offs[offs.length - 1] <= HIGH - LOW && m9Free(order, offs) && clusterFree(offs) && !topResolves(q, order, offs) && playable(offs);
     });
     if (orders.length) {
       const order = pick(orders, rnd);

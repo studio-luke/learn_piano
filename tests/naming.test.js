@@ -74,10 +74,52 @@ test("naming voicing: allowed basses only — no 11, 13(6), ♯9, ♭9, sus 4th/
   }
 });
 
-test("naming voicing: aug7 and augM7 never put the ♯5 in the bass; the aug triad still may (2026-11-10)", () => {
-  for (const q of gen({ optInv: true, types: { aug7: true, augM7: true } }, 4000)) assert.notStrictEqual(degOfT(toneAt(q, q.notes[0])), 5, show(q));
+test("naming voicing: aug-sounding sevenths (aug7, augM7, 7(♭13) without the 5th) keep the root in the bass; aug triad may invert (2026-11-10)", () => {
+  for (const q of gen({ optInv: true, types: { aug7: true, augM7: true } }, 3000)) assert.strictEqual(mod12(q.notes[0].midi), q.rootPc, show(q));
+  const b13 = gen({ optInv: true, cMax: 1, types: { dom7: true } }, 12000).filter(q => q.tens.includes("b13"));
+  const noFifth = b13.filter(q => !q.pcs.has(mod12(q.rootPc + 7)));
+  assert.ok(noFifth.length > 100, `7(♭13) without 5th: ${noFifth.length}`);
+  for (const q of noFifth) assert.strictEqual(mod12(q.notes[0].midi), q.rootPc, show(q));
+  assert.ok(b13.some(q => q.pcs.has(mod12(q.rootPc + 7)) && mod12(q.notes[0].midi) !== q.rootPc), "7(♭13) with the 5th may still invert");
   const aug = gen({ optInv: true, types: { aug: true } }, 1500);
   assert.ok(aug.filter(q => degOfT(toneAt(q, q.notes[0])) === 5).length > 300, "aug triad with ♯5 bass");
+});
+
+test("naming voicing: mM7 never has the 7th in the bass (nor the 5th with an 11); M7 still may (2026-11-10)", () => {
+  for (const q of gen({ optInv: true, types: { mM7: true } }, 3000)) assert.notStrictEqual(degOfT(toneAt(q, q.notes[0])), 7, show(q));
+  assert.ok(gen({ optInv: true, optC: false, types: { M7: true } }, 2000).some(q => degOfT(toneAt(q, q.notes[0])) === 7));
+  // mM7(11)은 5음 베이스도 없음 (5음이 근음인 도미넌트 7처럼 들려서), 11이 없는 mM7은 5음 베이스가 나옴
+  const mm = gen({ optInv: true, types: { mM7: true } }, 6000);
+  for (const q of mm.filter(q => q.tens.includes("11"))) assert.notStrictEqual(degOfT(toneAt(q, q.notes[0])), 5, show(q));
+  assert.ok(mm.some(q => !q.tens.includes("11") && degOfT(toneAt(q, q.notes[0])) === 5), "mM7 without 11 may have the 5th in the bass");
+});
+
+test("naming voicing: M7 and mM7 never end with the root on top a minor 2nd above the major 7th (2026-11-10)", () => {
+  let inner = 0;
+  for (const q of gen({ optInv: true, types: { M7: true, mM7: true } }, 6000)) {
+    const n = q.notes.length, top = q.notes[n - 1], below = q.notes[n - 2];
+    assert.ok(!(mod12(top.midi) === q.rootPc && top.midi - below.midi === 1), show(q));
+    for (let i = 1; i < n - 1; i++) if (mod12(q.notes[i].midi) === q.rootPc && q.notes[i].midi - q.notes[i - 1].midi === 1) inner++;
+  }
+  assert.ok(inner > 100, `inner 7–root minor 2nds still allowed: ${inner}`);
+});
+
+test("naming voicing: every inverted voicing splits into two hands, each within a 9th (2026-11-10)", () => {
+  const ok = ms => ms.some((_, k) => k > 0 && ms[k - 1] - ms[0] <= 14 && ms[ms.length - 1] - ms[k] <= 14) || ms[ms.length - 1] - ms[0] <= 14;
+  for (const q of gen({ optInv: true }, 12000)) assert.ok(ok(q.notes.map(n => n.midi)), show(q));
+});
+
+test("naming voicing: no four-note cluster of three seconds in a row; one or two seconds are fine (2026-11-10)", () => {
+  let two = 0;
+  for (const q of gen({ optInv: true }, 12000)) {
+    let run = 0;
+    for (let i = 1; i < q.notes.length; i++) {
+      run = q.notes[i].midi - q.notes[i - 1].midi <= 2 ? run + 1 : 0;
+      assert.ok(run < 3, show(q));
+      if (run === 2) two++;
+    }
+  }
+  assert.ok(two > 200, `two seconds in a row: ${two}`);
 });
 
 test("naming voicing: no minor 9th except root–♭9 and 5th–♭13; minor 2nds are allowed", () => {
