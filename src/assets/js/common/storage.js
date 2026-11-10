@@ -8,6 +8,7 @@
 //   chordoven.nameScrollTip     코드 추론하기의 "아래로 내리면…" 안내 (scrollTip과 따로)
 //   chordoven.improvBpm         코드 초견의 템포 (두 모드 공통, 30~240)
 //   chordoven.improvMidiSound   코드 초견의 "MIDI 건반 입력 시 소리 재생" ("off"면 끔)
+//   chordoven.improvRandom.v1   코드 초견 무작위 코드 모드의 출제 설정 (improv/settings.js)
 // 사생활 보호 모드 등에서는 localStorage가 막힐 수 있어서 모든 읽기·쓰기를 try로 감싸요.
 
 const PREFIX = "chordoven.";

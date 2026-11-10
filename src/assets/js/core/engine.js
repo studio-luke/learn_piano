@@ -233,14 +233,17 @@ function rebuild(sp, s) {
 
 /**
  * 출제 설정 s로 문제 하나 만들기.
- * @param s           출제 설정 (types, optB, bases, optC, cMax, optD, optE, noAlt — 코드 추론하기는 7alt를 내지 않음)
+ * @param s           출제 설정 (types, optB, bases, optC, cMax, optD, optE, noAlt — 코드 추론하기는 7alt를 내지 않음,
+ *                    weights — 코드 종류 id → 출제 가중치, TYPES의 w 대신 쓸 것만)
  * @param rnd         난수 함수 (테스트에서 고정값을 넣을 수 있게)
  * @param prev        바로 앞 문제 (문제 객체) — 같은 베이스(건반 기준: C♯과 D♭은 같은 베이스)가 연달아 나오지 않게.
  *                    출제할 베이스가 하나뿐이면(옵션 B로 하나만 고름) 어쩔 수 없이 같은 베이스 (사용자 결정 2026-11-06)
  * @returns 문제 객체, 또는 { error: "noTypes" | "noBases" | "noChord" } (화면이 번역해서 보여줌)
  */
 function generate(s, rnd = Math.random, prev = null) {
-  const types = TYPES.filter(t => s.types[t.id]);
+  // s.weights가 있으면 그 페이지만의 출제 비율로 (코드 초견은 mM7·aug7·augM7을 더 낮춤 — improv/settings.js WEIGHTS, 2026-11-10).
+  // 없는 코드 종류는 TYPES의 w 그대로. 원래 TYPES는 바꾸지 않고 w만 바꾼 복사본으로 뽑음
+  const types = TYPES.filter(t => s.types[t.id]).map(t => (s.weights && t.id in s.weights ? { ...t, w: s.weights[t.id] } : t));
   if (!types.length) return { error: "noTypes" };
   const all = rootPool(s);
   // 바로 앞 문제의 베이스는 빼고 고름 (고를 베이스가 그것 하나뿐이면 그대로)

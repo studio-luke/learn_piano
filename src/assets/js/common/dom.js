@@ -12,6 +12,18 @@ export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;"
  *  esc()를 먼저 거치므로 DB에서 온 코드 이름에 그대로 써도 안전. 모양은 base.css의 .ch-ten (2026-11-07 사용자 요청) */
 export const chordHTML = s => esc(s).replace(/\(([^()]*)\)$/, '<sup class="ch-ten">($1)</sup>');
 
+/**
+ * 문제 코드 기호(엔진이 만든 문제 q)를 큰 글씨용 HTML로: 괄호 부분은 윗첨자처럼 작게 위로, 괄호 안 항목이 2개 이상이면
+ * 재즈 차트처럼 세로로 쌓음(높은 텐션이 위) (2026-11-07 사용자 요청). 모양은 practice.css의 .symbol .sup / .stack.
+ * 랜덤 코드 연습과 코드 초견이 함께 씀 (2026-11-10 practice/quiz.js에서 옮김). 엔진이 만든 글자만 넣으므로 esc 불필요
+ */
+export function symbolHTML(q) {
+  const base = q.rootName + q.head;
+  if (q.items.length < 2) return base + (q.items.length ? `<span class="sup">(${q.items[0]})</span>` : "");
+  const col = q.items.slice().reverse().map(x => `<span>${x}</span>`).join("");
+  return `${base}<span class="stack" style="--n:${q.items.length}" aria-hidden="true"><span class="paren">(</span><span class="col">${col}</span><span class="paren">)</span></span>`;
+}
+
 let toastTimer, toastFade;
 const SWIPE_CLOSE_PX = 30;   // 아래로 이만큼 밀고 놓으면 닫힘
 

@@ -15,7 +15,7 @@
 import { Engine } from "../core/engine.js";
 import { Account } from "../account/account.js";
 import { t } from "../i18n/index.js";
-import { $, chordHTML, toast } from "../common/dom.js";
+import { $, chordHTML, toast, symbolHTML } from "../common/dom.js";
 import { S, setLocked } from "./settings.js";
 import { selected, setView, renderKeys, keyHooks } from "./keyboard.js";
 import { Sound } from "./audio.js";
@@ -164,13 +164,6 @@ function hintFor(q) {
   if (q.optional.size) return t("hintOptional");
   // 폰 세로에서는 기본 규칙 대신 "아래 출제 설정" 안내
   return `<span class="hint-wide">${t("hintBasic")}</span><span class="hint-narrow">${t("hintBasicNarrow")}</span>`;
-}
-// 코드 기호: 괄호 부분은 윗첨자처럼 작게 위로 (2026-11-07 사용자 요청). 괄호 안 항목이 2개 이상이면 세로로 쌓음 (높은 텐션이 위)
-function symbolHTML(q) {
-  const base = q.rootName + q.head;
-  if (q.items.length < 2) return base + (q.items.length ? `<span class="sup">(${q.items[0]})</span>` : "");
-  const col = q.items.slice().reverse().map(x => `<span>${x}</span>`).join("");
-  return `${base}<span class="stack" style="--n:${q.items.length}" aria-hidden="true"><span class="paren">(</span><span class="col">${col}</span><span class="paren">)</span></span>`;
 }
 export function renderPrompt() {
   const sym = $("symbol");

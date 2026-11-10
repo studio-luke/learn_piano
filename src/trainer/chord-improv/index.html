@@ -37,39 +37,8 @@
       <button type="button" role="tab" class="im-mode" id="tabProg" data-mode="prog" aria-controls="panelProg" aria-selected="false" data-i18n="improvModeProg">8마디 코드진행</button>
     </div>
 
-    <section class="im-card" aria-label="연습" data-i18n-aria="deskAria">
-      <!-- 무작위 코드 모드 (3단계에서 이전·현재·다음 코드와 출제 설정이 들어옴) -->
-      <div class="im-panel" id="panelRandom" role="tabpanel" aria-labelledby="tabRandom">
-        <p class="im-intro" data-i18n="improvIntroRandom">메트로놈에 맞춰 마디마다 무작위로 나오는 코드를 보고 바로 연주해요.</p>
-        <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
-      </div>
-      <!-- 8마디 코드진행 모드 (5단계에서 악보와 출제 설정이 들어옴) -->
-      <div class="im-panel" id="panelProg" role="tabpanel" aria-labelledby="tabProg" hidden>
-        <p class="im-intro" data-i18n="improvIntroProg">실용음악 입시처럼 8마디 코드진행 악보를 보고 연주해요.</p>
-        <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
-      </div>
-
-      <!-- 카운트인(3, 2, 1, GO)과 박 표시 — 메트로놈이 박마다 바꿈 (pages/improv.js) -->
-      <div class="im-stage" aria-live="off">
-        <div class="im-count" id="countIn" hidden></div>
-        <div class="im-beats" id="beatDots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-      </div>
-
-      <!-- 템포와 시작/중지 (두 모드 공통, 템포는 기기에 저장) -->
-      <div class="im-transport">
-        <div class="im-tempo">
-          <!-- ♩= : 음표는 글꼴마다 크기·높이가 달라서(♩ 글자는 작고 낮게 보였음) 도형(SVG)으로 그림. 색은 글자색을 따름 (2026-11-10) -->
-          <label for="bpm"><span data-i18n="improvTempo">템포</span>
-            <span class="im-note" aria-hidden="true"><svg viewBox="0 0 10 24" width="10" height="24"><ellipse cx="4.2" cy="19.6" rx="4" ry="2.9" transform="rotate(-22 4.2 19.6)"/><rect x="7.1" y="1" width="1.4" height="18.4"/></svg><span class="im-eq">=</span></span></label>
-          <button class="im-step" id="bpmDown" type="button" aria-label="템포 내리기" data-i18n-aria="improvBpmDown">−</button>
-          <input type="number" id="bpm" min="30" max="240" step="1" inputmode="numeric">
-          <button class="im-step" id="bpmUp" type="button" aria-label="템포 올리기" data-i18n-aria="improvBpmUp">+</button>
-        </div>
-        <button class="btn primary im-play" id="btnPlay" type="button" aria-pressed="false"><span id="btnPlayText">▶ 시작</span></button>
-      </div>
-    </section>
-
     <!-- 88건반 (컴퓨터에서만 — 폰은 악보대에 세워 두고 다른 피아노로 연주하니 건반이 필요 없음, 2026-11-10 사용자 결정).
+         모드 탭 바로 아래 맨 위에 둠 (아래에 두면 화면 밖이라 거의 안 보였음, 2026-11-10 사용자 요청).
          누르고 있는 동안만 선택, 아직 채점은 없고 표시·소리만 (improv/keys.js) -->
     <section class="im-card im-keys" id="keysCard" hidden aria-label="피아노 건반" data-i18n-aria="improvKeysAria">
       <div class="im-keys-head">
@@ -82,6 +51,92 @@
       </div>
       <div class="keyboard full" id="keyboard" role="img" aria-label="피아노 건반 (A0–C8)" data-i18n-aria="kbAriaFull"></div>
     </section>
+
+    <div class="im-layout">
+      <section class="im-card" aria-label="연습" data-i18n-aria="deskAria">
+        <!-- 무작위 코드 모드: 이전 · 현재 · 다음 코드 + 박 점 (pages/improv.js). 카운트인 동안에는 현재 자리에 3·2·1·GO, 다음 자리에 첫 코드 -->
+        <!-- 폰 세로에서만 보이는 안내 (보이는 곳은 practice.css .rotate-tip 미디어 쿼리 — 폭 600px 이하 세로). 닫기 없이 늘 보임 (2026-11-10 사용자 요청) -->
+        <p class="rotate-tip im-rotate" data-i18n="improvRotateTip">폰을 가로로 돌리면 코드를 더 크게 볼 수 있어요.</p>
+        <div class="im-panel" id="panelRandom" role="tabpanel" aria-labelledby="tabRandom">
+          <div class="im-row" aria-live="off">
+            <div class="im-slot prev"><span class="im-tag" data-i18n="improvPrev">이전</span><div class="symbol im-chord" id="chPrev"></div></div>
+            <div class="im-slot cur"><div class="symbol im-chord" id="chCur"></div></div>
+            <div class="im-slot next"><span class="im-tag" data-i18n="improvNext">다음</span><div class="symbol im-chord" id="chNext"></div></div>
+          </div>
+        </div>
+        <!-- 8마디 코드진행 모드 (5단계에서 악보와 출제 설정이 들어옴) -->
+        <div class="im-panel" id="panelProg" role="tabpanel" aria-labelledby="tabProg" hidden>
+          <p class="im-intro" data-i18n="improvIntroProg">실용음악 입시처럼 8마디 코드진행 악보를 보고 연주해요.</p>
+          <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
+          <!-- 카운트인(3, 2, 1, GO) — 8마디 모드용 (무작위 코드 모드는 현재 코드 자리에 보임) -->
+          <div class="im-count" id="countIn" hidden></div>
+        </div>
+
+        <!-- 박 점: 무작위 코드 모드는 한 코드가 이어지는 박 수만큼(½마디 2개 · 1마디 4개 · 2마디 8개), 그 밖에는 한 마디 4개 -->
+        <div class="im-beats" id="beatDots" aria-hidden="true"></div>
+
+        <!-- 템포와 시작/중지 (두 모드 공통, 템포는 기기에 저장) -->
+        <div class="im-transport">
+          <div class="im-tempo">
+            <!-- ♩= : 음표는 글꼴마다 크기·높이가 달라서(♩ 글자는 작고 낮게 보였음) 도형(SVG)으로 그림. 색은 글자색을 따름 (2026-11-10) -->
+            <label for="bpm"><span data-i18n="improvTempo">템포</span>
+              <span class="im-note" aria-hidden="true"><svg viewBox="0 0 10 24" width="10" height="24"><ellipse cx="4.2" cy="19.6" rx="4" ry="2.9" transform="rotate(-22 4.2 19.6)"/><rect x="7.1" y="1" width="1.4" height="18.4"/></svg><span class="im-eq">=</span></span></label>
+            <button class="im-step" id="bpmDown" type="button" aria-label="템포 내리기" data-i18n-aria="improvBpmDown">−</button>
+            <input type="number" id="bpm" min="30" max="240" step="1" inputmode="numeric">
+            <button class="im-step" id="bpmUp" type="button" aria-label="템포 올리기" data-i18n-aria="improvBpmUp">+</button>
+          </div>
+          <button class="btn primary im-play" id="btnPlay" type="button" aria-pressed="false"><span id="btnPlayText">▶ 시작</span></button>
+        </div>
+      </section>
+
+      <!-- 무작위 코드 모드의 출제 설정 (코드 종류 칩은 improv/settings.js가 그림). 모양은 랜덤 코드 연습과 같음 -->
+      <aside class="sheet" id="sheetRandom" aria-label="출제 설정" data-i18n-aria="settings">
+        <h2 data-i18n="settings">출제 설정</h2>
+        <p class="note" data-i18n="improvApplyNext">연주 중에 바꾼 설정은 그다음 코드부터 적용돼요.</p>
+
+        <div class="opt">
+          <h3 data-i18n="improvBars">한 코드당 마디수</h3>
+          <div class="chips radios" role="radiogroup" aria-label="한 코드당 마디수" data-i18n-aria="improvBars">
+            <label class="chip"><input type="radio" name="rBars" id="rBars05" value="0.5"><span data-i18n="improvBarsHalf">½마디</span></label>
+            <label class="chip"><input type="radio" name="rBars" id="rBars1" value="1" checked><span data-i18n="improvBars1">1마디</span></label>
+            <label class="chip"><input type="radio" name="rBars" id="rBars2" value="2"><span data-i18n="improvBars2">2마디</span></label>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <div id="rTypeGroups" class="group" style="gap: 16px"></div>
+
+        <hr class="divider">
+
+        <div class="opt">
+          <h3 data-i18n="rangeH">출제 범위</h3>
+          <label class="check"><input type="checkbox" id="rOptB"><span><span data-i18n="optB">특정 베이스의 코드만 출제</span><small data-i18n="optBsub"></small></span></label>
+          <div class="sub" id="rBasesBox" hidden>
+            <div class="bases" id="rBases"></div>
+            <div><button class="white-btn" id="rBasesWhite" type="button" aria-pressed="false" data-i18n="whiteKeys">흰 건반</button><button class="linkbtn" id="rBasesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="rBasesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
+          </div>
+          <label class="check"><input type="checkbox" id="rOptC"><span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsub"></small></span></label>
+          <div class="sub" id="rCBox" hidden>
+            <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
+              <label class="chip"><input type="radio" name="rCMax" id="rCMax1" value="1" checked><span data-i18n="max1">최대 1개</span></label>
+              <label class="chip"><input type="radio" name="rCMax" id="rCMax2" value="2"><span data-i18n="max2">최대 2개</span></label>
+            </div>
+          </div>
+          <!-- 분수코드: 출제 규칙을 정한 뒤(4단계) 연결. 그 전까지는 켜진 채 비활성 -->
+          <label class="check is-off"><input type="checkbox" id="rOptSlash" disabled><span><span data-i18n="improvSlash">분수코드 허용</span><small data-i18n="improvSlashSoon">곧 추가돼요.</small></span></label>
+        </div>
+
+        <button class="adv-toggle" id="rAdvToggle" aria-expanded="false" aria-controls="rAdvBox"><span data-i18n="adv">[심화] 입시 대비 표기 옵션</span><span class="chev" aria-hidden="true">▾</span></button>
+        <div class="adv" id="rAdvBox" hidden>
+          <label class="check"><input type="checkbox" id="rOptD"><span><span data-i18n="optD"></span><small data-i18n="optDsub"></small></span></label>
+          <label class="check"><input type="checkbox" id="rOptE"><span><span data-i18n="optE"></span><small data-i18n="optEsub"></small></span></label>
+        </div>
+
+        <p class="warnbox" id="rSettingsWarn"></p>
+      </aside>
+    </div>
+
   </main>
 
   <footer class="contact" id="siteFooter"></footer>

@@ -1,13 +1,15 @@
 // ===== 코드 초견 (trainer/chord-improv/index.html) — 시작점 =====
 // 메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 연습. 한 페이지에 모드 탭 두 개:
-//   "random"  무작위 코드 — 마디마다 무작위 코드 (주소에 mode 없음)
-//   "prog"    8마디 코드진행 — 입시형 코드진행 악보 (주소 ?mode=prog)
+//   "random"  무작위 코드 — 이전·현재·다음 코드, 한 코드당 ½·1·2마디 (주소에 mode 없음)
+//   "prog"    8마디 코드진행 — 입시형 코드진행 악보 (주소 ?mode=prog, 5단계부터)
 // 각 부분을 만들고 서로 연결해요:
-//   improv/metronome.js  메트로놈(클릭 예약·카운트인)     improv/keys.js  88건반(컴퓨터만, 누르는 동안만 선택)
+//   improv/metronome.js  메트로놈(클릭 예약·카운트인)     improv/keys.js      88건반(컴퓨터만, 누르는 동안만 선택)
+//   improv/random.js     무작위 코드 모드(코드 넘기기)    improv/settings.js  무작위 코드 모드의 출제 설정
 //   practice/audio.js    피아노 소리(랜덤 코드 연습과 같음) — 메트로놈도 같은 소리 장치를 씀
 //   input/midi.js        MIDI 건반 (hold 규칙)
-// 지금(2단계)은 탭·메트로놈·카운트인·박 표시·건반까지. 코드 출제는 다음 단계. 규칙은 chordoven-spec.md "코드 초견".
+// 규칙은 chordoven-spec.md "코드 초견".
 import { startPage } from "../common/layout.js";
+import { isOpen as authOpen } from "../account/auth-dialog.js";
 import { t, onLangChange } from "../i18n/index.js";
 import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
@@ -15,6 +17,8 @@ import { Sound } from "../practice/audio.js";
 import { Midi } from "../input/midi.js";
 import { createMetronome, clampBpm, BPM_MIN, BPM_MAX } from "../improv/metronome.js";
 import { initKeys, press } from "../improv/keys.js";
+import { initSettings, syncSettingsUI } from "../improv/settings.js";
+import * as Random from "../improv/random.js";
 
 startPage({ title: "navImprov" });
 
@@ -24,6 +28,7 @@ const IS_PC = !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: f
 // ---------- 기기에 저장하는 값 (계정에는 올리지 않음) ----------
 //   chordoven.improvBpm        템포 (두 모드 공통)
 //   chordoven.improvMidiSound  MIDI 건반 입력 시 소리 재생 ("off"면 끔, 처음엔 켜짐)
+//   chordoven.improvRandom.v1  무작위 코드 모드의 출제 설정 (improv/settings.js)
 let bpm = clampBpm(store.get("improvBpm") ?? undefined);
 let midiSound = store.get("improvMidiSound") !== "off";
 
@@ -31,6 +36,8 @@ let midiSound = store.get("improvMidiSound") !== "off";
 const MODES = ["random", "prog"];
 const TABS = { random: $("tabRandom"), prog: $("tabProg") };
 const PANELS = { random: $("panelRandom"), prog: $("panelProg") };
+const SHEETS = { random: $("sheetRandom"), prog: null };   // 모드별 출제 설정 (8마디 모드는 5단계에서)
+let mode = "random";
 
 /** 주소의 ?mode → 지금 모드. 모르는 값이나 없으면 무작위 코드 */
 const modeFromUrl = () => (new URLSearchParams(location.search).get("mode") === "prog" ? "prog" : "random");
@@ -39,19 +46,23 @@ const modeFromUrl = () => (new URLSearchParams(location.search).get("mode") === 
  * 고른 모드를 주소에 남김. 방문 기록을 새로 쌓지 않고 지금 주소만 바꿔요(replaceState) —
  * 탭을 여러 번 눌러도 뒤로 가기 한 번이면 이전 페이지로 (통계 화면 탭과 같은 방식, stats/view.js setModeInUrl)
  */
-function setModeInUrl(mode) {
+function setModeInUrl(m) {
   const u = new URL(location.href);
-  if (mode === "random") u.searchParams.delete("mode"); else u.searchParams.set("mode", mode);
+  if (m === "random") u.searchParams.delete("mode"); else u.searchParams.set("mode", m);
   history.replaceState(history.state, "", u.pathname + u.search + u.hash);
 }
 
-/** 모드 화면 바꾸기: 고른 탭만 선택 표시, 그 모드의 내용만 보임 */
-function showMode(mode) {
-  for (const m of MODES) {
-    TABS[m].setAttribute("aria-selected", String(m === mode));
-    TABS[m].tabIndex = m === mode ? 0 : -1;   // 탭 줄 안에서는 ← → 로 옮겨 다님 (아래 keydown)
-    PANELS[m].hidden = m !== mode;
+/** 모드 화면 바꾸기: 고른 탭만 선택 표시, 그 모드의 내용·출제 설정만 보임 (출제 설정이 없으면 연습 카드가 전체 폭) */
+function showMode(m) {
+  mode = m;
+  for (const x of MODES) {
+    TABS[x].setAttribute("aria-selected", String(x === m));
+    TABS[x].tabIndex = x === m ? 0 : -1;   // 탭 줄 안에서는 ← → 로 옮겨 다님 (아래 keydown)
+    PANELS[x].hidden = x !== m;
+    if (SHEETS[x]) SHEETS[x].hidden = x !== m;
   }
+  document.querySelector(".im-layout").classList.toggle("no-sheet", !SHEETS[m]);
+  renderDots(null);
 }
 
 // 탭을 바꾸면 메트로놈은 멈춤 (모드마다 무엇을 셀지 달라서)
@@ -68,12 +79,28 @@ $("tabRandom").parentElement.addEventListener("keydown", e => {
   TABS[next].click();
 });
 
-// ---------- 메트로놈·카운트인·박 표시 ----------
-// 시작하면 한 마디 카운트인(클릭 4번 동안 "3, 2, 1, GO"), 그다음부터 박 점 4개 중 지금 박을 켬 (2026-11-10 사용자 결정)
-const dots = [...$("beatDots").children];
+// ---------- 박 점 ----------
+/**
+ * 박 점 그리기. d = { count: 점 개수, on: 켤 점, accent: 마디 첫 박인 점들 } — null이면 멈춘 상태(한 마디 4개, 모두 꺼짐).
+ * 무작위 코드 모드는 한 코드가 이어지는 박 수만큼(½마디 2 · 1마디 4 · 2마디 8 — 4개마다 띄움), 그 밖에는 한 마디 4개
+ */
+function renderDots(d) {
+  const box = $("beatDots");
+  const count = d ? d.count : 4;
+  if (box.children.length !== count) box.innerHTML = "<i></i>".repeat(count);
+  [...box.children].forEach((el, i) => {
+    el.classList.toggle("on", !!d && i === d.on);
+    el.classList.toggle("accent", !!d && d.accent.includes(i));
+  });
+}
+
+// ---------- 메트로놈·카운트인 ----------
+// 시작하면 한 마디 카운트인(클릭 4번 동안 "3, 2, 1, GO"), 그다음부터 박마다 모드가 화면을 바꿈 (2026-11-10 사용자 결정)
 const metro = createMetronome({
   getContext: Sound.context,
   onBeat: info => {
+    if (mode === "random") { renderDots(Random.beat(info)); return; }
+    // 8마디 모드 (지금은 메트로놈만 — 악보 강조는 나중에)
     const c = $("countIn");
     if (info.countIn) {
       c.hidden = false;
@@ -81,30 +108,50 @@ const metro = createMetronome({
       c.classList.toggle("go", info.label === "GO");
       c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop");   // 숫자가 바뀔 때마다 톡 튀어나옴 (애니메이션 다시 시작)
     } else c.hidden = true;
-    // 박 점: 카운트인 동안에도 같은 자리를 켬 (한 마디 = 점 4개)
-    dots.forEach((d, i) => d.classList.toggle("on", i === info.beat));
-    dots[0].classList.toggle("accent", info.beat === 0);
+    renderDots({ count: 4, on: info.beat, accent: [0] });
   },
   onStop: () => renderPlay(),
 });
 
-/** 시작/중지 버튼 글자와 상태 + 멈췄으면 카운트인·박 점 지우기 */
+/** 시작/중지 버튼 글자와 상태 + 멈췄으면 화면을 처음 상태로 */
 function renderPlay() {
   const on = metro.running;
   $("btnPlay").setAttribute("aria-pressed", String(on));
   $("btnPlayText").textContent = t(on ? "improvStop" : "improvStart");
   if (!on) {
     $("countIn").hidden = true;
-    dots.forEach(d => d.classList.remove("on", "accent"));
+    Random.stop();
+    renderDots(null);
   }
   keepAwake(on);
 }
 
-$("btnPlay").onclick = () => {
-  if (metro.running) metro.stop();
-  else if (!metro.start({ bpm, beats: 4, countIn: true })) toast(t("improvNoAudio"));
+/** 시작/중지 바꾸기 — [▶ 시작 / ■ 중지] 버튼과 Space 키 */
+function togglePlay() {
+  if (metro.running) { metro.stop(); return; }
+  // 무작위 코드 모드: 첫 코드를 뽑을 수 없는 설정이면(코드 종류·베이스 0개) 시작하지 않고 이유를 알림
+  if (mode === "random") { const err = Random.start(); if (err) { toast(t(err)); return; } }
+  if (!metro.start({ bpm, beats: 4, countIn: true })) { Random.stop(); toast(t("improvNoAudio")); }
   renderPlay();
+}
+$("btnPlay").onclick = togglePlay;
+
+// ---------- Space: 시작/중지 (2026-11-10 사용자 요청) ----------
+// 옵션 체크·코드 칩·라디오·버튼에 초점이 있어도 그것을 누르지 않고 시작/중지 (랜덤 코드 연습·코드 추론하기의 Space와 같은 방식).
+// 템포 칸에 숫자를 쓴 뒤 바로 Space로 시작할 수 있게 템포 칸에서도 동작. 로그인 창 등이 열려 있거나 글자 칸(select 등)이면 그대로
+const spaceTarget = e => {
+  if (e.code !== "Space" || e.metaKey || e.ctrlKey || e.altKey) return false;
+  if (authOpen() || document.querySelector("dialog[open]")) return false;
+  const el = e.target, tag = (el.tagName || "").toLowerCase();
+  return !(tag === "select" || tag === "textarea" || el.isContentEditable || (tag === "input" && !/^(checkbox|radio|number)$/.test(el.type)));
 };
+document.addEventListener("keydown", e => {
+  if (!spaceTarget(e)) return;
+  e.preventDefault();             // 페이지 스크롤·체크 바꾸기 막기
+  if (!e.repeat) togglePlay();    // 누르고 있어도 한 번만
+}, true);
+// 체크박스·버튼은 Space를 뗄 때 눌림(클릭)으로 처리하는 브라우저가 있어서, 뗄 때도 막음
+document.addEventListener("keyup", e => { if (spaceTarget(e)) e.preventDefault(); }, true);
 
 // ---------- 템포 (30~240, 기본 60 — 사용자 결정 2026-11-10) ----------
 // 연주 중에 바꾸면 다음 박부터 적용. 칸에 쓰는 동안(input)에는 범위 밖 값을 그대로 두고, 칸을 벗어날 때(change) 범위로 맞춤
@@ -221,6 +268,7 @@ function renderMidi() {
   $("midiConnect").hidden = !Midi.supported || ready;
 }
 
-onLangChange(() => { renderPlay(); renderMidi(); });
+initSettings();
+onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); if (metro.running) Random.render(); });
 showMode(modeFromUrl());
 renderPlay();
