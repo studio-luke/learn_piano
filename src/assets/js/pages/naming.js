@@ -42,6 +42,8 @@ $("optLabels").onchange = e => { S.labels = e.target.checked; save(); draw(); };
 //   Backspace / Delete  커서 앞 / 뒤 조각(고른 부분이 있으면 그 부분) 지우기     Home / End  커서를 맨 앞 / 맨 끝으로 (2026-11-08)
 //   ⌘A 입력칸 전체 선택(비어 있으면 브라우저 기본), ⌘C 고른 부분 복사, ⌘X 잘라내기, ⌘V 붙여넣기,
 //   ⌘Z 되돌리기, ⌘⇧Z·Ctrl+Y 다시 실행, Shift+← → 선택 (2026-11-08)
+//   Space  문제 코드 들어보기 — 옵션 체크·코드 칩·키패드 버튼에 초점이 있어도 그것을 누르지 않고 재생 (2026-11-10 사용자 요청,
+//          랜덤 코드 연습과 같게. 예전엔 체크가 켜졌다 꺼지며 문제가 바뀌었음. 막는 건 아래 keyup도 함께)
 //   글자 키는 어디서 치든 입력칸으로 (입력칸은 <input>이 아니라서 초점과 상관없음 — naming/keypad.js)
 document.addEventListener("keydown", e => {
   if (authOpen() || document.querySelector("dialog[open]") || menuOpen()) return;   // 우클릭 메뉴가 열려 있으면 메뉴가 키를 받음
@@ -56,6 +58,9 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
     if (state.locked) newQuestion(); else submit();
+  } else if (e.code === "Space") {
+    e.preventDefault();
+    if (!e.repeat && state.q) Sound.chord(state.q.notes.map(n => n.midi), false);
   } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
     e.preventDefault();
     const d = e.key === "ArrowRight" ? 1 : -1;
@@ -66,6 +71,15 @@ document.addEventListener("keydown", e => {
   else if (e.key === "Delete") { e.preventDefault(); deleteForward(); }
   else if (e.key === "Home" || e.key === "End") { e.preventDefault(); caretTo(e.key === "End"); }
   else if (e.key.length === 1 && e.key !== " ") { e.preventDefault(); type(e.key); }
+}, true);
+
+// 체크박스·버튼은 Space를 뗄 때 눌림(클릭)으로 처리하는 브라우저가 있어서, 위에서 재생으로 쓴 Space는 뗄 때도 막음
+document.addEventListener("keyup", e => {
+  if (e.code !== "Space" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (authOpen() || document.querySelector("dialog[open]") || menuOpen()) return;
+  const el = e.target, tag = (el.tagName || "").toLowerCase();
+  if (tag === "select" || tag === "textarea" || (tag === "input" && !/^(checkbox|radio)$/.test(el.type))) return;
+  e.preventDefault();
 }, true);
 
 // ---------- 폰 세로 첫 방문: 출제 설정이 아래에 있다고 알려주는 알약 (사용자 요청 2026-11-08) ----------
@@ -85,7 +99,7 @@ document.addEventListener("keydown", e => {
 }
 
 // ---------- 타이머 (랜덤 코드 연습과 같은 규칙, 세션은 연습 구분 "name") ----------
-initTimer(timerHooks, { mode: "name", S, save, sessionSettings: review => timerSettings(S, review, { optInv: !!S.optInv }) });
+initTimer(timerHooks, { mode: "name", S, sessionSettings: review => timerSettings(S, review, { optInv: !!S.optInv }) });
 
 // ---------- 언어가 바뀌면 JS로 그린 문구를 다시 ----------
 onLangChange(() => { syncSettingsUI(); renderPrompt(); renderFeedback(); renderHint(); renderReview(); renderTimer(); });

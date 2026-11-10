@@ -278,7 +278,6 @@ export default {
   unitSec: "{n}s",
   weakTensions: "Lowest-scoring tensions",
   timer: "Timer",
-  timerShow: "(Timer) Show time",
   timerTimeout: "No input for 5 minutes, so the timer is off. This question was recorded as missed (5:00).",
   timerOffline: "The connection was lost, so the timer is off. This question was not recorded.",
   lockTimer: "Practice settings can't be changed while the timer is running. Turn the timer off first.",

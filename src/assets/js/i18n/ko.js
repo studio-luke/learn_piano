@@ -279,7 +279,6 @@ export default {
   unitSec: "{n}초",
   weakTensions: "정답률이 낮은 텐션",
   timer: "타이머",
-  timerShow: "(타이머) 시간 표시",
   timerTimeout: "5분 동안 입력이 없어서 타이머를 껐어요. 이 문제는 오답(5분)으로 기록했어요.",
   timerOffline: "인터넷 연결이 끊겨서 타이머를 껐어요. 이 문제는 기록하지 않았어요.",
   lockTimer: "타이머가 실행 중일 때는 출제 설정을 바꿀 수 없어요. 바꾸려면 타이머를 먼저 꺼 주세요.",

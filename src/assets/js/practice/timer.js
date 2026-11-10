@@ -52,7 +52,7 @@ export const timerSettings = (S, review, extra = {}) => ({
 });
 
 let hooks = {};
-// 페이지 설정 (initTimer의 cfg): mode("play" | "name"), S(출제 설정 — timerShow도 여기), save(), sessionSettings(review)
+// 페이지 설정 (initTimer의 cfg): mode("play" | "name"), S(출제 설정), sessionSettings(review)
 let cfg = {};
 
 /** 시간 재기 시작: 새 문제가 나올 때마다 quiz.js가 부름 (타이머가 꺼져 있으면 재지 않음). snap = 그때의 정답/시도 숫자 */
@@ -84,9 +84,9 @@ export function renderTimer() {
   }
   el.textContent = text;
   el.classList.toggle("wait", !c);
-  el.hidden = !timer.on || !c || cfg.S.timerShow === false;
+  el.hidden = !timer.on || !c;
   // 폰 세로에서는 안내 문구 옆 대신 버튼 안에 지난 시간을 보여줌 (CSS가 둘 중 하나만 보이게 함)
-  $("timerBtnTime").textContent = timer.on && c && cfg.S.timerShow !== false ? text.replace("⏱ ", "") : "";
+  $("timerBtnTime").textContent = timer.on && c ? text.replace("⏱ ", "") : "";
 }
 
 /** 사용자 입력이 있었음 (5분 무입력 판단용) — 클릭·키 입력은 자동, 그 밖의 입력(MIDI 건반)은 페이지가 부름 */
@@ -101,7 +101,7 @@ export function markInput() { if (timer.cur && timer.cur.end == null) timer.cur.
  * @param h.offline()          인터넷 연결이 끊김
  * @param h.leave()            페이지를 닫거나 새로고침 (중단된 문제 수를 돌려줌)
  * @param h.locked()           지금 문제가 끝났는지 (끝난 뒤에는 시간을 재지 않음)
- * @param c  페이지 설정 { mode: "play" | "name", S: 출제 설정, save(): 설정 저장, sessionSettings(review): 세션에 남길 설정 }
+ * @param c  페이지 설정 { mode: "play" | "name", S: 출제 설정, sessionSettings(review): 세션에 남길 설정 }
  */
 export function initTimer(h, c) {
   hooks = h; cfg = c;
@@ -111,9 +111,6 @@ export function initTimer(h, c) {
   };
 
   // 도움말(?)은 공통 처리 (common/layout.js wireHelp)
-
-  $("optTimerShow").checked = cfg.S.timerShow !== false;
-  $("optTimerShow").onchange = e => { cfg.S.timerShow = e.target.checked; cfg.save(); renderTimer(); };
 
   // 아무 키나 클릭이든 "입력"으로 침 (5분 무입력 판단용). MIDI 건반은 페이지가 markInput()을 부름
   document.addEventListener("pointerdown", markInput, true);

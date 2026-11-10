@@ -278,7 +278,6 @@ export default {
   unitSec: "{n}秒",
   weakTensions: "正确率最低的延伸音",
   timer: "计时器",
-  timerShow: "（计时器）显示时间",
   timerTimeout: "5 分钟内没有任何操作，计时器已关闭。本题记为答错（5 分钟）。",
   timerOffline: "网络连接已断开，计时器已关闭。本题未记录。",
   lockTimer: "计时器运行时不能更改出题设置。请先关闭计时器。",

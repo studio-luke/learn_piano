@@ -7,7 +7,7 @@
 //   optC, cMax   옵션 C(세븐코드에 텐션) 켜짐, 텐션 최대 개수(1 또는 2)
 //   optD, optE   옵션 D(기호 표기), 옵션 E(복잡한 음 표현)
 //   adv          [심화] 묶음 펼침
-//   labels, sound, timerShow   건반 음이름 표시, 소리, 지난 시간 표시
+//   labels, sound              건반 음이름 표시, 소리
 //   kbd, kbdTouched            키보드로 건반 입력(기기별 — 계정에 안 올림), 사용자가 직접 바꿨는지
 //   midi                       MIDI 입력 모드 — 88건반 표시(기기별 — 계정에 안 올림, 2026-11-09)
 import { Engine } from "../core/engine.js";
@@ -30,7 +30,7 @@ export const DEFAULTS = {
     add9: true, madd9: true,
   },
   optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
-  labels: false, sound: true, adv: false, kbd: IS_PC, kbdTouched: false, midi: false, timerShow: true,
+  labels: false, sound: true, adv: false, kbd: IS_PC, kbdTouched: false, midi: false,
 };
 
 /** 지금 출제 설정. 다른 파일이 이 객체를 계속 참조하므로 새 객체로 바꾸지 말고 replaceSettings()로 내용만 바꿀 것 */

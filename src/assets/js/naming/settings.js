@@ -10,7 +10,6 @@
 //   optE         옵션 E(복잡한 표현이 포함된 코드 출제) — 자리바꿈을 켜면 쓰지 않음(비활성화, 값은 그대로 둠)
 //   adv          [심화] 묶음 펼침
 //   labels       건반에 음이름 표시
-//   timerShow    (타이머) 시간 표시
 import { Engine } from "../core/engine.js";
 import { NAME_TYPES } from "../core/naming.js";
 import { Account } from "../account/account.js";
@@ -30,7 +29,7 @@ export const DEFAULTS = {
     add9: true, madd9: true,
   },
   optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optInv: false, optE: false,
-  adv: false, labels: false, timerShow: true,
+  adv: false, labels: false,
 };
 
 /** 지금 출제 설정. 다른 파일이 이 객체를 계속 참조하므로 새 객체로 바꾸지 말 것 */

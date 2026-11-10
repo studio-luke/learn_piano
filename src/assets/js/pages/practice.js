@@ -183,7 +183,7 @@ $("rotateTipClose").onclick = () => { $("rotateTip").hidden = true; store.set("r
 }
 
 // ---------- 타이머 ----------
-initTimer(timerHooks, { mode: "play", S, save, sessionSettings: review => timerSettings(S, review, { optD: !!S.optD }) });
+initTimer(timerHooks, { mode: "play", S, sessionSettings: review => timerSettings(S, review, { optD: !!S.optD }) });
 
 // ---------- 언어가 바뀌면 JS로 그린 문구를 다시 ----------
 onLangChange(() => { syncSettingsUI(); renderPrompt(); renderFeedback(); renderKeys(); renderReview(); renderTimer(); renderMidi(); });
