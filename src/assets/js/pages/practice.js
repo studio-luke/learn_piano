@@ -14,6 +14,9 @@ import { initKeyboard, setKeyLabels, selected, renderKeys, CODE_TO_MIDI, LOW, HI
 import { Sound } from "../practice/audio.js";
 import { initTimer, setTimer, renderTimer, timerSettings, markInput } from "../practice/timer.js";
 import { Midi, midiSelection } from "../input/midi.js";
+import { initPresetLink } from "../common/share-settings.js";
+import { Engine } from "../core/engine.js";
+import { ROUTES } from "../common/sitemap.js";
 
 Sound.preload();   // 피아노 녹음은 페이지를 열자마자 받기 시작 (소리로 푸는 건 첫 터치 뒤 — practice/audio.js)
 import {
@@ -200,10 +203,25 @@ async function beginReview() {
 const goOtherReview = authHooks.startReview;
 authHooks.startReview = mode => (mode === "name" ? goOtherReview(mode) : beginReview());
 
-let reviewFromUrl = new URLSearchParams(location.search).get("review") === "1";   // 마이페이지의 [다시 풀기]
+// 출제 설정 공유 링크(?preset=…): 관리자에게 [링크 만들기] 버튼, 링크로 들어오면 바꿀지 묻기 (common/share-settings.js)
+// [바꾸기] → 링크의 설정을 넣고(소리·음이름·키보드·MIDI·타이머는 그대로) 이 기기와 계정에 저장, 새 문제
+const preset = initPresetLink({
+  spec: { route: ROUTES.trainer, types: Engine.TYPES.map(x => x.id), flags: ["B", "C", "D", "E"] },
+  S,
+  apply(p) {
+    setTimer(false);
+    Object.assign(S, p);
+    if (S.optD || S.optE) S.adv = true;   // [심화] 옵션이 켜져 있으면 펼쳐서 보여 줌
+    syncSettingsUI(); save(); newQuestion();
+  },
+});
+
+// 마이페이지의 [다시 풀기]. 출제 설정 공유 링크와 함께 오면 다시 풀기는 시작하지 않음(다시 풀기 중에는 출제 설정이 잠겨서)
+let reviewFromUrl = !preset.pending && new URLSearchParams(location.search).get("review") === "1";
 Account.on("profile", async profile => {
-  // 출제 설정: 계정에 있으면 받아 오고(타이머는 끔), 첫 로그인이면 이 기기 설정을 계정에 올림
-  if (profile.settings) { setTimer(false); replaceSettings(profile.settings); syncSettingsUI(); syncToggles(); newQuestion(); }
+  // 출제 설정: 링크로 방금 바꿨으면 그 설정을 계정에 올리고, 아니면 계정에 있으면 받아 오고(타이머는 끔), 첫 로그인이면 이 기기 설정을 계정에 올림
+  if (preset.consume()) Account.settingsChanged(S);
+  else if (profile.settings) { setTimer(false); replaceSettings(profile.settings); syncSettingsUI(); syncToggles(); newQuestion(); }
   else Account.settingsChanged(S);
   // 머리글 숫자: 계정의 누적 기록으로 (로그인·새로고침 때만, 그 뒤로는 화면에서 +1, DB에서도 +1)
   const totals = await Account.loadTotals();

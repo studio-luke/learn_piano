@@ -430,4 +430,13 @@ export default {
   hintRoots: "可能的根音",
   keysQuestionOnly: "只能试听题目中选中的琴键。",
   nextPlain: "下一题",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
+  // 출제 설정 공유 링크 (common/share-settings.js, 2026-11-10)
+  cancel: "取消",
+  presetMake: "🔗 用此设置生成链接",
+  presetCopied: "已复制包含此出题设置的链接。",
+  presetCopyManual: "请复制下面的链接发送出去。打开此链接的人可以切换到这个出题设置。",
+  presetAsk: "你刚打开的链接包含出题设置。要把当前的出题设置换成这个设置吗？",
+  presetApply: "更换",
+  presetDone: "出题设置已更换。",
+  presetBad: "链接中的出题设置无效，未应用。",
 };

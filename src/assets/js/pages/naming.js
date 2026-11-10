@@ -21,6 +21,9 @@ import {
 import { Sound } from "../practice/audio.js";
 import { initTimer, setTimer, renderTimer, timerSettings } from "../practice/timer.js";
 import { Midi } from "../input/midi.js";
+import { initPresetLink } from "../common/share-settings.js";
+import { NAME_TYPES } from "../core/naming.js";
+import { ROUTES } from "../common/sitemap.js";
 
 Sound.preload();   // 피아노 녹음은 페이지를 열자마자 받기 시작 (소리로 푸는 건 첫 터치 뒤 — practice/audio.js)
 
@@ -126,10 +129,25 @@ async function beginReview() {
 const goTrainerReview = authHooks.startReview;
 authHooks.startReview = mode => (mode === "name" ? beginReview() : goTrainerReview(mode));
 
-let reviewFromUrl = new URLSearchParams(location.search).get("review") === "1";   // 다른 페이지에서 [다시 풀기]로 들어옴
+// 출제 설정 공유 링크(?preset=…): 관리자에게 [링크 만들기] 버튼, 링크로 들어오면 바꿀지 묻기 (common/share-settings.js)
+// [바꾸기] → 링크의 설정을 넣고(음이름 표시·타이머는 그대로) 이 기기와 계정(name_settings)에 저장, 새 문제
+const preset = initPresetLink({
+  spec: { route: ROUTES.nameTrainer, types: NAME_TYPES.map(x => x.id), flags: ["B", "C", "E", "I"] },
+  S,
+  apply(p) {
+    setTimer(false);
+    Object.assign(S, p);
+    if (S.optE) S.adv = true;   // [심화] 옵션이 켜져 있으면 펼쳐서 보여 줌
+    syncSettingsUI(); save(); newQuestion();
+  },
+});
+
+// 다른 페이지에서 [다시 풀기]로 들어옴. 출제 설정 공유 링크와 함께 오면 다시 풀기는 시작하지 않음(다시 풀기 중에는 출제 설정이 잠겨서)
+let reviewFromUrl = !preset.pending && new URLSearchParams(location.search).get("review") === "1";
 Account.on("profile", async profile => {
-  // 출제 설정: 계정에 있으면 받아 오고(타이머는 끔), 첫 로그인이면 이 기기 설정을 계정에 올림
-  if (profile.name_settings) { setTimer(false); replaceSettings(profile.name_settings); syncSettingsUI(); $("optLabels").checked = S.labels; newQuestion(); }
+  // 출제 설정: 링크로 방금 바꿨으면 그 설정을 계정에 올리고, 아니면 계정에 있으면 받아 오고(타이머는 끔), 첫 로그인이면 이 기기 설정을 계정에 올림
+  if (preset.consume()) Account.settingsChanged(S, "name_settings");
+  else if (profile.name_settings) { setTimer(false); replaceSettings(profile.name_settings); syncSettingsUI(); $("optLabels").checked = S.labels; newQuestion(); }
   else Account.settingsChanged(S, "name_settings");
   // 머리글 숫자: 계정의 이 연습 누적 기록으로 (로그인·새로고침 때만, 그 뒤로는 화면에서 +1, DB에서도 +1)
   const totals = await Account.loadTotals("name");

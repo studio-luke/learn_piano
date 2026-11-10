@@ -153,6 +153,12 @@ button { cursor: pointer; }
 .brand { align-items: center; }
 dialog.nav-drawer { margin: 0 auto 0 0; width: min(300px, 86vw); max-width: 86vw; height: 100dvh; max-height: 100dvh; border: 1px solid var(--line); border-left: none; border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface); color: var(--ink); padding: max(16px, env(safe-area-inset-top, 0px)) 16px 20px max(16px, env(safe-area-inset-left, 0px)); box-shadow: 0 24px 60px -24px rgba(40,20,10,.5); }
 dialog.nav-drawer::backdrop { background: rgba(40,25,15,.45); }
+/* 작은 확인 창 (출제 설정 공유 링크 — common/share-settings.js): 문장 + 오른쪽 아래 버튼. 복사가 안 될 때는 링크 칸도 */
+dialog.mini-dlg { width: min(400px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 20px; box-shadow: 0 24px 60px -24px rgba(40,20,10,.5); }
+dialog.mini-dlg::backdrop { background: rgba(40,25,15,.45); }
+dialog.mini-dlg p { margin: 0 0 16px; line-height: 1.6; word-break: keep-all; }
+.mini-dlg-url { width: 100%; box-sizing: border-box; margin-bottom: 16px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); font-size: 13px; }
+.mini-dlg-btns { display: flex; justify-content: flex-end; gap: 8px; }
 dialog.nav-drawer[open] { animation: nav-in 180ms ease-out; }
 @keyframes nav-in { from { transform: translateX(-48px); opacity: 0; } }
 .nav-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }

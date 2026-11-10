@@ -8,7 +8,7 @@
     "dev": "node tools/serve.js",
     "dev:stub": "node tools/serve.js --stub",
     "build": "node tools/build.js",
-    "test": "node --test tests/engine.test.js tests/naming.test.js tests/improv.test.js tests/schema.test.js tests/account.test.js tests/build.test.js tests/db.test.js",
+    "test": "node --test tests/engine.test.js tests/naming.test.js tests/improv.test.js tests/schema.test.js tests/account.test.js tests/build.test.js tests/preset.test.js tests/db.test.js",
     "audit": "node tools/build.js && node tests/layout-audit.js"
   },
   "devDependencies": {

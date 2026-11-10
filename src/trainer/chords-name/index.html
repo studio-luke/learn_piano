@@ -88,7 +88,8 @@
 
     <!-- 출제 설정 (코드 종류 칩은 assets/js/naming/settings.js가 그림) -->
     <aside class="sheet" aria-label="출제 설정" data-i18n-aria="settings">
-      <h2 data-i18n="settings">출제 설정</h2>
+      <!-- 제목 줄: 오른쪽에 출제 설정 공유 링크 버튼(관리자에게만 보임, common/share-settings.js) — 잠겨 있어도 누를 수 있음 -->
+      <div class="sheet-head"><h2 data-i18n="settings">출제 설정</h2><button class="linkbtn preset-btn" id="presetBtn" type="button" hidden data-i18n="presetMake">🔗 이 설정으로 링크 만들기</button></div>
       <p class="lock-note" id="lockNote" hidden></p>
       <button class="sheet-lock" id="sheetLock" type="button" hidden tabindex="-1" aria-hidden="true"></button>
 
