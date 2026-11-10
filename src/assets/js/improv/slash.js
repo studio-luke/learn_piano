@@ -2,13 +2,11 @@
 // 무작위 코드 모드에서 "분수코드 허용"을 켜면 약 25%를 분수코드로 내요 (2026-11-10 사용자 결정, 코드 초견에만 — 랜덤 코드 연습은 그대로).
 // 분수코드 안에서 전위형 60% : 하이브리드 코드 40%.
 //
-// 전위형: 베이스가 코드 구성음(또는 3화음의 7음) — 위 코드는 출제 설정에서 고른 코드 종류 중에서 (텐션 없이)
-//   Major /3 /5 /♭7 (C/E C/G C/B♭)      minor /♭3 /5 /♭7 (Cm/E♭ Cm/G Cm/B♭)
-//   M7 /3 /5 (CM7/E CM7/G — CM7/B는 맨 아래 B와 위의 C가 부딪혀 뺌)
-//   m7·7 /3 /5 /♭7 (Cm7/B♭ C7/E)       6·m6 /3 (F6/A Fm6/A♭ — F/A – Fm6/A♭ 같은 진행)
-//   add9·madd9 /3 /5 (C(add9)/E Cm(add9)/G)
+// 분수코드 모양마다 "켜는 조건"이 있어서, 출제 설정에서 그와 관련된 코드 종류가 하나 이상 켜져 있을 때만 나옴 (2026-11-10 사용자 결정 —
+// 예전엔 하이브리드 코드가 코드 종류 칩과 상관없이 모두 나왔음). 조건은 아래 INVERSIONS·HYBRIDS의 마지막 값. 텐션은 붙이지 않음.
+// 전위형: 베이스가 코드 구성음(또는 3화음의 7음) — 목록은 INVERSIONS. CM7/B는 맨 아래 B와 위의 C가 부딪혀 뺌
 //   8마디 코드진행에서만 쓸 것(여기서는 안 냄): C 다음의 C/B, 라인 클리셰 CmM7/B, 종지 페달 Dm7(♭5)/C
-// 하이브리드 코드: 베이스가 위 코드의 구성음이 아님 — 출제 설정의 코드 종류 칩과 상관없이 나옴 (모양 10가지, 비율은 HYBRIDS의 가중치)
+// 하이브리드 코드: 베이스가 위 코드의 구성음이 아님 — 목록·비율은 HYBRIDS
 //   서스 도미넌트  B♭/C  B♭M7/C  Gm7/C  Am/D        서스 도미넌트 ♭9  B♭m/C  Gm7(♭5)/C
 //   리디안  D/C        G/C        dim7  Ddim7/C  Bdim7/C
 // "특정 베이스" 옵션은 슬래시 앞 코드(위 코드)의 근음으로 거름 (사용자 결정). 바로 앞 코드와 같은 맨 아래 음은 피함.
@@ -26,16 +24,25 @@ export const SLASH_RATE = 0.25, INV_SHARE = 0.6;   // 분수코드 비율, 그 �
 // 음정: [반음, 도수] — 근음에서 위로 (C에서 [3, 3] = E♭)
 const IV = { "3": [4, 3], b3: [3, 3], "5": [7, 5], b7: [10, 7] };
 
-/** 전위형: 코드 종류 id → 베이스로 쓸 음 */
-export const INVERSIONS = {
-  maj: ["3", "5", "b7"], min: ["b3", "5", "b7"],
-  M7: ["3", "5"], m7: ["b3", "5", "b7"], dom7: ["3", "5", "b7"],
-  "6": ["3"], m6: ["b3"],
-  add9: ["3", "5"], madd9: ["b3", "5"],
-};
+/**
+ * 전위형: [위 코드 종류 id, 베이스(IV의 키), 켜는 조건 — 이 코드 종류 중 하나 이상이 켜져 있으면 출제] (사용자 결정 2026-11-10)
+ * 3화음 전위형은 3화음 칩이 꺼져 있어도 그 3화음을 품은 7화음·add9가 켜져 있으면 나옴 (C/E는 Major·M7·7·add9 중 하나)
+ */
+const MAJ_TRIAD = ["maj", "M7", "dom7", "add9"], MIN_TRIAD = ["min", "m7", "madd9"];
+export const INVERSIONS = [
+  ["maj", "3", MAJ_TRIAD], ["maj", "5", MAJ_TRIAD], ["maj", "b7", ["dom7"]],   // C/E C/G · C/B♭
+  ["min", "b3", MIN_TRIAD], ["min", "5", MIN_TRIAD], ["min", "b7", ["m7"]],   // Cm/E♭ Cm/G · Cm/B♭
+  ["M7", "3", ["M7"]], ["M7", "5", ["M7"]],                                   // CM7/E CM7/G
+  ["m7", "b3", ["m7"]], ["m7", "5", ["m7"]], ["m7", "b7", ["m7"]],            // Cm7/E♭ Cm7/G Cm7/B♭
+  ["dom7", "3", ["dom7"]], ["dom7", "5", ["dom7"]], ["dom7", "b7", ["dom7"]], // C7/E C7/G C7/B♭
+  ["6", "3", ["6"]], ["m6", "b3", ["m6"]],                                    // F6/A Fm6/A♭ (F/A – Fm6/A♭ 같은 진행)
+  ["add9", "3", ["add9"]], ["add9", "5", ["add9"]],                           // C(add9)/E C(add9)/G
+  ["madd9", "b3", ["madd9"]], ["madd9", "5", ["madd9"]],                      // Cm(add9)/E♭ Cm(add9)/G
+];
 
 /**
- * 하이브리드 코드: [위 코드 종류 id, 위 코드 근음에서 베이스까지(반음, 도수 — 위로 잼), 출제 가중치].
+ * 하이브리드 코드: [위 코드 종류 id, 위 코드 근음에서 베이스까지(반음, 도수 — 위로 잼), 출제 가중치, 켜는 조건].
+ * 켜는 조건(사용자 결정 2026-11-10): 그 소리를 내는 코드 종류 — 예: B♭/C(= C9sus4)는 Major나 7sus4 중 하나가 켜져 있을 때
  * 베이스가 위 코드 근음보다 아래인 것도 같은 음이름이면 되므로 위로 잰 음정으로 씀 (완전5도 아래 = 완전4도 위, 온음 아래 = 단7도 위)
  * 가중치는 실제 코드진행에서 쓰이는 빈도에 맞춤 (2026-11-10 사용자 결정 — 자주 / 덜 자주 / 드물게):
  *   자주     B♭/C 3 · D/C 2 · G/C 2 · B♭M7/C 1.5      (팝·CCM·가스펠에서 흔한 IV/V·II/I·V/I 모양)
@@ -44,16 +51,16 @@ export const INVERSIONS = {
  * → 하이브리드 코드 안에서 약 25% · 17% · 17% · 13% · 8% · 6% · 4% · 4% · 2% · 2%
  */
 export const HYBRIDS = [
-  ["maj", [2, 2], 3],       // B♭/C   장3화음 / 온음 위       서스 도미넌트 (C9sus4)
-  ["maj", [10, 7], 2],      // D/C    장3화음 / 온음 아래     리디안
-  ["maj", [5, 4], 2],       // G/C    장3화음 / 완전5도 아래
-  ["M7", [2, 2], 1.5],      // B♭M7/C M7 / 온음 위           서스 도미넌트 (C13sus4)
-  ["m7", [5, 4], 1],        // Gm7/C  m7 / 완전5도 아래       서스 도미넌트
-  ["min", [2, 2], 0.7],     // B♭m/C  단3화음 / 온음 위       서스 도미넌트 ♭9
-  ["dim7", [10, 7], 0.5],   // Ddim7/C dim7 / 온음 아래
-  ["dim7", [1, 2], 0.5],    // Bdim7/C dim7 / 반음 위
-  ["min", [5, 4], 0.25],    // Am/D   단3화음 / 완전5도 아래
-  ["m7b5", [5, 4], 0.25],   // Gm7(♭5)/C                    서스 도미넌트 ♭9
+  ["maj", [2, 2], 3, ["maj", "7sus4"]],             // B♭/C   장3화음 / 온음 위       서스 도미넌트 (C9sus4)
+  ["maj", [10, 7], 2, ["maj", "dom7", "M7"]],      // D/C    장3화음 / 온음 아래     리디안
+  ["maj", [5, 4], 2, ["maj", "M7"]],               // G/C    장3화음 / 완전5도 아래
+  ["M7", [2, 2], 1.5, ["M7", "7sus4"]],            // B♭M7/C M7 / 온음 위           서스 도미넌트 (C13sus4)
+  ["m7", [5, 4], 1, ["m7", "7sus4"]],              // Gm7/C  m7 / 완전5도 아래       서스 도미넌트
+  ["min", [2, 2], 0.7, ["min", "7sus4", "m7"]],    // B♭m/C  단3화음 / 온음 위       서스 도미넌트 ♭9
+  ["dim7", [10, 7], 0.5, ["dim7"]],                // Ddim7/C dim7 / 온음 아래
+  ["dim7", [1, 2], 0.5, ["dim7"]],                 // Bdim7/C dim7 / 반음 위
+  ["min", [5, 4], 0.25, ["min", "7sus4", "m7"]],   // Am/D   단3화음 / 완전5도 아래
+  ["m7b5", [5, 4], 0.25, ["m7b5", "7sus4"]],       // Gm7(♭5)/C                    서스 도미넌트 ♭9
 ];
 
 /**
@@ -70,27 +77,44 @@ function bassName(root, [semi, deg], optE) {
 /** 위 코드(q)에 베이스를 붙임 */
 const withBass = (q, b, kind) => ({ ...q, bass: b.name, bassPc: b.pc, slash: kind, symbol: q.symbol + "/" + b.name });
 
-/** 출제 설정 s를 위 코드용으로: 텐션 없이, 코드 종류는 types만 */
-const upper = (s, types) => ({ ...s, types, optC: false });
+/** 켜는 조건: 이 코드 종류 중 하나 이상이 출제 설정에서 켜져 있는지 */
+const allowed = (s, need) => need.some(id => s.types[id]);
 
-/** 전위형 하나. 고른 코드 종류 중 전위형이 되는 것이 없으면 null */
+/** 가중치(w)대로 하나 고르기 (엔진의 pickWeighted와 같은 방식) */
+function pickBy(list, w, rnd) {
+  let x = rnd() * list.reduce((a, e) => a + w(e), 0);
+  for (const e of list) { x -= w(e); if (x < 0) return e; }
+  return list[list.length - 1];
+}
+
+/**
+ * 위 코드 하나: 코드 종류 id 하나로, 텐션 없이. 근음·철자·기호 표기·"특정 베이스"(위 코드의 근음)는 출제 설정 그대로.
+ * 가중치는 엔진 기본(TYPES의 w) — 코드 초견 전용 가중치(3화음 0.2 등)는 "섞어 낼 때 3화음을 거의 안 내려는" 값이라 여기엔 쓰지 않음
+ */
+const upperChord = (s, id, rnd) => Engine.generate({ ...s, types: { [id]: true }, optC: false, weights: null }, rnd);
+
+/**
+ * 전위형 하나. 조건이 맞는 모양 중에서 위 코드 종류는 엔진 기본 가중치대로(Major·m7·7 등이 자주),
+ * 그 코드 종류의 베이스는 같은 비율로. 조건이 맞는 모양이 없으면 null
+ */
 function inversion(s, rnd) {
-  const ids = Object.keys(INVERSIONS).filter(id => s.types[id]);
-  if (!ids.length) return null;
-  const q = Engine.generate(upper(s, Object.fromEntries(ids.map(id => [id, true]))), rnd);
+  const ok = INVERSIONS.filter(([, , need]) => allowed(s, need));
+  if (!ok.length) return null;
+  const ids = [...new Set(ok.map(([id]) => id))];
+  const id = pickBy(ids, x => Engine.BY_ID[x].w, rnd);
+  const q = upperChord(s, id, rnd);
   if (q.error) return null;
-  const list = INVERSIONS[q.type];
-  const b = bassName(q.root, IV[list[Math.floor(rnd() * list.length)]], s.optE);
+  const basses = ok.filter(([x]) => x === id);
+  const b = bassName(q.root, IV[basses[Math.floor(rnd() * basses.length)][1]], s.optE);
   return b && withBass(q, b, "inv");
 }
 
-/** 하이브리드 코드 하나 (10가지 모양 중 HYBRIDS의 가중치대로). 만들 수 없으면 null */
-const HYBRID_TOTAL = HYBRIDS.reduce((a, h) => a + h[2], 0);
+/** 하이브리드 코드 하나 — 조건이 맞는 모양 중에서 HYBRIDS의 가중치대로. 조건이 맞는 모양이 없으면 null */
 function hybrid(s, rnd) {
-  let x = rnd() * HYBRID_TOTAL, pick = HYBRIDS[HYBRIDS.length - 1];
-  for (const h of HYBRIDS) { x -= h[2]; if (x < 0) { pick = h; break; } }
-  const [id, iv] = pick;
-  const q = Engine.generate({ ...upper(s, { [id]: true }), weights: null }, rnd);
+  const ok = HYBRIDS.filter(h => allowed(s, h[3]));
+  if (!ok.length) return null;
+  const [id, iv] = pickBy(ok, h => h[2], rnd);
+  const q = upperChord(s, id, rnd);
   if (q.error) return null;
   const b = bassName(q.root, iv, s.optE);
   return b && withBass(q, b, "hybrid");
@@ -112,8 +136,9 @@ export function generate(s, rnd = Math.random, prev = null) {
   };
   if (!s.slash || rnd() >= SLASH_RATE) return plain();
   for (let tries = 0; tries < 20; tries++) {
-    const q = rnd() < INV_SHARE ? inversion(s, rnd) || hybrid(s, rnd) : hybrid(s, rnd);
+    // 고른 종류에 조건이 맞는 모양이 없으면 다른 종류로 (둘 다 없으면 보통 코드)
+    const q = rnd() < INV_SHARE ? inversion(s, rnd) || hybrid(s, rnd) : hybrid(s, rnd) || inversion(s, rnd);
     if (q && q.bassPc !== prevBass) return q;
   }
-  return plain();   // 분수코드를 만들 수 없음(아주 드묾) → 보통 코드
+  return plain();   // 분수코드를 만들 수 없음(조건이 맞는 모양이 없거나 아주 드문 철자 문제) → 보통 코드
 }

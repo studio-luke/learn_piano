@@ -78,26 +78,52 @@ test("improv slash: about 25% slash chords, 60:40 inversions to hybrids, none wh
   assert.strictEqual((await many(await slashBase({ slash: false }), 3000)).filter(q => q.slash).length, 0);
 });
 
-test("improv slash: inversions use the chosen chord types and the allowed bass notes only", async () => {
+test("improv slash: every inversion and hybrid follows its on-condition — related chord types must be chosen (2026-11-10)", async () => {
   const { Engine } = await import("../src/assets/js/core/engine.js");
-  const { INVERSIONS } = await import("../src/assets/js/improv/slash.js");
-  const types = Object.fromEntries(Engine.TYPES.map(x => [x.id, true]));
-  const qs = (await many(await slashBase({ types, optC: true, cMax: 2 }), 40000)).filter(q => q.slash === "inv");
+  const { INVERSIONS, HYBRIDS } = await import("../src/assets/js/improv/slash.js");
   const IV = { "3": 4, b3: 3, "5": 7, b7: 10 };
-  const seenTypes = new Set();
-  for (const q of qs) {
-    seenTypes.add(q.type);
-    assert.ok(q.type in INVERSIONS, q.symbol);
-    assert.ok(q.tens.length === 0, "텐션 없음 " + q.symbol);
-    const iv = (q.bassPc - q.rootPc + 12) % 12;
-    assert.ok(INVERSIONS[q.type].some(k => IV[k] === iv), q.symbol);
+  const ids = Engine.TYPES.map(x => x.id);
+  // 무작위로 고른 코드 종류 조합 여러 개로: 나온 분수코드는 모두 조건이 맞는 모양이어야 함
+  for (let round = 0; round < 40; round++) {
+    const types = Object.fromEntries(ids.filter(() => Math.random() < 0.3).map(id => [id, true]));
+    if (!Object.keys(types).length) continue;
+    const qs = (await many(await slashBase({ types, optC: true, cMax: 2 }), 3000)).filter(q => q.slash);
+    for (const q of qs) {
+      const iv = (q.bassPc - q.rootPc + 12) % 12;
+      const list = q.slash === "inv" ? INVERSIONS.filter(([id, k]) => id === q.type && IV[k] === iv).map(e => e[2])
+        : HYBRIDS.filter(([id, [semi]]) => id === q.type && semi === iv).map(h => h[3]);
+      assert.ok(list.length === 1, "목록에 있는 모양 " + q.symbol);
+      assert.ok(list[0].some(id => types[id]), q.symbol + " 조건 " + list[0] + " / 켜진 것 " + Object.keys(types));
+      assert.ok(q.tens.length === 0, "텐션 없음 " + q.symbol);
+    }
   }
-  assert.deepStrictEqual([...seenTypes].sort(), Object.keys(INVERSIONS).sort());
+  // 코드 종류를 전부 켜면 모든 모양이 나옴
+  const all = Object.fromEntries(ids.map(id => [id, true]));
+  const qs = (await many(await slashBase({ types: all }), 60000)).filter(q => q.slash === "inv");
+  const seen = new Set(qs.map(q => q.type + ":" + (q.bassPc - q.rootPc + 12) % 12));
+  for (const [id, k] of INVERSIONS) assert.ok(seen.has(id + ":" + IV[k]), id + "/" + k);
   // CM7/B·C6/G·Csus4/G·mM7/B·m7(♭5)/♭7은 무작위 모드에서 안 나옴
   assert.ok(!qs.some(q => (q.type === "M7" && (q.bassPc - q.rootPc + 12) % 12 === 11) || ["sus4", "mM7", "m7b5"].includes(q.type)));
-  // 3화음을 고르지 않으면(처음 설정) 3화음 전위형은 없음
-  const def = (await many(await slashBase())).filter(q => q.slash === "inv");
-  assert.ok(def.length > 0 && def.every(q => !["maj", "min"].includes(q.type)));
+});
+
+test("improv slash: on-condition examples — M7 alone, dim7 alone, 7sus4 alone, triads come with 7th chords", async () => {
+  const kinds = async types => {
+    const qs = (await many(await slashBase({ types }), 8000)).filter(q => q.slash);
+    return new Set(qs.map(q => q.slash + ":" + q.type + ":" + (q.bassPc - q.rootPc + 12) % 12));
+  };
+  // M7만: 전위형 CM7/E·CM7/G와 C/E·C/G(Major 3화음), 하이브리드 D/C·G/C·B♭M7/C
+  assert.deepStrictEqual([...(await kinds({ M7: true }))].sort(),
+    ["hybrid:M7:2", "hybrid:maj:10", "hybrid:maj:5", "inv:M7:4", "inv:M7:7", "inv:maj:4", "inv:maj:7"]);
+  // dim7만: Ddim7/C·Bdim7/C뿐 (전위형 없음)
+  assert.deepStrictEqual([...(await kinds({ dim7: true }))].sort(), ["hybrid:dim7:1", "hybrid:dim7:10"]);
+  // 7sus4만: 서스 도미넌트 모양들만 — B♭/C B♭M7/C Gm7/C B♭m/C Am/D Gm7(♭5)/C
+  assert.deepStrictEqual([...(await kinds({ "7sus4": true }))].sort(),
+    ["hybrid:M7:2", "hybrid:m7:5", "hybrid:m7b5:5", "hybrid:maj:2", "hybrid:min:2", "hybrid:min:5"]);
+  // 7만: C/E C/G C/B♭(Major), C7 전위형, D/C
+  assert.deepStrictEqual([...(await kinds({ dom7: true }))].sort(),
+    ["hybrid:maj:10", "inv:dom7:10", "inv:dom7:4", "inv:dom7:7", "inv:maj:10", "inv:maj:4", "inv:maj:7"]);
+  // 분수코드가 하나도 안 되는 설정(sus2만)이면 보통 코드만
+  assert.strictEqual((await kinds({ sus2: true })).size, 0);
 });
 
 test("improv slash: hybrid shapes — B♭/C B♭M7/C Gm7/C Am/D B♭m/C Gm7(♭5)/C D/C G/C Ddim7/C Bdim7/C", async () => {
