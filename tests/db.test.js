@@ -205,3 +205,45 @@ test("db: two practices kept apart by mode (play / name)", async () => {
   await as(S1, "update public.profiles set name_settings = '{\"optInv\":true}' where id = $1", [S1]);
   r = await db.query("select name_settings from public.profiles where id=$1", [S1]); ok(r.rows[0].name_settings.optInv === true, "name_settings 저장");
 });
+
+// 성명 규칙 (2026-11-10): 화면(names.js checkName)과 DB(name_hard_ok)의 "확실한 오류" 판정이 같은지, 가입 뒤 잠금, 관리자 수정
+test("db: full name rules, lock after sign-up, admin edit", async () => {
+  const { checkName } = await import("../src/assets/js/account/names.js");
+  const db = await bootDb();
+  await addUsers(db);
+  const as = (uid, sql, params) => asUser(db, uid, sql, params);
+  const samples = ["김철수", "김 철수", "남궁민", "철수", "김믜나", "김ㄱ수", "하하하", "김", "김수한무거북", "John Smith", "Li Na", "ab", "asdf jkl",
+    "Aaa Bbb", "Liberty Lee", "Mary-Jane O'Brien", "Kim2", "김John", "山田 太郎", "王伟", "阿依古丽·买买提", "あ", "ああああ", "😀", "  이 영희 ", ""];
+  for (const s of samples) {
+    const r = await db.query("select public.name_hard_ok($1) ok", [s]);
+    ok(r.rows[0].ok === (checkName(s).level !== "hard"), `화면과 DB 판정이 같음: ${JSON.stringify(s)} → DB ${r.rows[0].ok}, 화면 ${checkName(s).level}`);
+  }
+  // 이메일 가입: 형식이 틀린 이름은 DB가 거절, 본인 확인(name_confirmed)은 저장
+  const join = (id, name, extra = {}) => db.query("insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)",
+    [id, id.slice(-2) + "@x", JSON.stringify({ nickname: "n" + id.slice(-2), full_name: name, preferred_lang: "ko", age14: true, terms_version: "x", ...extra })]);
+  const U3 = "00000000-0000-0000-0000-000000000003", U4 = "00000000-0000-0000-0000-000000000004";
+  let e = null; try { await join(U3, "ㅋㅋㅋ"); } catch (x) { e = x; } ok(e && /invalid_full_name/.test(e.message), "자음만 있는 이름은 가입 거절");
+  await join(U4, "김믜나", { name_confirmed: true });
+  let r = await db.query("select full_name, name_confirmed from public.profiles where id=$1", [U4]);
+  ok(r.rows[0].full_name === "김믜나" && r.rows[0].name_confirmed === true, "흔하지 않은 이름은 본인 확인 표시와 함께 가입 " + JSON.stringify(r.rows[0]));
+  // 잠금: 본인은 성명을 못 바꿈 (다른 칸은 그대로 바꿈)
+  e = null; try { await as(S1, "update public.profiles set full_name = '정학생' where id = $1", [S1]); } catch (x) { e = x; } ok(e, "본인은 성명을 못 바꿈");
+  await as(S1, "update public.profiles set nickname = 'new1' where id = $1", [S1]);
+  r = await db.query("select nickname, full_name from public.profiles where id=$1", [S1]); ok(r.rows[0].nickname === "new1" && r.rows[0].full_name === "이학생", "닉네임은 바뀌고 성명은 그대로");
+  e = null; try { await as(S1, "select public.set_my_full_name('정학생')"); } catch (x) { e = x; } ok(e && /full_name_locked/.test(e.message), "성명이 있으면 set_my_full_name도 거절");
+  e = null; try { await as(S1, "select public.complete_signup('정학생', 'x', 'ko', true, 'x')"); } catch (x) { e = x; } ok(e && /already_completed/.test(e.message), "가입을 마친 뒤 complete_signup으로 이름을 못 바꿈");
+  // 관리자 수정: 형식 검사는 그대로, 본인 확인 표시는 지움
+  e = null; try { await as(S2, "select public.admin_set_full_name($1, '정학생')", [S1]); } catch (x) { e = x; } ok(e, "학생은 남의 성명을 못 바꿈");
+  e = null; try { await as(A, "select public.admin_set_full_name($1, 'asdf')", [S1]); } catch (x) { e = x; } ok(e && /invalid_full_name/.test(e.message), "관리자도 형식이 틀린 이름은 못 넣음");
+  await as(A, "select public.admin_set_full_name($1, '김  믜나')", [U4]);
+  r = await db.query("select full_name, name_confirmed from public.profiles where id=$1", [U4]);
+  ok(r.rows[0].full_name === "김 믜나" && r.rows[0].name_confirmed === false, "관리자 수정: 빈칸 정리, 표시 지움 " + JSON.stringify(r.rows[0]));
+  r = await as(A, "select name_confirmed from public.student_list('all') where id = $1", [S1]); ok(r.rows[0].name_confirmed === false, "학생 목록에 본인 확인 표시");
+  r = await as(A, "select public.student_overview($1, current_date, 'all') o", [S1]); ok(r.rows[0].o.name_confirmed === false, "학생 기록에 본인 확인 표시");
+  // 소셜 로그인: 첫 방문 전에는 임시 이름(검사 안 함), complete_signup 때 검사
+  const U5 = "00000000-0000-0000-0000-000000000005";
+  await db.query("insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data) values ($1, 'g5@x', '{\"name\":\"g5\"}', '{\"provider\":\"google\"}')", [U5]);
+  e = null; try { await as(U5, "select public.complete_signup('g5', 'g5', 'ko', true, 'x')"); } catch (x) { e = x; } ok(e && /invalid_full_name/.test(e.message), "소셜 첫 방문: 형식이 틀린 이름은 거절");
+  await as(U5, "select public.complete_signup('Gil Hong', 'g5', 'en', true, 'x', false)");
+  r = await db.query("select full_name, age14_confirmed from public.profiles where id=$1", [U5]); ok(r.rows[0].full_name === "Gil Hong" && r.rows[0].age14_confirmed, "소셜 첫 방문 완료");
+});

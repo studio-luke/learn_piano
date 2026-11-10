@@ -12,6 +12,7 @@ import { ROUTES, pageUrl } from "../common/sitemap.js";
 import { CONFIG } from "../config.js";
 import { drawAvatar, squareJpeg } from "./avatar.js";
 import { googleOn, preloadGoogle, renderGoogle } from "./google.js";
+import { checkName } from "./names.js";
 
 // 사이드바 모양으로 여는 화면들
 const SIDE = new Set(["account", "profile", "changepw"]);
@@ -57,6 +58,13 @@ const rqText = (q, custom) => q === "custom" ? custom || "" : q === "default" ? 
 // "직접 입력하기..."를 고르면 질문 입력 칸을 보여줌
 function toggleCustom(f) { f.querySelector(".rq-custom").hidden = f.rq.value !== "custom"; }
 
+// 성명 칸 + 바로 아래 형식 오류 줄 (2026-11-10 사용자 결정, 규칙은 names.js).
+// 실제 이름일 수도 있는 오류(흔하지 않은 한글 글자, 성씨가 아님)에는 ? 표시 — 마우스를 올리거나 누르면 안내와 [확인] 버튼.
+// 안내는 한국어 이름에만 나와서 번역하지 않아요
+const NAME_FIELD = `
+    <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
+    <p class="name-err" hidden><span class="name-err-text"></span><span class="help name-help" hidden><button type="button" class="help-btn" aria-expanded="false" aria-label="안내">?</button><span class="help-pop left" role="tooltip">일반적인 한국 이름 형식이 아니어서 메시지가 출력됐어요. 본인의 이름이 맞으면 아래 [확인] 버튼을 눌러주세요. 가입은 정상적으로 진행됩니다.<button type="button" class="mini-btn name-ok">확인</button></span></span></p>`;
+
 // 처음 가입할 때 받는 동의 (이메일 가입 화면, 소셜 로그인 첫 방문의 정보 입력 화면)
 const CONSENT = `
     <label class="check"><input type="checkbox" name="age14" required><span data-i18n="agreeAge"></span></label>
@@ -92,7 +100,7 @@ const MARKUP = `
   </div>
 
   <form class="auth-form" data-view="signup" novalidate hidden>
-    <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
+    ${NAME_FIELD}
     <label class="field"><span data-i18n="nickname"></span><input type="text" name="nickname" autocomplete="nickname" maxlength="${NICK_MAX}" required><small data-i18n="nicknameHint"></small></label>
     <label class="field"><span data-i18n="email"></span><input type="email" name="email" autocomplete="email" required></label>
     ${pw("password", "new-password", "password", PW_HINT)}
@@ -139,7 +147,7 @@ const MARKUP = `
       </div>
     </div>
     <label class="field"><span data-i18n="email"></span><input type="email" name="email" readonly tabindex="-1"><small data-i18n="emailFixedHint"></small></label>
-    <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
+    <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" readonly tabindex="-1"><small data-i18n="fullNameLocked"></small></label>
     <label class="field"><span data-i18n="nickname"></span><input type="text" name="nickname" autocomplete="nickname" maxlength="${NICK_MAX}" required><small data-i18n="nicknameHint"></small></label>
     <label class="field"><span data-i18n="prefLang"></span><select name="lang">${LANG_OPTIONS}</select><small data-i18n="prefLangHint"></small></label>
     <!-- 본인 확인 질문: 비밀번호가 있는 회원만 (소셜 로그인 회원은 비밀번호 찾기를 안 씀) -->
@@ -174,7 +182,7 @@ const MARKUP = `
   <!-- 정보 추가 입력: 필수 항목이 새로 생긴 경우(성명만), 또는 소셜 로그인 첫 방문(.consent 부분까지 — 닉네임·언어·동의) -->
   <form class="auth-form" data-view="complete" novalidate hidden>
     <p class="auth-note" id="completeNote"></p>
-    <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
+    ${NAME_FIELD}
     <div class="consent auth-form" hidden>
       <label class="field"><span data-i18n="nickname"></span><input type="text" name="nickname" autocomplete="nickname" maxlength="${NICK_MAX}" required><small data-i18n="nicknameHint"></small></label>
       <label class="field"><span data-i18n="prefLang"></span><select name="lang">${LANG_OPTIONS}</select><small data-i18n="prefLangHint"></small></label>
@@ -340,7 +348,10 @@ function fillComplete() {
   f.querySelectorAll(".consent input, .consent select").forEach(el => { el.disabled = !consent; });
   $("completeNote").dataset.i18n = consent ? "completeSocialNote" : "completeNote";
   $("completeNote").textContent = t($("completeNote").dataset.i18n);
-  f.fullName.value = p.full_name || "";
+  // 소셜 로그인 첫 방문: 그 계정의 이름(구글 계정 이름 등)을 미리 채움. 없으면 빈칸 (DB의 임시 이름은 닉네임이라 쓰지 않음)
+  const meta = (Account.user && Account.user.user_metadata) || {};
+  f.fullName.value = consent ? String(meta.full_name || meta.name || "").trim() : p.full_name || "";
+  resetNameField(f);
   if (consent) {
     f.nickname.value = p.nickname || "";
     f.lang.value = lang();   // 지금 보고 있는 화면 언어 (프로필의 en은 임시값)
@@ -423,7 +434,6 @@ function resetStep(n, quiet) {
 // 바뀐 칸만 { 열 이름: 새 값 }으로 (앞뒤 빈칸은 무시하고 비교)
 function profileChanges() {
   const f = form("profile"), p = Account.profile || {}, out = {};
-  if (f.fullName.value.trim() !== (p.full_name || "")) out.full_name = f.fullName.value.trim();
   if (f.nickname.value.trim() !== (p.nickname || "")) out.nickname = f.nickname.value.trim();
   if (f.lang.value !== p.preferred_lang) out.preferred_lang = f.lang.value;
   return out;
@@ -498,6 +508,48 @@ async function busy(f, fn) {
   try { await fn(); } catch (e) { setMsg("no", errorKey(e)); }
   finally { if (btn) btn.disabled = false; if (f.dataset.view === "delete") deleteReady(); if (f.dataset.view === "profile") profileReady(); }
 }
+// ---------- 성명 형식 (2026-11-10) ----------
+// 칸에서 나가면 검사하고, 그 뒤로는 고칠 때마다 다시 검사. soft 오류에 [확인]을 누르면 그 이름은 통과(한 글자라도 고치면 다시 검사)
+const nameState = new WeakMap();   // 폼 → { touched, confirmed: [확인]을 누른 이름 }
+const nameOf = f => nameState.get(f) || nameState.set(f, { touched: false, confirmed: null }).get(f);
+/** 성명 칸 검사 + 오류 줄 표시. @returns { ok, name(저장할 값), confirmed(흔하지 않은 이름을 본인이 확인) } */
+function checkNameField(f, show = true) {
+  const st = nameOf(f), r = checkName(f.fullName.value);
+  const confirmed = r.level === "soft" && st.confirmed === r.name;
+  const ok = r.level === "ok" || confirmed;
+  if (show) {
+    const box = f.querySelector(".name-err"), text = box.querySelector(".name-err-text");
+    box.hidden = ok;
+    box.querySelector(".name-help").hidden = r.level !== "soft";
+    // 확실한 오류는 화면 언어로, 한국 이름 안내(soft)는 한국어로
+    if (r.level === "hard") { text.dataset.i18n = "errNameInvalid"; text.textContent = t("errNameInvalid"); }
+    else { delete text.dataset.i18n; text.textContent = "유효하지 않은 이름이에요."; }
+  }
+  return { ok, name: r.name, confirmed };
+}
+function wireNameField(f) {
+  const st = nameOf(f);
+  f.fullName.addEventListener("blur", () => { if (f.fullName.value.trim()) { st.touched = true; checkNameField(f); } });
+  f.fullName.addEventListener("input", () => { if (st.touched) checkNameField(f); });
+  f.querySelector(".name-ok").addEventListener("click", () => {
+    st.confirmed = checkName(f.fullName.value).name;
+    f.querySelector(".name-help").classList.remove("open");
+    checkNameField(f);
+  });
+}
+function resetNameField(f) {
+  const st = nameOf(f);
+  st.touched = false; st.confirmed = null;
+  f.querySelector(".name-err").hidden = true;
+}
+/** 제출할 때: 통과 못 하면 오류를 보여주고 칸으로 */
+function nameForSubmit(f) {
+  nameOf(f).touched = true;
+  const v = checkNameField(f);
+  if (!v.ok) { setMsg("", ""); f.fullName.focus(); }
+  return v;
+}
+
 // 아직 Supabase를 못 불러왔으면 네트워크 오류로 안내
 const needClient = () => (Account.client ? false : (setMsg("no", "errNetwork"), true));
 
@@ -516,9 +568,11 @@ const SUBMIT = {
     f.reset(); close();
   },
   async signup(f) {
-    const fullName = f.fullName.value.trim(), nickname = f.nickname.value.trim(), email = f.email.value.trim(), password = f.password.value;
+    const nickname = f.nickname.value.trim(), email = f.email.value.trim(), password = f.password.value;
     const chosenLang = f.lang.value;
-    if (!fullName || fullName.length > NAME_MAX) return setMsg("no", "errFullName");
+    const nm = nameForSubmit(f);
+    if (!nm.ok) return;
+    const fullName = nm.name;
     if (!nickname || nickname.length > NICK_MAX) return setMsg("no", "errNickname");
     if (!validEmail(email)) return setMsg("no", "errEmail");
     if (password.length < PW_MIN) return setMsg("no", "errPwShort");
@@ -530,29 +584,31 @@ const SUBMIT = {
     if (needClient()) return;
     // 확인 답은 가입 정보와 함께 보내고, DB(handle_new_user)가 해시로 바꿔 저장한 뒤 원문은 바로 지움
     const { data, error } = await Account.signUp(email, password,
-      { nickname, full_name: fullName, preferred_lang: chosenLang, age14: true, terms_version: TERMS_VERSION,
+      { nickname, full_name: fullName, name_confirmed: nm.confirmed, preferred_lang: chosenLang, age14: true, terms_version: TERMS_VERSION,
         recovery_q: f.rq.value, recovery_q_text: f.rq.value === "custom" ? f.rqText.value.trim() : null, recovery_a: f.ra.value }, here());
     if (error) return setMsg("no", errorKey(error));
-    f.reset();
+    f.reset(); resetNameField(f);
     // 이메일 인증을 켜 두어서 보통 세션이 없음 (이미 가입된 주소도 같은 안내 — 가입 여부를 알려주지 않으려고)
     if (data.session) close(); else { show("login", { kind: "ok", key: "msgSignupSent" }); showResend(email); }
     if (chosenLang !== lang()) setLang(chosenLang);   // 고른 언어를 바로 화면 언어로
   },
   async complete(f) {
-    const fullName = f.fullName.value.trim();
-    if (!fullName || fullName.length > NAME_MAX) return setMsg("no", "errFullName");
+    const nm = nameForSubmit(f);
+    if (!nm.ok) return;
+    const fullName = nm.name;
     if (Account.needsConsent()) {
       // 소셜 로그인 첫 방문: 동의는 DB(complete_signup)도 다시 검사함 — 여기는 편의용
       const nickname = f.nickname.value.trim();
       if (!nickname || nickname.length > NICK_MAX) return setMsg("no", "errNickname");
       if (!f.age14.checked || !f.terms.checked || !f.privacy.checked) return setMsg("no", "errAgree");
       const { error } = await Account.completeSignup({ p_full_name: fullName, p_nickname: nickname, p_lang: f.lang.value,
-        p_age14: true, p_terms_version: TERMS_VERSION });
+        p_age14: true, p_terms_version: TERMS_VERSION, p_name_confirmed: nm.confirmed });
       if (error) return setMsg("no", errorKey(error));
       f.reset(); close();   // 프로필을 다시 불러오며 고른 언어가 화면에 적용됨 ("profile" 이벤트)
       return;
     }
-    const { error } = await Account.updateProfile({ full_name: fullName });
+    // 성명이 비어 있던 예전 회원: 한 번만 채움 (그 뒤로는 관리자만 바꿈 — DB set_my_full_name)
+    const { error } = await Account.setMyFullName(fullName, nm.confirmed);
     if (error) return setMsg("no", errorKey(error));
     show("account", { kind: "ok", key: "msgSaved" });
   },
@@ -560,7 +616,6 @@ const SUBMIT = {
   async profile(f) {
     const changes = profileChanges(), rc = recoveryChange();
     if (!Object.keys(changes).length && pendingAvatar === undefined && !rc) return;
-    if ("full_name" in changes && (!changes.full_name || changes.full_name.length > NAME_MAX)) return setMsg("no", "errFullName");
     if ("nickname" in changes && (!changes.nickname || changes.nickname.length > NICK_MAX)) return setMsg("no", "errNickname");
     // 본인 확인 질문이 아직 없는 기존 회원('default'): 다른 칸만 고쳐도 질문·답을 먼저 등록해야 저장됨 (2026-11-07 사용자 결정)
     const mustSet = !$("profileRecovery").hidden && myRecovery && myRecovery.question === "default";
@@ -685,6 +740,8 @@ export function initAuthDialog() {
     f.addEventListener("submit", e => { e.preventDefault(); busy(f, () => SUBMIT[f.dataset.view](f)); });
   });
   form("delete").addEventListener("input", deleteReady);
+  wireNameField(form("signup"));
+  wireNameField(form("complete"));
   form("profile").addEventListener("input", profileReady);
   form("profile").addEventListener("change", profileReady);   // 언어 고르기(select)
   form("profile").nickname.addEventListener("input", drawProfileAvatar);   // 사진이 없으면 첫 글자가 따라 바뀜

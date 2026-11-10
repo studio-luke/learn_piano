@@ -181,3 +181,17 @@ test("stats: table sorting — default rate low first, column sorts, no-time row
   assert.strictEqual(ids({ key: "name", dir: "desc" }), "dcba");
   assert.strictEqual(rows.map(r => r.id).join(""), "abcd", "원래 배열은 그대로");
 });
+
+// 성명 형식 (2026-11-10 사용자 결정, account/names.js). DB와 같은 판정인지는 tests/db.test.js가 확인
+test("checkName: hard errors, soft (unusual Korean) names, and normalizing", async () => {
+  const { checkName } = await import("../src/assets/js/account/names.js");
+  const lv = s => checkName(s).level;
+  for (const s of ["김철수", "남궁민", "제갈공명", "John Smith", "Li Na", "Mary-Jane O'Brien", "山田 太郎", "王伟", "阿依古丽·买买提"]) assert.strictEqual(lv(s), "ok", s);
+  // 실제 이름일 수도 있음 → 본인이 [확인]으로 통과: 2,350자 밖 글자, 성씨가 아님
+  for (const s of ["김믜나", "괤쀍", "철수", "슬기"]) assert.strictEqual(lv(s), "soft", s);
+  // 유효하지 않음: 자음·모음, 반복, 길이, 섞임, 숫자·기호, 키보드 따라 치기, 한 단어 영문
+  for (const s of ["김ㄱ수", "ㅋㅋㅋ", "김ㅓ", "하하하", "김", "김수한무거북", "김John", "Kim2", "홍길동!", "😀", "aaa bbb", "ab", "Smith", "asdf Kim", "Qwer Lee", "あ", "ああああ", ""])
+    assert.strictEqual(lv(s), "hard", s);
+  assert.strictEqual(checkName("  김 철수 ").name, "김철수");
+  assert.strictEqual(checkName(" John   Smith ").name, "John Smith");
+});

@@ -124,6 +124,12 @@ export const Account = {
     if (!res.error) await loadProfile();
     return res;
   },
+  /** 성명이 비어 있던 예전 회원이 한 번 채움 (가입 뒤 성명은 관리자만 바꿈 — 2026-11-10) */
+  async setMyFullName(name, confirmed) {
+    const res = await sb.rpc("set_my_full_name", { p_full_name: name, p_name_confirmed: !!confirmed });
+    if (!res.error) await loadProfile();
+    return res;
+  },
   /**
    * 프로필 사진 주소. 사진이 없으면 null (화면은 닉네임 첫 글자를 보여줌).
    * p, id를 주면 다른 회원(선생님 화면의 학생)의 사진, 안 주면 내 사진
@@ -171,7 +177,7 @@ export const Account = {
   /** 탈퇴 직후: 로그아웃을 "복구 거절"로 오해하지 않게 프로필을 먼저 비움 */
   forgetProfile() { profile = null; },
 
-  /** 프로필 고치기 (브라우저가 바꿀 수 있는 열: nickname, settings, full_name, preferred_lang) */
+  /** 프로필 고치기 (브라우저가 바꿀 수 있는 열: nickname, settings, name_settings, preferred_lang, avatar_version — 성명은 못 바꿈) */
   async updateProfile(fields) {
     if (!sb || !user) return { error: null };
     const res = await sb.from("profiles").update(fields).eq("id", user.id);
@@ -290,4 +296,6 @@ export const Account = {
   }),
   /** 학생 목록 (관리자만, 숫자는 연습별) */
   students: (mode = "play") => sb.rpc("student_list", { p_mode: mode }),
+  /** 학생 성명 고치기 (관리자 — 나중에 선생님도. DB can_edit_names) */
+  setStudentName: (uid, name) => sb.rpc("admin_set_full_name", { p_user: uid, p_full_name: name }),
 };

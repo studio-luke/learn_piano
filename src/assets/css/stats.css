@@ -155,3 +155,11 @@ dialog.st-dlg::backdrop { background: rgba(40,25,15,.45); }
 .st-dlg-body { overflow: auto; min-height: 0; }
 .st-dlg-body .note { margin: 0 0 8px; }
 .st-answer { font-weight: 600; }
+
+/* 학생 기록: 성명 옆 표시·[이름 수정] (2026-11-10) */
+.st-who .st-tag { align-self: center; }
+.st-who .linkbtn { font-size: 13px; }
+div.st-who { flex-wrap: wrap; }
+.st-name-edit { display: inline-flex; align-items: center; gap: 6px; }
+.st-name-edit input { font-size: 15px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 12em; max-width: 50vw; }
+.st-name-err { flex-basis: 100%; font-size: 12px; color: var(--danger); }

@@ -24,6 +24,7 @@ export function errorKey(err) {
     over_email_send_rate_limit: "errRate", over_request_rate_limit: "errRate",
   };
   if (byCode[code]) return byCode[code];
+  if (/invalid_full_name/.test(msg)) return "errNameInvalid";   // DB 성명 형식 검사 (2026-11-10)
   if (err.status === 429) return "errRate";
   if (err.name === "AuthRetryableFetchError" || err.status === 0 || /fetch|network/i.test(msg)) return "errNetwork";
   return "errGeneric";

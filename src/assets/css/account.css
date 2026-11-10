@@ -120,3 +120,14 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .avatar-label { font-size: 13px; font-weight: 500; }
 .avatar-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .avatar-actions small { color: var(--muted); font-size: 12px; }
+
+/* ---------- 성명 형식 오류 줄 (2026-11-10, account/auth-dialog.js checkNameField) ----------
+   흔하지 않은 한글 이름이면 오른쪽에 ? — 마우스를 올리거나 누르면 안내와 [확인] (base.css .help) */
+.name-err { position: relative; display: flex; align-items: center; gap: 6px; margin: -6px 0 0; font-size: 12px; color: var(--danger); }
+.name-err[hidden] { display: none; }
+.name-help { position: static; }   /* 설명은 ? 대신 오류 줄 기준으로 — 창 폭에 맞게 펼쳐져 잘리지 않음 */
+.name-help .help-btn { width: 20px; height: 20px; font-size: 12px; }
+.name-help .help-pop { top: calc(100% + 6px); left: 0; right: 0; width: auto; z-index: 2; }
+/* 버튼과 설명 사이 빈틈을 지나갈 때 설명이 닫히지 않게 (안의 [확인]을 누를 수 있게) */
+.name-help .help-pop::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
+.name-ok { display: block; margin: 8px 0 0 auto; }

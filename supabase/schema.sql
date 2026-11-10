@@ -35,6 +35,10 @@ alter table public.profiles add column if not exists avatar_version bigint;
 -- 2026-11-08: practice settings of 코드 추론하기 (/trainer/chords-name/), kept apart from the random-chord trainer's
 -- because the two pages offer different options (settings = 랜덤 코드 연습, name_settings = 코드 추론하기)
 alter table public.profiles add column if not exists name_settings jsonb;
+-- 2026-11-10: the member said "this is really my name" for a full name that does not look like a usual Korean name
+-- (rare syllable or no Korean surname — checked in the browser, src/assets/js/account/names.js). Shown to the admin
+-- so a joke name confirmed this way is easy to find; cleared when the admin changes the name.
+alter table public.profiles add column if not exists name_confirmed boolean not null default false;
 
 alter table public.profiles enable row level security;
 
@@ -55,10 +59,95 @@ create policy "profiles: update own" on public.profiles
   using (id = (select auth.uid()))
   with check (id = (select auth.uid()));
 
--- the browser may read profiles and change only these columns — never role or consent fields
+-- the browser may read profiles and change only these columns — never role, consent fields or the full name
+-- (the full name is set once at sign-up and after that only the admin changes it — admin_set_full_name, 2026-11-10)
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
-grant update (nickname, settings, name_settings, full_name, preferred_lang, avatar_version) on public.profiles to authenticated;
+grant update (nickname, settings, name_settings, preferred_lang, avatar_version) on public.profiles to authenticated;
+
+-- ---------- full name format (2026-11-10) ----------
+-- The same "hard" rules as the sign-up screen (src/assets/js/account/names.js checkName — keep the two in step;
+-- tests/db.test.js compares them): one script only (Hangul / Latin / Han·kana), no digits or symbols, no letter three
+-- times in a row; Hangul 2–5 syllables; Latin two words or more, 4 letters or more, no keyboard runs (qwer, asdf …);
+-- Han·kana 2–10 characters. The "soft" rules (rare syllables, Korean surname) are checked only in the browser,
+-- because the member may confirm that an unusual name is really theirs.
+create or replace function public.name_hard_ok(p text)
+returns boolean language plpgsql immutable set search_path = '' as $$
+declare
+  n text := regexp_replace(btrim(coalesce(p, '')), '\s+', ' ', 'g');
+begin
+  if n = '' or char_length(n) > 50 or lower(n) ~ '(.)\1\1' then
+    return false;
+  end if;
+  if n ~ '^[가-힣 ]+$' then
+    return char_length(replace(n, ' ', '')) between 2 and 5;
+  end if;
+  if n ~ '^[A-Za-zÀ-ÖØ-öø-ÿ'' -]+$' then
+    return n ~ ' ' and char_length(regexp_replace(n, '[^A-Za-zÀ-ÖØ-öø-ÿ]', '', 'g')) >= 4
+      and lower(n) !~ 'qwer|asdf|zxcv|hjkl|uiop|rewq|fdsa|vcxz|lkjh|poiu';
+  end if;
+  if n ~ '^[\u3040-\u30ff\u3400-\u9fff\u00b7 ]+$' then
+    return char_length(regexp_replace(n, '[ ·・]', '', 'g')) between 2 and 10;
+  end if;
+  return false;
+end;
+$$;
+
+-- checked when a finished profile gets a new full name (sign-up, social sign-in completed, admin edit).
+-- Social sign-in starts with a placeholder name until the "complete" screen, so unfinished profiles are skipped;
+-- members who joined before this rule keep their name until it is changed.
+create or replace function public.check_full_name()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if new.age14_confirmed and (tg_op = 'INSERT' or new.full_name is distinct from old.full_name or not old.age14_confirmed)
+     and not public.name_hard_ok(new.full_name) then
+    raise exception 'invalid_full_name';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists profiles_check_name on public.profiles;
+create trigger profiles_check_name before insert or update on public.profiles
+  for each row execute function public.check_full_name();
+
+-- who may change a member's full name: the admin for now. When a teacher role is added, add it here
+-- (and limit it to that teacher's students).
+create or replace function public.can_edit_names(p_user uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select public.is_admin();
+$$;
+revoke execute on function public.can_edit_names(uuid) from public, anon;
+grant execute on function public.can_edit_names(uuid) to authenticated;
+
+create or replace function public.admin_set_full_name(p_user uuid, p_full_name text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.can_edit_names(p_user) then
+    raise exception 'not allowed';
+  end if;
+  update public.profiles set full_name = regexp_replace(btrim(p_full_name), '\s+', ' ', 'g'), name_confirmed = false
+    where id = p_user;
+end;
+$$;
+revoke execute on function public.admin_set_full_name(uuid, text) from public, anon;
+grant execute on function public.admin_set_full_name(uuid, text) to authenticated;
+
+-- a member whose full name is still empty (a required field added after they joined) fills it in once
+create or replace function public.set_my_full_name(p_full_name text, p_name_confirmed boolean default false)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  update public.profiles set full_name = btrim(p_full_name), name_confirmed = coalesce(p_name_confirmed, false)
+    where id = auth.uid() and btrim(full_name) = '';
+  if not found then
+    raise exception 'full_name_locked';
+  end if;
+end;
+$$;
+revoke execute on function public.set_my_full_name(text, boolean) from public, anon;
+grant execute on function public.set_my_full_name(text, boolean) to authenticated;
 
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql set search_path = '' as $$
@@ -278,14 +367,15 @@ begin
   if coalesce(meta ->> 'preferred_lang', '') not in ('ko', 'en', 'ja', 'zh') then
     raise exception 'preferred_lang_required';
   end if;
-  insert into public.profiles (id, nickname, full_name, preferred_lang, age14_confirmed, terms_version)
+  insert into public.profiles (id, nickname, full_name, preferred_lang, age14_confirmed, terms_version, name_confirmed)
   values (
     new.id,
     left(coalesce(nullif(trim(meta ->> 'nickname'), ''), split_part(new.email, '@', 1)), 20),
     left(trim(meta ->> 'full_name'), 50),
     meta ->> 'preferred_lang',
     true,
-    meta ->> 'terms_version'
+    meta ->> 'terms_version',
+    coalesce((meta ->> 'name_confirmed')::boolean, false)
   );
   -- password-check question for "forgot password" (see below). Only the hash is kept, and the plain answer is
   -- removed from the user metadata right away. A sign-up from an older page without the fields gets the
@@ -313,11 +403,17 @@ create trigger on_auth_user_created after insert on auth.users
 
 -- social sign-in, first time: the member confirms name / nickname / language and agrees on the "complete" screen.
 -- Consent columns are not in the browser's update grant, so they change only here (same checks as handle_new_user).
-create or replace function public.complete_signup(p_full_name text, p_nickname text, p_lang text, p_age14 boolean, p_terms_version text)
+-- Only once: after that the full name is locked (2026-11-10).
+drop function if exists public.complete_signup(text, text, text, boolean, text);   -- before p_name_confirmed
+create or replace function public.complete_signup(p_full_name text, p_nickname text, p_lang text, p_age14 boolean, p_terms_version text,
+  p_name_confirmed boolean default false)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   if auth.uid() is null then
     raise exception 'not signed in';
+  end if;
+  if (select age14_confirmed from public.profiles where id = auth.uid()) then
+    raise exception 'already_completed';
   end if;
   if p_age14 is not true then
     raise exception 'age14_required';
@@ -334,12 +430,13 @@ begin
   update public.profiles
     set full_name = left(trim(p_full_name), 50),
         nickname = left(coalesce(nullif(trim(p_nickname), ''), nickname), 20),
-        preferred_lang = p_lang, age14_confirmed = true, terms_version = p_terms_version
+        preferred_lang = p_lang, age14_confirmed = true, terms_version = p_terms_version,
+        name_confirmed = coalesce(p_name_confirmed, false)
     where id = auth.uid();
 end;
 $$;
-revoke execute on function public.complete_signup(text, text, text, boolean, text) from public, anon;
-grant execute on function public.complete_signup(text, text, text, boolean, text) to authenticated;
+revoke execute on function public.complete_signup(text, text, text, boolean, text, boolean) from public, anon;
+grant execute on function public.complete_signup(text, text, text, boolean, text, boolean) to authenticated;
 
 -- ---------- keep the auth email language in step with the profile ----------
 -- Supabase's email templates (docs/supabase-email-templates.md) pick the language from the user metadata
@@ -818,6 +915,7 @@ begin
   return jsonb_build_object(
     'nickname', (select nickname from public.profiles where id = p_user),
     'full_name', (select full_name from public.profiles where id = p_user),
+    'name_confirmed', (select name_confirmed from public.profiles where id = p_user),
     'joined', (select created_at from public.profiles where id = p_user),
     'sessions', (select count(*) from public.timer_sessions where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
     'abandoned', (select coalesce(sum(abandoned), 0) from public.timer_sessions where user_id = p_user and (p_mode = 'all' or mode = p_mode)),
@@ -887,10 +985,11 @@ grant execute on function public.wrong_answers(uuid, text, date, date, date, tex
 -- the admin's student list (empty for everyone else)
 -- p_mode: which practice's numbers ('play' / 'name', 2026-11-08; 'all' both added up, 2026-11-09)
 drop function if exists public.student_list();   -- before p_mode
+drop function if exists public.student_list(text);   -- the result gained name_confirmed (2026-11-10)
 create or replace function public.student_list(p_mode text default 'play')
-returns table (id uuid, nickname text, full_name text, total integer, first_correct integer, last_day date)
+returns table (id uuid, nickname text, full_name text, name_confirmed boolean, total integer, first_correct integer, last_day date)
 language sql stable security definer set search_path = '' as $$
-  select p.id, p.nickname, p.full_name, coalesce(s.total, 0)::integer, coalesce(s.first_correct, 0)::integer,
+  select p.id, p.nickname, p.full_name, p.name_confirmed, coalesce(s.total, 0)::integer, coalesce(s.first_correct, 0)::integer,
     (select max(l.day) from public.practice_log l where l.user_id = p.id and (p_mode = 'all' or l.mode = p_mode))
   from public.profiles p left join (
     -- 'all': the two practices added up (2026-11-09)

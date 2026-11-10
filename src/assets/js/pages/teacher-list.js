@@ -36,7 +36,8 @@ function render() {
   if (!list.length) { body.innerHTML = `${tabs}<p class="st-empty">${esc(t("studentsEmpty"))}</p>`; return; }
   const q = mode === "all" ? "" : `&mode=${mode}`;
   const rows = list.map(s => `<tr>
-    <td><a class="st-student" href="student?id=${encodeURIComponent(s.id)}${q}"><b>${esc(s.nickname)}</b><span>${esc(s.full_name)}</span></a></td>
+    <td><a class="st-student" href="student?id=${encodeURIComponent(s.id)}${q}"><b>${esc(s.nickname)}</b><span>${esc(s.full_name)}${s.name_confirmed
+      ? ` <span class="st-tag" title="${esc(t("nameConfirmedTip"))}">${esc(t("nameConfirmedTag"))}</span>` : ""}</span></a></td>
     <td class="num">${s.total}</td><td class="num">${pct(s.first_correct, s.total)}%</td>
     <td class="num">${s.last_day ? esc(dateText(s.last_day, { month: "short", day: "numeric" })) : "–"}</td></tr>`).join("");
   body.innerHTML = `${tabs}<section class="st-card"><table class="st-table">

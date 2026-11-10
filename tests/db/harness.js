@@ -46,7 +46,9 @@ export const S2 = "00000000-0000-0000-0000-000000000002";   // 학생 2
 
 /** 가입시키기: auth.users에 넣으면 handle_new_user 트리거가 profiles를 만듦. A는 관리자로 */
 export async function addUsers(db, list = [[A, "admin"], [S1, "s1"], [S2, "s2"]]) {
-  const meta = n => JSON.stringify({ nickname: n, full_name: n + " 이름", preferred_lang: "ko", age14: true, terms_version: "x" });
+  // 성명은 형식 검사(name_hard_ok)를 통과하는 이름으로 (2026-11-10)
+  const NAMES = { admin: "김선생", s1: "이학생", s2: "박학생" };
+  const meta = n => JSON.stringify({ nickname: n, full_name: NAMES[n] || "최학생", preferred_lang: "ko", age14: true, terms_version: "x" });
   for (const [id, n] of list) await db.query("insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)", [id, n + "@x", meta(n)]);
   await db.query("update public.profiles set role='admin' where id=$1", [A]);
 }
