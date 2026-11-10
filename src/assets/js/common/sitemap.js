@@ -21,13 +21,14 @@ export const ROUTES = {
   home: "",
   trainer: "trainer/chords/",
   nameTrainer: "trainer/chords-name/",   // 코드 추론하기 (2026-11-08)
+  improv: "trainer/chord-improv/",       // 코드 초견 (2026-11-10)
   about: "about",
   mypage: "mypage",
   teacher: "teacher/",
 };
 
 /** 언어별로 따로 만드는 페이지 (/ko/about, /en/about …). tools/build.js의 PAGES와 같게 유지할 것 */
-export const LOCALIZED = [ROUTES.home, ROUTES.trainer, ROUTES.nameTrainer, ROUTES.about];
+export const LOCALIZED = [ROUTES.home, ROUTES.trainer, ROUTES.nameTrainer, ROUTES.improv, ROUTES.about];
 
 /**
  * 페이지 링크 주소. 언어별 페이지면 언어 표시를 붙임:
@@ -41,6 +42,7 @@ export const SITEMAP = [
     items: [
       { key: "navTrainer", path: ROUTES.trainer, icon: "🎹" },
       { key: "navNameTrainer", path: ROUTES.nameTrainer, icon: "🔍" },
+      { key: "navImprov", path: ROUTES.improv, icon: "🎶" },
       { key: "navChordGuide", soon: true, icon: "📖" },
       { key: "navVoiceLeading", soon: true, icon: "🎼" },
       { key: "navTheory", soon: true, icon: "🎵" },

@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- ===== 코드 초견 — 주소 /trainer/chord-improv/ =====
+     메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 연습. 한 페이지에 모드 탭 두 개:
+       무작위 코드(?mode 없음)   한 마디(또는 ½·2마디)마다 무작위 코드, 이전·현재·다음 코드를 보여줌
+       8마디 코드진행(?mode=prog) 실용음악 입시처럼 8마디 코드진행 악보
+     화면 구성: 머리글(공통) · 모드 탭 · 모드별 카드 · 바닥글(공통). 모양은 improv.css,
+     동작은 assets/js/pages/improv.js에서 시작해요. 규칙은 chordoven-spec.md "코드 초견". -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 코드 초견 연습. 무작위 코드와 실용음악 입시형 8마디 코드진행.">
+<title>코드 초견 · ChordOven</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#F5ECDD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1E1612" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Music&display=swap">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/account.css">
+<link rel="stylesheet" href="/assets/css/improv.css">
+<script type="module" src="/assets/js/pages/improv.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="top" id="siteHeader"></header>
+
+  <main class="improv">
+    <!-- 모드 탭: 고른 모드는 주소 ?mode=prog로 남김 (새로고침·링크 공유 때 그대로, pages/improv.js) -->
+    <div class="im-modes" role="tablist" aria-label="모드 고르기" data-i18n-aria="improvModesAria">
+      <button type="button" role="tab" class="im-mode" id="tabRandom" data-mode="random" aria-controls="panelRandom" aria-selected="true" data-i18n="improvModeRandom">무작위 코드</button>
+      <button type="button" role="tab" class="im-mode" id="tabProg" data-mode="prog" aria-controls="panelProg" aria-selected="false" data-i18n="improvModeProg">8마디 코드진행</button>
+    </div>
+
+    <!-- 무작위 코드 모드 (2단계부터 메트로놈·이전/현재/다음 코드·출제 설정이 들어옴) -->
+    <section class="desk im-panel" id="panelRandom" role="tabpanel" aria-labelledby="tabRandom">
+      <p class="im-intro" data-i18n="improvIntroRandom">메트로놈에 맞춰 마디마다 무작위로 나오는 코드를 보고 바로 연주해요.</p>
+      <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
+    </section>
+
+    <!-- 8마디 코드진행 모드 (5단계부터 악보·출제 설정이 들어옴) -->
+    <section class="desk im-panel" id="panelProg" role="tabpanel" aria-labelledby="tabProg" hidden>
+      <p class="im-intro" data-i18n="improvIntroProg">실용음악 입시처럼 8마디 코드진행 악보를 보고 연주해요.</p>
+      <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
+    </section>
+  </main>
+
+  <footer class="contact" id="siteFooter"></footer>
+</div>
+</body>
+</html>

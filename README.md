@@ -23,6 +23,7 @@ npm run audit      # 폰 화면 레이아웃 검사 (처음 한 번: npm i && np
 | `/ko/`, `/en/`, `/ja/`, `/zh/` | `index.html` | 홈 — 소개와 학습 메뉴 카드 (언어별) |
 | `/ko/about` … | `about.html` | About Us — 서비스 소개와 문의 연락처 (언어별) |
 | `/ko/trainer/chords/` … | `trainer/chords/index.html` | 랜덤 코드 연습(코드 트레이너). 누구나 사용, 로그인하면 기록 저장 (언어별) |
+| `/ko/trainer/chord-improv/` … | `trainer/chord-improv/index.html` | 코드 초견 — 메트로놈에 맞춰 나오는 코드를 보고 연주. 탭 [무작위 코드 \| 8마디 코드진행(`?mode=prog`)] (언어별, 만드는 중) |
 | `/`, `/about`, `/trainer/chords/` | (빌드가 만듦) | 언어 고르는 입구 — 저장된 언어 → 브라우저 언어 → 영어 순으로 위 언어별 주소로 넘겨줌 (예전에 공유한 링크도 계속 동작) |
 | `/mypage` | `mypage.html` | 마이페이지 — 내 연습 통계, 틀린 문제 다시 풀기 (로그인한 회원) |
 | `/teacher/` | `teacher/index.html` | 선생님 — 학생 목록 (관리자만) |
@@ -42,7 +43,8 @@ Cloudflare는 `dist/` 폴더만 배포하므로 `src/`, `tests/`, `supabase/`, `
 src/                        ← 사이트 원본 (직접 고치는 곳. 페이지의 파일 경로는 /assets/…처럼 사이트 맨 위 기준)
   index.html                홈            ┐ 빌드가 언어별로 만듦 (dist/ko/, dist/en/ …)
   about.html                About Us      │ 원래 자리에는 언어 고르는 입구
-  trainer/chords/index.html 랜덤 코드 연습 ┘
+  trainer/chords/index.html 랜덤 코드 연습 │
+  trainer/chord-improv/index.html 코드 초견 ┘
   mypage.html               마이페이지
   teacher/index.html, student.html   선생님 — 학생 목록·학생 기록
   terms.html  privacy.html  이용약관·개인정보처리방침
@@ -63,6 +65,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     core/naming.js          코드 추론하기 엔진: 보이싱(자리바꿈)·코드 이름 읽기·복수 정답 (순수 함수)
     naming/settings.js keys.js keypad.js staff.js quiz.js   코드 추론하기의 출제 설정·건반(보기만)·코드 입력 키패드·오선지 악보(SVG)·문제 흐름(기록·타이머·다시 풀기)
     pages/naming.js         코드 추론하기 페이지 (trainer/chords-name/)
+    pages/improv.js         코드 초견 페이지 (trainer/chord-improv/, 모양은 css/improv.css)
     i18n/index.js           언어 고르기, t("키") 문구 함수, data-i18n 속성 채우기
     i18n/ko.js en.js ja.js zh.js   화면 문구 (ko가 원문, 네 파일의 키가 같아야 함)
     common/layout.js        모든 페이지의 머리글·바닥글·☰ 왼쪽 메뉴·도움말(?)과 페이지 시작(startPage)
@@ -145,7 +148,7 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - [ ] 선생님으로 가입 (필요해지면)
 - [x] 미디 입력 인식 구현 (랜덤 코드 연습 — 컴퓨터의 Chrome·Edge, MIDI 입력 모드에서는 88건반)
 - [ ] 건반(&악보)을 보고 코드 맞추기
-- [ ] BPM 설정 후 랜덤 코드가 자동으로 넘어가는 '랜덤 코드 초견' 페이지 만들기 (완전 무작위 순서 / 조표 설정 기능)
+- [ ] '코드 초견' 페이지 (`/trainer/chord-improv/`, 만드는 중 — 1단계 페이지 틀 완료): 메트로놈에 맞춰 무작위 코드가 넘어가는 모드 + 실용음악 입시형 8마디 코드진행 모드. 나중에 녹음, 연주 채점
 - [ ] 보이스리딩 학습 페이지
 - [ ] 각 코드별 설명 페이지
 - [ ] 화성학 이론 학습 페이지
