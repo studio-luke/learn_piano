@@ -44,12 +44,71 @@ const OTHER_ROOT = { 1: [0, 1], 3: [1, 1], 6: [4, -1], 8: [4, 1], 10: [5, 1] };
 // 구성음의 도수 (텐션은 9 11 13, ♭5·♯5는 5)
 const degOf = t => (t.ten ? E.TEN[t.ten][1] : t.deg);
 
+// ---------- 자리바꿈 보이싱 규칙 (사용자 결정 2026-11-10) ----------
+// 맨 아래 음(베이스) 비율. 빠진 음(생략한 5음, sus의 3음 자리 등)의 몫은 남은 음들이 비율대로 나눠 가짐
+//   7화음(텐션 포함)            근음 40, 3음 20, 5음 15, 7음 20, 9음 5
+//   3화음·sus·6·add             근음·3음·5음 같은 비율 (모양이 적어서 자리바꿈을 더 연습), add9·madd9의 9음 5
+// 11·13(6)·♯9·♭9, sus의 4음·2음은 베이스에 두지 않음.
+// 9음 베이스는 7화음에 텐션이 9 하나뿐일 때(aug7 제외)와 add9·madd9에서만, 그리고 3음이 바로 다음 음(2도 위)이어야 함
+const BASS_7TH = { 1: 40, 3: 20, 5: 15, 7: 20, 9: 5 };
+const BASS_OTHER = { 1: 1, 3: 1, 5: 1 };
+const NINE_BASS = 5 / 95;   // 3화음 쪽 비율(합 3)에 맞춘 9음 몫 — 전체의 5%
+
+/** 이 음을 베이스에 둘 비중 (0이면 베이스로 쓰지 않음) */
+function bassWeight(q, t, tones) {
+  const seventh = tones.some(x => x.role !== "tension" && x.deg === 7);
+  const third = tones.some(x => x.role !== "tension" && x.deg === 3);
+  if (t.ten || degOf(t) === 9) {
+    if (t.ten && t.ten !== "9") return 0;   // ♭9 ♯9 11 ♯11 13 ♭13
+    if (!third) return 0;                   // 9음 바로 위에 둘 3음이 없음 (7sus4(9) 등)
+    if (seventh) {
+      const tens = tones.filter(x => x.ten);
+      return tens.length === 1 && q.type !== "aug7" && q.type !== "augM7" ? BASS_7TH[9] : 0;
+    }
+    return q.type === "add9" || q.type === "madd9" ? 3 * NINE_BASS : 0;
+  }
+  return (seventh ? BASS_7TH : BASS_OTHER)[t.deg] || 0;   // 6음(deg 6), sus의 4음·2음은 0
+}
+
+// 단9도(13반음, 또는 그 옥타브 위)는 피함. 코드 이름에 들어 있는 음정만 허용: 근음–♭9, 완전5도–♭13
+const m9ok = (lo, hi) => (lo.semi === 0 && hi.ten === "b9") || (lo.semi === 7 && lo.deg === 5 && hi.ten === "b13");
+function m9Free(order, offs) {
+  for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) {
+    const d = offs[j] - offs[i];
+    if (d > 12 && d % 12 === 1 && !m9ok(order[i], order[j])) return false;
+  }
+  return true;
+}
+
+// 순서 → 맨 아래 음에서 몇 반음 위인지: 앞 음보다 1~11반음 위의 같은 음이름 자리 (pc가 모두 달라서 하나뿐)
+function offsetsOf(order) {
+  const offs = [0];
+  for (let i = 1; i < order.length; i++) offs.push(offs[i - 1] + 1 + mod12(order[i].pc - order[i - 1].pc - 1));
+  return offs;
+}
+
+function permutations(arr) {
+  if (arr.length <= 1) return [arr.slice()];
+  const out = [];
+  arr.forEach((x, i) => { for (const rest of permutations(arr.filter((_, j) => j !== i))) out.push([x, ...rest]); });
+  return out;
+}
+
+/** 비중대로 하나 고르기 (w: 각 항목의 비중) */
+function pickWeighted(items, w, rnd) {
+  let r = rnd() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < items.length; i++) if ((r -= w[i]) < 0) return items[i];
+  return items[items.length - 1];
+}
+
 /**
  * 건반 높이 정하기.
  *   자리바꿈 꺼짐: 근음부터 1 3 5 7 9 11 13 순서로 바로 위에 쌓음 (5음은 늘 보여줌)
- *   자리바꿈 켜짐: 구성음을 무작위 순서로 섞어 아래에서부터 차례로 쌓음 — 각 음은 바로 앞 음보다 높고 한 옥타브 안
- *                  (바로 옆 음끼리 옥타브 이상 벌어지지 않게 — 사용자 요청 2026-11-08). 그래서 근음이 맨 아래가 아닐 수 있음.
- *                  생략할 수 있는 5음(텐션이 붙은 코드)은 50% 확률로 뺌. 단 mM7은 늘 5음을 보여줌
+ *   자리바꿈 켜짐 (규칙은 위 "자리바꿈 보이싱 규칙"):
+ *     1) 5음 생략을 먼저 정함 — 생략할 수 있는 5음(텐션이 붙은 코드)은 50% 확률로 뺌, 단 mM7은 늘 보여줌
+ *     2) 남은 음 가운데서 베이스를 비율대로 고름 (생략한 5음이 베이스가 되는 일은 없음)
+ *     3) 나머지 음을 무작위 순서로 베이스 위에 쌓음 — 각 음은 바로 앞 음보다 높고 한 옥타브 안
+ *        (사용자 요청 2026-11-08). 단9도가 생기는 순서는 버림. 단2도는 허용(재즈에서 즐겨 쓰는 B–C–E–G 같은 배치)
  * @returns 음 목록 (낮은 음부터)
  */
 export function voice(q, inv, rnd = Math.random) {
@@ -73,18 +132,29 @@ export function voice(q, inv, rnd = Math.random) {
     return tones.map((t, i) => note(root + offs[i], t.name));
   }
 
-  // 섞은 순서로 쌓았을 때 F3~D6 안에 들어가는 순서가 나올 때까지 다시 섞음 (거의 항상 몇 번 안에 나옴)
-  for (let tries = 0; tries < 60; tries++) {
-    const order = tones.slice();
-    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-    const offs = [0];   // 맨 아래 음에서 몇 반음 위인지: 앞 음보다 1~11반음 위의 같은 음이름 자리 (pc가 모두 달라서 하나뿐)
-    for (let i = 1; i < order.length; i++) offs.push(offs[i - 1] + 1 + mod12(order[i].pc - order[i - 1].pc - 1));
-    const top = offs[offs.length - 1];
-    const basses = [];
-    for (let m = LOW; m + top <= HIGH; m++) if (mod12(m) === order[0].pc) basses.push(m);
-    if (!basses.length) continue;
-    const bass = pick(basses, rnd);
-    return order.map((t, i) => note(bass + offs[i], t.name));
+  // 베이스 후보와 비중. 고른 베이스로 규칙에 맞는 배치가 없으면 그 후보를 빼고 다시 고름
+  const cands = tones.filter(t => bassWeight(q, t, tones) > 0);
+  while (cands.length) {
+    const bassTone = pickWeighted(cands, cands.map(t => bassWeight(q, t, tones)), rnd);
+    const rest = tones.filter(t => t !== bassTone);
+    const ninthBass = !!bassTone.ten || degOf(bassTone) === 9;
+    const orders = permutations(rest).map(r => [bassTone, ...r]).filter(order => {
+      if (ninthBass && order[1].deg !== 3) return false;   // 9음 베이스: 3음이 바로 위 (2도 위)
+      const offs = offsetsOf(order);
+      return offs[offs.length - 1] <= HIGH - LOW && m9Free(order, offs);
+    });
+    if (orders.length) {
+      const order = pick(orders, rnd);
+      const offs = offsetsOf(order);
+      const top = offs[offs.length - 1];
+      const basses = [];
+      for (let m = LOW; m + top <= HIGH; m++) if (mod12(m) === bassTone.pc) basses.push(m);
+      if (basses.length) {
+        const bass = pick(basses, rnd);
+        return order.map((t, i) => note(bass + offs[i], t.name));
+      }
+    }
+    cands.splice(cands.indexOf(bassTone), 1);
   }
   return voice(q, false, rnd);   // (만일을 위한 대비) 자리바꿈 없이
 }

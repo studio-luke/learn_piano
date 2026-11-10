@@ -52,6 +52,76 @@ test("naming: with inversion the bass varies and an optional fifth is left out a
   assert.ok(omitted > 0.4 && omitted < 0.6, `omitted ${omitted}`);
 });
 
+// 자리바꿈 보이싱 규칙 (사용자 결정 2026-11-10)
+const toneAt = (q, n) => q.tones.find(t => t.pc === mod12(n.midi));
+const degOfT = t => (t.ten ? { b9: 9, 9: 9, "#9": 9, 11: 11, "#11": 11, b13: 13, 13: 13 }[t.ten] : t.deg);
+const show = q => `${q.symbol}: ${q.notes.map(n => n.name + n.oct).join(" ")}`;
+
+test("naming voicing: allowed basses only — no 11, 13(6), ♯9, ♭9, sus 4th/2nd; 9th only with the 3rd a 2nd above", () => {
+  for (const q of gen({ optInv: true }, 12000)) {
+    const b = toneAt(q, q.notes[0]);
+    const d = degOfT(b);
+    assert.ok([1, 3, 5, 7, 9].includes(d), show(q));
+    if (d !== 9) continue;
+    assert.ok(!b.ten || b.ten === "9", show(q));
+    assert.ok(!["aug7", "augM7"].includes(q.type), show(q));
+    if (q.tones.some(t => t.deg === 7)) assert.strictEqual(q.tones.filter(t => t.ten).length, 1, show(q));
+    else assert.ok(["add9", "madd9"].includes(q.type), show(q));
+    const next = toneAt(q, q.notes[1]);
+    assert.strictEqual(next.deg, 3, show(q));
+    assert.ok([1, 2].includes(q.notes[1].midi - q.notes[0].midi), show(q));
+    assert.ok(q.notes.some(n => mod12(n.midi) === q.rootPc), show(q));
+  }
+});
+
+test("naming voicing: no minor 9th except root–♭9 and 5th–♭13; minor 2nds are allowed", () => {
+  let m2 = 0, b13over5 = 0;
+  for (const q of gen({ optInv: true }, 12000)) {
+    for (let i = 0; i < q.notes.length; i++) for (let j = i + 1; j < q.notes.length; j++) {
+      const d = q.notes[j].midi - q.notes[i].midi, lo = toneAt(q, q.notes[i]), hi = toneAt(q, q.notes[j]);
+      if (d === 1) m2++;
+      if (d > 12 && d % 12 === 1) {
+        const ok = (lo.semi === 0 && hi.ten === "b9") || (lo.semi === 7 && lo.deg === 5 && hi.ten === "b13");
+        assert.ok(ok, show(q));
+        if (hi.ten === "b13") b13over5++;
+      }
+    }
+  }
+  assert.ok(m2 > 500, `minor 2nds ${m2}`);
+  assert.ok(b13over5 > 0, "5th–♭13 minor 9th can appear");
+});
+
+test("naming voicing: bass ratios — 7th chords 40/20/15/20(/9th 5), triads·6·add·sus root/3rd/5th equal", () => {
+  const share = (qs, d) => qs.filter(q => degOfT(toneAt(q, q.notes[0])) === d).length / qs.length;
+  const near = (got, want, tol, what) => assert.ok(Math.abs(got - want) < tol, `${what}: ${got.toFixed(3)} vs ${want.toFixed(3)}`);
+  // 텐션 없는 7화음: 9음 몫이 없어서 40:20:15:20을 나눠 가짐
+  const sev = gen({ optInv: true, optC: false, types: { M7: true, m7: true, dom7: true } }, 8000);
+  near(share(sev, 1), 40 / 95, 0.03, "7th root"); near(share(sev, 3), 20 / 95, 0.03, "7th 3rd");
+  near(share(sev, 5), 15 / 95, 0.03, "7th 5th"); near(share(sev, 7), 20 / 95, 0.03, "7th 7th");
+  // 3화음: 셋이 같은 비율
+  const tri = gen({ optInv: true, types: { maj: true, min: true } }, 6000);
+  for (const d of [1, 3, 5]) near(share(tri, d), 1 / 3, 0.03, `triad ${d}`);
+  // sus: 4음·2음은 베이스가 아님 → 근음·5음 반반
+  const sus = gen({ optInv: true, types: { sus4: true, sus2: true } }, 4000);
+  near(share(sus, 1), 0.5, 0.04, "sus root"); near(share(sus, 5), 0.5, 0.04, "sus 5th");
+  // 6화음: 6음은 베이스가 아님
+  assert.strictEqual(share(gen({ optInv: true, types: { "6": true, m6: true } }, 3000), 6), 0);
+  // add9: 9음이 전체의 5%
+  near(share(gen({ optInv: true, types: { add9: true, madd9: true } }, 8000), 9), 0.05, 0.015, "add9 9th");
+});
+
+test("naming voicing: the fifth is dropped first (50%), then the bass is chosen from the notes left", () => {
+  const qs = gen({ optInv: true, types: { M7: true, m7: true, dom7: true } }, 10000).filter(q => q.optional.size);
+  const dropped = qs.filter(q => q.notes.length < q.tones.filter(t => t.role !== "alt").length);
+  const rate = dropped.length / qs.length;
+  assert.ok(rate > 0.45 && rate < 0.55, `fifth dropped ${rate}`);
+  // 5음을 뺀 문제의 베이스는 5음이 아님 (뺀 음이 베이스로 정해지는 일 없음), 5음이 남은 문제에서는 5음 베이스가 나옴
+  for (const q of dropped) assert.notStrictEqual(degOfT(toneAt(q, q.notes[0])), 5, show(q));
+  const kept = qs.filter(q => !dropped.includes(q));
+  const fifth = kept.filter(q => degOfT(toneAt(q, q.notes[0])) === 5).length / kept.length;
+  assert.ok(fifth > 0.11 && fifth < 0.19, `fifth bass when kept ${fifth}`);
+});
+
 test("naming: the question's own name and every listed answer are graded correct; question root comes first", () => {
   for (const optInv of [false, true]) for (const optE of [false, true]) for (const q of gen({ optInv, optE }, 4000)) {
     assert.ok(q.answers.length >= 1, q.symbol);
