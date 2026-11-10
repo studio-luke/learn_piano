@@ -270,8 +270,9 @@ test("improv prog: if dim or aug lands on a one-beat slot, that chart writes it 
   let forced = 0, free = 0, wordDim = 0;
   for (const p of await progs({ count: "high", tension: "2" }, 3000)) {
     const all = p.bars.flat();
-    const oneDim = all.some(c => c.len === 1 && (c.q.type === "dim" || c.q.type === "dim7"));
-    const oneAug = all.some(c => c.len === 1 && ["aug", "aug7", "augM7"].includes(c.q.type) && !c.q.head.startsWith("M7"));
+    // 표기에 dim·aug(또는 그 기호)가 들어간 코드가 1박 자리에 있는지 — augM7의 다른 이름 M7(♯5)·△7(♯5)는 aug 글자가 없어서 해당 없음
+    const oneDim = all.some(c => c.len === 1 && /dim|°/.test(c.q.head));
+    const oneAug = all.some(c => c.len === 1 && /aug|\+/.test(c.q.head));
     if (oneDim) { forced++; assert.strictEqual(p.style.dim, "°"); assert.ok(all.every(c => !c.q.head.includes("dim")), all.map(c => c.q.symbol).join(" ")); }
     if (oneAug) { assert.strictEqual(p.style.aug, "+"); assert.ok(all.every(c => !c.q.head.includes("aug"))); }
     if (!oneDim && all.some(c => c.q.type === "dim7")) { free++; if (p.style.dim === "dim") wordDim++; }

@@ -386,6 +386,7 @@ export default {
   improvScrollTip: "向下滚动即可选择要出现的和弦",
   progNew: "↻ 新的和弦进行",
   progRotateTip: "把手机横过来，乐谱会显示得更大。",
+  progScrollTip: "向下滚动即可选择出题选项",
   progApplyNew: "更改的设置在按［新的和弦进行］时生效。",
   progTen: "允许延伸音",
   progTenSub: "选择 HARD 时还会出现 M9、M13、m9、m11、9、13 等延伸和弦。属七和弦也可能是 7alt。",

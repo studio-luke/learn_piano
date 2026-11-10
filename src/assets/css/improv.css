@@ -161,7 +161,6 @@
   .pg-sheet { gap: 0; padding-block: 0; }
   .pg-chords { height: 1.55em; }
   .im-card.is-prog { gap: 6px; padding-block: 8px 10px; }
-  .im-card.is-prog .im-beats { display: none; }   /* 박 점은 카운트인 숫자와 박자표로 충분 — 세로 공간이 모자라서 */
 }
 
 /* ---------- 모바일(컴퓨터가 아닌 기기)의 8마디 모드 버튼 (2026-11-10 사용자 요청) ----------
@@ -173,3 +172,9 @@
   .is-mobile .im-card.is-prog .im-new { flex: 1.6 1 0; padding-block: 11px; }
   .is-mobile .im-card.is-prog .im-play { flex: 1 1 0; }
 }
+
+/* 한 줄 2마디(폰 세로): 마디가 넓어진 만큼 코드 기호를 크게 */
+.pg-sheet.two-per-line .pg-chords { font-size: clamp(16px, 5vw, 26px); }
+
+/* 8마디 모드: 박 점 없음 (2026-11-10 사용자 요청 — 그 자리에 폰 세로 안내와 알약). 카운트인 숫자와 박자표로 충분 */
+.im-card.is-prog .im-beats { display: none; }

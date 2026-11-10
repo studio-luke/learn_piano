@@ -387,6 +387,7 @@ export default {
   improvScrollTip: "아래로 내리면 등장할 코드를 고를 수 있어요",
   progNew: "↻ 새 코드진행",
   progRotateTip: "폰을 가로로 돌리면 악보를 더 크게 볼 수 있어요.",
+  progScrollTip: "아래로 내리면 출제 옵션을 고를 수 있어요",
   progApplyNew: "바꾼 설정은 [새 코드진행]을 누르면 적용돼요.",
   progTen: "텐션 허용",
   progTenSub: "HARD를 고르면 M9·M13·m9·m11·9·13 같은 텐션 코드도 나와요. 도미넌트 7에는 7alt도 나와요.",

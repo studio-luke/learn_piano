@@ -23,7 +23,7 @@ import { Engine } from "../core/engine.js";
 import { ROUTES } from "../common/sitemap.js";
 import * as Random from "../improv/random.js";
 import { generateProgression } from "../improv/progression.js";
-import { drawSheet, fitLabels } from "../improv/sheet.js";
+import { drawSheet, fitLabels, setPerLine } from "../improv/sheet.js";
 import { initProgSettings, syncProgUI, progOptions } from "../improv/prog-settings.js";
 
 startPage({ title: "navImprov" });
@@ -70,6 +70,7 @@ function showMode(m) {
     if (SHEETS[x]) SHEETS[x].hidden = x !== m;
   }
   document.querySelector(".im-layout").classList.toggle("no-sheet", !SHEETS[m]);
+  // 모드별 모양 (improv.css): 8마디 모드는 박 점 없음, 폰 가로 간격 줄이기 등
   document.querySelector(".im-layout .im-card").classList.toggle("is-prog", m === "prog");
   document.querySelector(".im-layout").classList.toggle("is-prog", m === "prog");   // 컴퓨터에서도 출제 설정을 악보 아래로
   // 모바일 8마디 모드: [새 코드진행]이 주인공(주황), 시작 버튼은 보통 버튼 "메트로놈" (2026-11-10 사용자 요청)
@@ -77,10 +78,15 @@ function showMode(m) {
   $("btnNewProg").classList.toggle("primary", mobileProg);
   $("btnPlay").classList.toggle("primary", !mobileProg);
   renderPlayText();
-  $("btnNewProg").hidden = m !== "prog";   // 모드별 모양 (폰 가로의 8마디 모드 등, improv.css)
-  scrollTip.show(m === "random");
-  $("rotateRandom").hidden = m !== "random"; $("rotateProg").hidden = m !== "prog";
-  if (m === "prog") fitLabels();   // 숨겨져 있을 때 그린 악보는 폭을 잴 수 없어서, 보일 때 코드 기호 크기를 다시 맞춤   // 폰 세로 안내: "코드를 더 크게" / "악보를 더 크게"   // 아래쪽 scrollTip — showMode는 그것을 만든 뒤에만 불림
+  $("btnNewProg").hidden = m !== "prog";
+  // 폰 세로 안내("가로로 돌리면…" + "▼ 아래로 내리면…" 알약)의 자리 (2026-11-10 사용자 요청):
+  // 무작위 코드 모드는 연습 카드와 출제 설정 사이, 8마디 모드는 카드 안의 박 점 자리(8마디 모드는 박 점을 없앰)
+  const between = document.querySelector(".im-between");
+  if (m === "prog") $("beatDots").after(between);
+  else document.querySelector(".im-layout .im-card").after(between);
+  $("rotateRandom").hidden = m !== "random"; $("rotateProg").hidden = m !== "prog";   // "코드를 더 크게" / "악보를 더 크게"
+  scrollTip.show(m);   // showMode는 아래 scrollTip을 만든 뒤에만 불림
+  if (m === "prog") fitLabels();   // 숨겨져 있을 때 그린 악보는 폭을 잴 수 없어서, 보일 때 코드 기호 크기를 다시 맞춤
   renderDots(null);
 }
 
@@ -308,28 +314,55 @@ function newProgression() {
   if (metro.running && mode === "prog" && before && before.meter.pulses !== prog.meter.pulses) metro.stop();
   else if (!metro.running) renderDots(null);
 }
+// 폰 세로(폭 600px 이하)는 2마디 × 4줄, 그 밖에는 4마디 × 2줄 (2026-11-10 사용자 결정 — 4마디 × 2줄은 폰 세로에서 코드 기호가 너무 작았음).
+// 폰을 돌리면 바로 다시 그림
+{
+  const portrait = matchMedia("(max-width: 600px) and (orientation: portrait)");
+  const apply = () => setPerLine(portrait.matches ? 2 : 4);
+  apply();
+  portrait.addEventListener("change", apply);
+}
 initProgSettings();
 $("btnNewProg").onclick = newProgression;
 newProgression();
 
 // ---------- 폰 세로 첫 방문: 출제 설정이 아래에 있다고 알려주는 알약 (2026-11-10 사용자 요청) ----------
-// 연습 카드와 출제 설정 사이, "가로로 돌리면…" 안내 위에 겹쳐 뜸. 코드 추론하기(pages/naming.js)와 같은 방식이고 따로 기억(chordoven.improvScrollTip).
-// 출제 설정 제목이 화면 위쪽 40% 안에 한 번 들어오거나(= 아래로 내려서 봄) 알약을 누르면 다시 안 나옴. 알약은 CSS가 폰 세로에서만.
-// 다른 두 페이지는 "위쪽 65%"인데, 이 페이지는 연습 카드가 짧아서 출제 설정 제목이 처음부터 화면 아래쪽에 보임 → 65%면 알약이 뜨자마자 사라졌음
-// 8마디 모드에서는 무작위 코드 모드의 출제 설정이 없으니 숨김(showMode)
+// "가로로 돌리면…" 안내 위에 겹쳐 뜸(자리는 showMode). 코드 추론하기(pages/naming.js)와 같은 방식이고, 모드마다 따로 기억:
+//   무작위 코드 모드 chordoven.improvScrollTip "아래로 내리면 등장할 코드를 고를 수 있어요" → 무작위 코드 모드 출제 설정
+//   8마디 모드     chordoven.improvProgScrollTip "아래로 내리면 출제 옵션을 고를 수 있어요" → 8마디 모드 출제 설정
+// 그 모드의 출제 설정 제목이 화면 위쪽 40% 안에 한 번 들어오거나(= 아래로 내려서 봄) 알약을 누르면 그 모드에서는 다시 안 나옴.
+// 다른 두 페이지는 "위쪽 65%"인데, 이 페이지는 연습 카드가 짧아서 출제 설정 제목이 처음부터 화면 아래쪽에 보임 → 65%면 알약이 뜨자마자 사라졌음.
+// 알약은 CSS가 폰 세로에서만 보여 줌
 const scrollTip = (() => {
   const tip = $("scrollTip");
-  const head = document.querySelector("#sheetRandom h2");
-  let active = false;
-  const seen = "IntersectionObserver" in window ? new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) done(); }, { rootMargin: "0px 0px -60% 0px" }) : null;
-  function done() { active = false; tip.hidden = true; store.set("improvScrollTip", "seen"); if (seen) seen.disconnect(); }
-  if (store.get("improvScrollTip") !== "seen" && head && seen) {
-    active = true;
-    seen.observe(head);
-    $("scrollTipGo").onclick = () => { done(); $("sheetRandom").scrollIntoView({ behavior: "smooth", block: "start" }); };
-    $("scrollTipX").onclick = done;   // ×: 스크롤하지 않고 닫기 (다시 안 나옴)
+  const TIPS = {
+    random: { key: "improvScrollTip", sheet: "sheetRandom", text: "improvScrollTip" },
+    prog: { key: "improvProgScrollTip", sheet: "sheetProg", text: "progScrollTip" },
+  };
+  let current = "random";
+  const ok = "IntersectionObserver" in window;
+  for (const [m, x] of Object.entries(TIPS)) {
+    x.active = ok && store.get(x.key) !== "seen";
+    if (!x.active) continue;
+    // 출제 설정 제목을 한 번 보면 그 모드의 알약은 끝 (다른 모드의 출제 설정은 숨겨져 있어서 화면에 들어오지 않음)
+    x.seen = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) done(m); }, { rootMargin: "0px 0px -60% 0px" });
+    x.seen.observe(document.querySelector("#" + x.sheet + " h2"));
   }
-  return { show: on => { tip.hidden = !(active && on); } };
+  function done(m) {
+    const x = TIPS[m];
+    x.active = false; store.set(x.key, "seen");
+    if (x.seen) x.seen.disconnect();
+    if (m === current) tip.hidden = true;
+  }
+  $("scrollTipGo").onclick = () => { const m = current; done(m); $(TIPS[m].sheet).scrollIntoView({ behavior: "smooth", block: "start" }); };
+  $("scrollTipX").onclick = () => done(current);   // ×: 스크롤하지 않고 닫기 (다시 안 나옴)
+  /** 모드를 바꿀 때: 그 모드의 알약이 아직 남았으면 그 문구로 보임 */
+  function show(m) {
+    current = m;
+    $("scrollTipText").textContent = t(TIPS[m].text);
+    tip.hidden = !TIPS[m].active;
+  }
+  return { show };
 })();
 
 // 출제 설정 공유 링크(?preset=…, 2026-11-10): 관리자에게 [🔗 이 설정으로 링크 만들기], 링크로 들어오면 바꿀지 묻기 (common/share-settings.js).
@@ -345,6 +378,6 @@ initPresetLink({
   hasPrior: () => HAD_SAVED,   // 이 페이지 설정은 이 기기에만 저장(계정에 안 올림)
 });
 
-onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); syncProgUI(); if (metro.running) Random.render(); });
+onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); syncProgUI(); scrollTip.show(mode); if (metro.running) Random.render(); });
 showMode(modeFromUrl());
 renderPlay();

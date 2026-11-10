@@ -386,6 +386,7 @@ export default {
   improvScrollTip: "下にスクロールすると、出てくるコードを選べます",
   progNew: "↻ 新しいコード進行",
   progRotateTip: "スマホを横にすると、楽譜を大きく表示できます。",
+  progScrollTip: "下にスクロールすると、出題オプションを選べます",
   progApplyNew: "変えた設定は［新しいコード進行］を押すと反映されます。",
   progTen: "テンションを許可",
   progTenSub: "HARDを選ぶと、M9・M13・m9・m11・9・13などのテンションコードも出ます。ドミナント7には7altも出ます。",

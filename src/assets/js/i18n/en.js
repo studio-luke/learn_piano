@@ -386,6 +386,7 @@ export default {
   improvScrollTip: "Scroll down to choose which chords appear",
   progNew: "↻ New progression",
   progRotateTip: "Turn your phone sideways to see the chart bigger.",
+  progScrollTip: "Scroll down to choose the options",
   progApplyNew: "Changed settings apply when you press [New progression].",
   progTen: "Allow tensions",
   progTenSub: "HARD adds tension chords such as M9, M13, m9, m11, 9 and 13. Dominant 7ths may also be 7alt.",
