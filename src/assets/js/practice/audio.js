@@ -223,7 +223,7 @@ function chord(midis, arp = true) {
 // ---------- MIDI 건반 (2026-11-09) ----------
 // 정해진 길이 대신 "누르고 있는 동안" 울림: 누르면 길게(HOLD초 — 녹음이 그 전에 저절로 사라짐) 내고, 떼면 RELEASE초 동안 줄임.
 // 서스테인 페달을 밟고 있으면 뗀 건반도 페달을 뗄 때까지 울림.
-const HOLD = 30, RELEASE = 0.3;
+const HOLD = 30, RELEASE = 0.5;   // 떼고 줄어드는 시간 0.3 → 0.5초 (2026-11-10 사용자 요청)
 const down = new Set();       // 지금 MIDI 건반에서 누르고 있는 음
 const sustained = new Set();  // 페달 때문에 뗐는데도 울리고 있는 음
 let pedalDown = false;

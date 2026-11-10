@@ -20,6 +20,7 @@ import {
 } from "../naming/quiz.js";
 import { Sound } from "../practice/audio.js";
 import { initTimer, setTimer, renderTimer, timerSettings } from "../practice/timer.js";
+import { Midi } from "../input/midi.js";
 
 startPage({ title: "navNameTrainer", stats: true });
 
@@ -97,6 +98,16 @@ document.addEventListener("keyup", e => {
     $("scrollTipX").onclick = done;   // ×: 스크롤하지 않고 닫기 (다시 안 나옴 — 2026-11-08)
   }
 }
+
+// ---------- MIDI 건반: 소리만 (2026-11-10 사용자 요청) ----------
+// 랜덤 코드 연습에서 MIDI 건반을 허용한 브라우저면 권한 창 없이 연결(Midi.autoConnect — 아직 허용 안 했으면 아무것도 안 함).
+// 누른 음은 문제와 상관없이(화면에 없는 음도) 소리만 내요. 답 입력·채점·타이머(5분 무입력)에는 쓰지 않아요.
+// 세기·떼기·서스테인 페달은 랜덤 코드 연습과 같음 (audio.js noteOn 등)
+Midi.on("noteon", (m, vel) => { if (!authOpen() && !document.querySelector("dialog[open]")) Sound.noteOn(m, vel); });
+Midi.on("noteoff", m => Sound.noteOff(m));
+Midi.on("pedal", on => Sound.pedal(on));
+Midi.on("state", () => { if (Midi.devices.length) Sound.loadFull(); });   // 88건반 녹음도 미리 받기
+Midi.autoConnect();
 
 // ---------- 타이머 (랜덤 코드 연습과 같은 규칙, 세션은 연습 구분 "name") ----------
 initTimer(timerHooks, { mode: "name", S, sessionSettings: review => timerSettings(S, review, { optInv: !!S.optInv }) });
