@@ -370,7 +370,7 @@ export default {
   improvBpmUp: "テンポを上げる",
   improvStart: "▶ スタート",
   improvStop: "■ ストップ",
-  improvNoAudio: "このブラウザでは音を出せません。",
+  improvSilent: "メトロノームの音を再生できません。ビデオ通話など、ほかのアプリが音を使っている場合は終了してから再度お試しください。",
   improvKeysAria: "ピアノ鍵盤",
   improvMidiSound: "MIDI鍵盤の入力で音を鳴らす",
   improvMidiConnect: "MIDI鍵盤を接続",

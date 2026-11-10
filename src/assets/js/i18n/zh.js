@@ -370,7 +370,7 @@ export default {
   improvBpmUp: "加快速度",
   improvStart: "▶ 开始",
   improvStop: "■ 停止",
-  improvNoAudio: "此浏览器无法播放声音。",
+  improvSilent: "无法播放节拍器声音。如果视频通话等其他应用正在使用音频，请关闭后再试。",
   improvKeysAria: "钢琴键盘",
   improvMidiSound: "MIDI 键盘输入时播放声音",
   improvMidiConnect: "连接 MIDI 键盘",

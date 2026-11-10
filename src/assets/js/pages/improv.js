@@ -111,6 +111,8 @@ const metro = createMetronome({
     renderDots({ count: 4, on: info.beat, accent: [0] });
   },
   onStop: () => renderPlay(),
+  // 소리 장치를 쓸 수 없음(영상통화 중 등) → 클릭 소리 없이 그대로 진행하고 안내만 (2026-11-10 사용자 결정, 이유는 metronome.js)
+  onSilent: () => toast(t("improvSilent"), 6000),
 });
 
 /** 시작/중지 버튼 글자와 상태 + 멈췄으면 화면을 처음 상태로 */
@@ -131,7 +133,7 @@ function togglePlay() {
   if (metro.running) { metro.stop(); return; }
   // 무작위 코드 모드: 첫 코드를 뽑을 수 없는 설정이면(코드 종류·베이스 0개) 시작하지 않고 이유를 알림
   if (mode === "random") { const err = Random.start(); if (err) { toast(t(err)); return; } }
-  if (!metro.start({ bpm, beats: 4, countIn: true })) { Random.stop(); toast(t("improvNoAudio")); }
+  metro.start({ bpm, beats: 4, countIn: true });   // 소리를 낼 수 없어도 소리 없이 진행 (onSilent)
   renderPlay();
 }
 $("btnPlay").onclick = togglePlay;

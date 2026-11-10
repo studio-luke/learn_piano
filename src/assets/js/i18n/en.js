@@ -370,7 +370,7 @@ export default {
   improvBpmUp: "Faster",
   improvStart: "▶ Start",
   improvStop: "■ Stop",
-  improvNoAudio: "This browser can't play sound.",
+  improvSilent: "The metronome can't play sound. If another app such as a video call is using audio, close it and try again.",
   improvKeysAria: "Piano keyboard",
   improvMidiSound: "Play sound for MIDI keyboard input",
   improvMidiConnect: "Connect MIDI keyboard",

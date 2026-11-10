@@ -371,7 +371,7 @@ export default {
   improvBpmUp: "템포 올리기",
   improvStart: "▶ 시작",
   improvStop: "■ 중지",
-  improvNoAudio: "이 브라우저에서는 소리를 낼 수 없어요.",
+  improvSilent: "메트로놈 소리를 재생할 수 없어요. 영상통화 등 다른 앱이 소리를 쓰고 있으면 종료한 뒤에 다시 시도해주세요.",
   improvKeysAria: "피아노 건반",
   improvMidiSound: "MIDI 건반 입력 시 소리 재생",
   improvMidiConnect: "MIDI 건반 연결",
