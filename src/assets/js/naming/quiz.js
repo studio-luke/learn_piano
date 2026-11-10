@@ -177,7 +177,9 @@ export function renderFeedback() {
   fb.innerHTML = state.fb ? state.fb.build() : "";
 }
 // 정답 목록: "Dm7(♭5) 또는 Fm6" (근음별로 하나씩, 문제 근음이 맨 앞 — core/naming.js answers)
-const answerList = q => q.answers.map(a => `<b class="ans-name">${chordHTML(a.symbol)}</b>`).join(` <span class="ans-or">${esc(t("orWord"))}</span> `);
+// first: 맞힌 이름(엔진 표기) — 맨 앞에 두고 나머지 정답을 뒤에 (예: G–C–D에 D7sus4 → "D7sus4 또는 Gsus4 또는 Csus2", 2026-11-10)
+const answerList = (q, first = null) => [first, ...q.answers.map(a => a.symbol).filter(s => s !== first)].filter(Boolean)
+  .map(s => `<b class="ans-name">${chordHTML(s)}</b>`).join(` <span class="ans-or">${esc(t("orWord"))}</span> `);
 
 // ---------- 힌트 (자리바꿈 허용일 때만) ----------
 // 정답이 될 수 있는 코드들의 근음만 알려줌. 예: Dm7(♭5)/Fm6 → "근음 후보: D, F". 그 문제가 끝날 때까지 남음
@@ -257,7 +259,7 @@ export function submit() {
     setFeedback("no", () => `<strong>${esc(t("notYet"))}</strong><span>${esc(t(ERR_KEY[r.error]))}</span>`);
   } else if (r.correct) {
     state.good = true;
-    setFeedback("ok", () => `<strong>${esc(t("correct"))}</strong><span class="ans-list">${answerList(q)}</span>`);
+    setFeedback("ok", () => `<strong>${esc(t("correct"))}</strong><span class="ans-list">${answerList(q, r.unlisted || r.matched)}</span>`);
     lock();
   } else {
     // 오답: 줄을 나눠 알려줌. 이름은 "문제 쪽에서 본" 기준 (예: E♭ A♭ B♭ D♭에 E♭7로 답하면)

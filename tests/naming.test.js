@@ -74,6 +74,12 @@ test("naming voicing: allowed basses only — no 11, 13(6), ♯9, ♭9, sus 4th/
   }
 });
 
+test("naming voicing: aug7 and augM7 never put the ♯5 in the bass; the aug triad still may (2026-11-10)", () => {
+  for (const q of gen({ optInv: true, types: { aug7: true, augM7: true } }, 4000)) assert.notStrictEqual(degOfT(toneAt(q, q.notes[0])), 5, show(q));
+  const aug = gen({ optInv: true, types: { aug: true } }, 1500);
+  assert.ok(aug.filter(q => degOfT(toneAt(q, q.notes[0])) === 5).length > 300, "aug triad with ♯5 bass");
+});
+
 test("naming voicing: no minor 9th except root–♭9 and 5th–♭13; minor 2nds are allowed", () => {
   let m2 = 0, b13over5 = 0;
   for (const q of gen({ optInv: true }, 12000)) {
@@ -120,6 +126,59 @@ test("naming voicing: the fifth is dropped first (50%), then the bass is chosen 
   const kept = qs.filter(q => !dropped.includes(q));
   const fifth = kept.filter(q => degOfT(toneAt(q, q.notes[0])) === 5).length / kept.length;
   assert.ok(fifth > 0.11 && fifth < 0.19, `fifth bass when kept ${fifth}`);
+});
+
+test("naming: a 7th chord without tensions may leave out a perfect 5th — listed only when its root is the bass (2026-11-10)", () => {
+  // D–G–C: D7sus4 목록에 있음 / G–C–D, C–D–G: 목록에는 없지만 입력하면 정답 (화면이 앞에 붙여 보여줌)
+  const dgc = prob("D4 G4 C5");
+  assert.deepStrictEqual(names(dgc), ["D7sus4", "Gsus4", "Csus2"]);
+  assert.deepStrictEqual([N.check("D7sus4", dgc).correct, N.check("D7sus4", dgc).unlisted], [true, null]);
+  for (const t of ["G4 C5 D5", "C4 D4 G4"]) {
+    const p = prob(t);
+    assert.ok(!names(p).includes("D7sus4"), t);
+    assert.deepStrictEqual([N.check("D7sus4", p).correct, N.check("D7sus4", p).unlisted], [true, "D7sus4"], t);
+  }
+  // M7 m7 7 mM7도 같음 (mM7은 출제 때만 5음을 늘 보여줌)
+  for (const [t, a] of [["C4 E4 B4", "CM7"], ["C4 E♭4 B♭4", "Cm7"], ["C4 E4 B♭4", "C7"], ["C4 E♭4 B4", "CmM7"], ["E♭4 B4 C5", "CmM7"]]) assert.ok(N.check(a, prob(t)).correct, `${a} for ${t}`);
+  // 5음이 코드의 정체인 코드는 그대로 필수: m7(♭5) dim7 aug7(=7(♭13)) augM7
+  for (const [t, a] of [["D4 F4 C5", "Dm7(b5)"], ["C4 E♭4 A4", "Cdim7"], ["C4 E4 B♭4", "Caug7"], ["C4 E4 B4", "CaugM7"]]) assert.ok(!N.check(a, prob(t)).correct, `${a} for ${t}`);
+  // 자리바꿈 꺼짐에서는 근음이 맨 아래여야 하는 규칙이 먼저
+  assert.ok(!N.check("D7sus4", prob("G4 C5 D5", false)).correct);
+});
+
+test("naming: a correct answer is named in engine form so the page can show it first (2026-11-10)", () => {
+  const first = (a, t) => { const r = N.check(a, prob(t)); return r.unlisted || r.matched; };
+  assert.strictEqual(first("Fm6", "D4 F4 A♭4 C5"), "Fm6");
+  assert.strictEqual(first("Dø", "D4 F4 A♭4 C5"), "Dm7(♭5)");
+  assert.strictEqual(first("C9", "C4 E4 G4 B♭4 D5"), "C7(9)");
+  assert.strictEqual(first("Db7", "C♯4 E♯4 G♯4 B4"), "C♯7");          // 근음 철자는 악보를 따름
+  assert.strictEqual(first("Cm6(maj7)", "C4 E♭4 G4 A4 B4"), "CmM7(13)");
+  assert.strictEqual(first("D7sus4", "G4 C5 D5"), "D7sus4");           // 목록에 없는 정답은 표준 표기로
+  assert.strictEqual(first("Cm7", "C4 E4 G4 B♭4"), null);              // 오답이면 없음
+  // 목록의 이름으로 답하면 늘 그 이름
+  for (const q of gen({ optInv: true }, 2000)) for (const a of q.answers) assert.strictEqual(N.check(a.symbol, q).matched, a.symbol, `${a.symbol} for ${q.symbol}`);
+});
+
+test("naming: C6(maj7) = CM7(13), Cm6(maj7) = CmM7(13); mM7(13) is listed but never asked (2026-11-10)", () => {
+  for (const [a, b] of [["C6(maj7)", "CM7(13)"], ["C6(M7)", "CM7(13)"], ["CM6(maj7)", "CM7(13)"], ["Cm6(maj7)", "CmM7(13)"], ["Cm6(M7)", "CmM7(13)"], ["Cm6(△7)", "CmM7(13)"], ["C-6(maj7)", "CmM7(13)"]])
+    assert.deepStrictEqual(N.parse(a), N.parse(b), a);
+  const p = prob("C4 E♭4 G4 A4 B4");
+  assert.ok(names(p).includes("CmM7(13)"), names(p).join());
+  for (const a of ["Cm6(maj7)", "CmM7(13)"]) assert.deepStrictEqual([N.check(a, p).correct, N.check(a, p).unlisted], [true, null], a);
+  for (const q of gen({ optInv: true, types: { mM7: true } }, 3000)) assert.ok(!q.tens.includes("13"), q.symbol);
+});
+
+test("naming: a correct answer missing from the answer list is reported (shown first), other spellings of a listed one are not", () => {
+  const un = (a, t) => N.check(a, prob(t)).unlisted;
+  // 목록에 없는 정답: 목록에서 쓰지 않는 텐션, 7alt
+  assert.strictEqual(un("CM7(11)", "C4 E4 G4 B4 F5"), "CM7(11)");
+  assert.strictEqual(un("C7alt", "C4 E4 A♭4 B♭4 D♭5"), "C7alt");
+  // 목록에 있는 코드의 다른 표기는 붙이지 않음
+  assert.strictEqual(un("C9", "C4 E4 G4 B♭4 D5"), null);
+  assert.strictEqual(un("Caug7", "C4 E4 G♯4 B♭4"), null);
+  assert.strictEqual(un("C#7(b9)", "B♭3 C4 D♭4 E4"), null);
+  // 정답 목록의 이름은 모두 목록에 있는 것으로 침
+  for (const q of gen({ optInv: true }, 3000)) for (const a of q.answers) assert.strictEqual(N.check(a.symbol, q).unlisted, null, `${a.symbol} for ${q.symbol}`);
 });
 
 test("naming: the question's own name and every listed answer are graded correct; question root comes first", () => {
@@ -208,12 +267,12 @@ test("naming: input errors — lowercase root, tensions outside parentheses, unk
 
 test("naming: wrong answers say which notes are missing and which do not belong", () => {
   const p = prob("C4 E4 G4 B♭4", false);
-  assert.deepStrictEqual(N.check("Cm7", p), { correct: false, missing: ["E♭"], extra: ["E"], bassWrong: false });
-  assert.deepStrictEqual(N.check("C7(9)", p), { correct: false, missing: ["D"], extra: [], bassWrong: false });
-  assert.deepStrictEqual(N.check("C", p), { correct: false, missing: [], extra: ["B♭"], bassWrong: false });
+  assert.deepStrictEqual(N.check("Cm7", p), { correct: false, missing: ["E♭"], extra: ["E"], bassWrong: false, unlisted: null, matched: null });
+  assert.deepStrictEqual(N.check("C7(9)", p), { correct: false, missing: ["D"], extra: [], bassWrong: false, unlisted: null, matched: null });
+  assert.deepStrictEqual(N.check("C", p), { correct: false, missing: [], extra: ["B♭"], bassWrong: false, unlisted: null, matched: null });
   // 자리바꿈 꺼짐: 구성음은 맞아도 근음이 맨 아래가 아니면 오답
   const q = prob("D4 F4 A♭4 C5", false);
-  assert.deepStrictEqual(N.check("Fm6", q), { correct: false, missing: [], extra: [], bassWrong: true });
+  assert.deepStrictEqual(N.check("Fm6", q), { correct: false, missing: [], extra: [], bassWrong: true, unlisted: null, matched: null });
 });
 
 test("naming: settings — selected roots only, no tensions when option C is off", () => {

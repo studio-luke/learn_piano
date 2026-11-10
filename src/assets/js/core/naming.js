@@ -50,6 +50,7 @@ const degOf = t => (t.ten ? E.TEN[t.ten][1] : t.deg);
 //   3화음·sus·6·add             근음·3음·5음 같은 비율 (모양이 적어서 자리바꿈을 더 연습), add9·madd9의 9음 5
 // 11·13(6)·♯9·♭9, sus의 4음·2음은 베이스에 두지 않음.
 // 9음 베이스는 7화음에 텐션이 9 하나뿐일 때(aug7 제외)와 add9·madd9에서만, 그리고 3음이 바로 다음 음(2도 위)이어야 함
+// aug7·augM7의 ♯5도 베이스에 두지 않음 — 온음음계 모양이 되어 근음이 들리지 않음 (aug 3화음은 대칭이라 그대로, 2026-11-10)
 const BASS_7TH = { 1: 40, 3: 20, 5: 15, 7: 20, 9: 5 };
 const BASS_OTHER = { 1: 1, 3: 1, 5: 1 };
 const NINE_BASS = 5 / 95;   // 3화음 쪽 비율(합 3)에 맞춘 9음 몫 — 전체의 5%
@@ -67,6 +68,7 @@ function bassWeight(q, t, tones) {
     }
     return q.type === "add9" || q.type === "madd9" ? 3 * NINE_BASS : 0;
   }
+  if (t.deg === 5 && (q.type === "aug7" || q.type === "augM7")) return 0;
   return (seventh ? BASS_7TH : BASS_OTHER)[t.deg] || 0;   // 6음(deg 6), sus의 4음·2음은 0
 }
 
@@ -159,6 +161,21 @@ export function voice(q, inv, rnd = Math.random) {
   return voice(q, false, rnd);   // (만일을 위한 대비) 자리바꿈 없이
 }
 
+// 텐션 없는 7화음의 완전5도도 빼도 정답 (코드 추론하기 판정만 — 사용자 결정 2026-11-10).
+// 5음이 코드의 정체인 m7(♭5)·dim7·aug7·augM7은 그대로 필수. 랜덤 코드 연습("C7을 눌러보세요")은 engine.js 그대로 5음 필수,
+// 출제(voice)도 그대로 — 텐션 없는 7화음은 5음을 빼고 내지 않음
+const FIFTH_OPTIONAL = new Set(["M7", "m7", "dom7", "7sus4", "mM7"]);
+function partsOf(typeId, root, tens) {
+  const parts = E.tonesFor(typeId, root, tens);
+  if (FIFTH_OPTIONAL.has(typeId) && !tens.length) {
+    const fifth = parts.tones.find(t => t.semi === 7 && t.deg === 5);
+    if (fifth) { parts.required.delete(fifth.pc); parts.optional.add(fifth.pc); }
+  }
+  return parts;
+}
+// 5음을 뺀 텐션 없는 7화음인지 (화면에 그 코드의 완전5도가 없음)
+const fifthLeftOut = (typeId, rootPc, tens, pcs) => FIFTH_OPTIONAL.has(typeId) && !tens.length && !pcs.has(mod12(rootPc + 7));
+
 // 사용자가 쓴 답의 구성음이 화면의 음(pcs)과 맞는지: 필수음이 다 있고, 코드에 들어갈 수 없는 음이 없어야 함
 const fits = (parts, pcs) => [...parts.required].every(pc => pcs.has(pc)) && [...pcs].every(pc => parts.required.has(pc) || parts.optional.has(pc));
 
@@ -170,12 +187,17 @@ function label(type, tens) {
   return head + (items.length ? "(" + items.join(",") + ")" : "");
 }
 
+// 정답 목록에 쓰는 텐션: 출제 텐션(engine의 ten) + mM7(13) — 출제는 하지 않고 목록에만 (사용자 결정 2026-11-10)
+const listTens = T => (T.id === "mM7" ? [...T.ten, "13"] : T.ten);
+
 /**
  * 화면의 음으로 만들 수 있는 정답 이름 목록 (근음별로 하나씩, 낮은 음부터).
  * 표기 통일 (사용자 결정 2026-11-08):
  *   ♭5 → ♯11, ♯5 → ♭13 (m7(♭5)는 그대로), aug7 → 7(♭13), M7(♯5) → augM7
  *   근음 철자는 악보에 있는 그 음의 철자 (Cdim7 = E♭dim7 = G♭dim7 = Adim7, D♯dim7로는 쓰지 않음)
  * 자리바꿈이 꺼져 있으면 맨 아래 음이 근음인 이름만.
+ * 5음을 뺀 텐션 없는 7화음(D–G–C의 D7sus4)은 그 근음이 맨 아래일 때만 목록에 넣음 — 판정은 베이스와 상관없이 정답
+ *   (G–C–D를 D7sus4로 먼저 떠올리긴 무리라서, 사용자 결정 2026-11-10)
  * 출제 설정에서 고르지 않은 코드 종류도 구성음이 맞으면 정답.
  */
 export function answers(notes, inv) {
@@ -195,13 +217,14 @@ export function answers(notes, inv) {
       for (const pc of pcs) {
         if (chordPcs.has(pc)) continue;
         const id = SEMI_TEN[mod12(pc - r)];
-        if (!id || !T.seventh || !T.ten.includes(id)) { ok = false; break; }
+        if (!id || !T.seventh || !listTens(T).includes(id)) { ok = false; break; }
         tens.push(id);
       }
       if (!ok || !validTens(tens)) continue;
       tens.sort((a, b) => E.TEN_ORDER.indexOf(a) - E.TEN_ORDER.indexOf(b));
       const root = { l: n.l, a: n.a };
-      if (!fits(E.tonesFor(T.id, root, tens), pcs)) continue;
+      if (!fits(partsOf(T.id, root, tens), pcs)) continue;
+      if (fifthLeftOut(T.id, r, tens, pcs) && r !== mod12(notes[0].midi)) continue;
       out.push({ symbol: n.name + label(T, tens), rootPc: r, type: T.id, tens });
     }
   }
@@ -405,6 +428,8 @@ export function parse(input) {
     if (PAREN_MAJ7.has(it) && type === "min") { type = "mM7"; continue; }
     if (PAREN_MAJ9.has(it) && type === "min") { type = "mM7"; tens.push("9"); continue; }   // Cm(maj9) = CmM7(9)
     if (PAREN_MAJ7.has(it) && type === "aug") { type = "augM7"; continue; }                // Caug(maj7) = C+(M7) = CaugM7
+    // C6(maj7) = CM7(13), Cm6(maj7) = CmM7(13) (사용자 결정 2026-11-10)
+    if (PAREN_MAJ7.has(it) && (type === "6" || type === "m6")) { type = type === "6" ? "M7" : "mM7"; tens.push("13"); continue; }
     // 괄호 안에 쓴 코드 종류 (사용자 결정 2026-11-08): C(add9)·C(add2) = Cadd9, Cm(add9)·Cm(add2) = Cmadd9,
     // C(sus4) = Csus4, C(sus2) = Csus2, C7(sus4) = C7sus4. 괄호 하나에 이것 하나만 (C(6)·Cm(6)은 받지 않음)
     const word = PAREN_WORD[type] && PAREN_WORD[type][it];
@@ -452,14 +477,16 @@ function checkAlt(p, prob) {
   const extra = [...new Set(prob.notes.filter(n => !allowed.has(mod12(n.midi))).map(n => n.name))];
   const noAlt = !altered.some(t => prob.pcs.has(t.pc));
   const bassWrong = !prob.inv && p.rootPc !== mod12(prob.notes[0].midi);
-  return { correct: !missing.length && !extra.length && !noAlt && !bassWrong, missing, extra, bassWrong, noAlt };
+  const correct = !missing.length && !extra.length && !noAlt && !bassWrong;
+  // 7alt는 정답 목록에 넣지 않으므로 맞히면 늘 앞에 붙여 보여줌
+  return { correct, missing, extra, bassWrong, noAlt, unlisted: correct ? rootText(p.root) + "7alt" : null, matched: null };
 }
 
 export function check(input, prob) {
   const p = parse(input);
   if (p.error) return { error: p.error, correct: false };
   if (p.alt) return checkAlt(p, prob);
-  const parts = E.tonesFor(p.type, p.root, p.tens);
+  const parts = partsOf(p.type, p.root, p.tens);
   // 빠진 음 이름은 사용자가 쓴 코드의 철자 (겹변화표는 쉬운 이름으로)
   const missing = [];
   for (const t of parts.tones) {
@@ -470,7 +497,23 @@ export function check(input, prob) {
   // 들어갈 수 없는 음 이름은 악보의 철자
   const extra = prob.notes.filter(n => !parts.required.has(mod12(n.midi)) && !parts.optional.has(mod12(n.midi))).map(n => n.name);
   const bassWrong = !prob.inv && p.rootPc !== mod12(prob.notes[0].midi);
-  return { correct: !missing.length && !extra.length && !bassWrong, missing: [...new Set(missing)], extra: [...new Set(extra)], bassWrong };
+  const correct = !missing.length && !extra.length && !bassWrong;
+  // 맞힌 이름을 엔진 표기로: 정답 목록에 있으면 그 이름(matched), 없으면 표준 표기로 만든 이름(unlisted)
+  const hit = correct ? listed(p, parts, prob) : null;
+  const unlisted = correct && !hit ? rootText(p.root) + label(E.BY_ID[p.type], sortTens(p.tens)) : null;
+  return { correct, missing: [...new Set(missing)], extra: [...new Set(extra)], bassWrong, unlisted, matched: hit ? hit.symbol : null };
+}
+
+// ---------- 맞힌 이름을 정답 목록 맨 앞에 (사용자 결정 2026-11-10) ----------
+// 맞히면 화면이 맞힌 이름을 목록 맨 앞에, 나머지 정답을 그 뒤에 보여줌. 이름은 입력 그대로가 아니라 엔진 표기
+// (목록에 있으면 목록의 이름 — C9 → C7(9), D♭7 → 악보 철자 C♯7, 없으면 표준 표기 — D7sus4, C7alt).
+// 목록에 없는 경우: 5음을 뺀 7화음인데 근음이 맨 아래가 아님(G–C–D의 D7sus4), 7alt, 목록에서 쓰지 않는 텐션(mM7(13) 등)
+// 같은 근음에 필수음이 같으면 같은 코드로 봄 (C9 = C7(9), Caug7 = C7(♭13) — 표기만 다른 것은 붙이지 않음)
+const rootText = r => E.LET[r.l] + (r.a > 0 ? "♯" : "♭").repeat(Math.abs(r.a));
+const sortTens = tens => tens.slice().sort((a, b) => E.TEN_ORDER.indexOf(a) - E.TEN_ORDER.indexOf(b));
+const samePcs = (a, b) => a.size === b.size && [...a].every(pc => b.has(pc));
+function listed(p, parts, prob) {
+  return (prob.answers || []).find(a => a.rootPc === p.rootPc && samePcs(partsOf(a.type, p.root, a.tens).required, parts.required));
 }
 
 export const Naming = { LOW, HIGH, NAME_TYPES, generate, voice, answers, parse, check, specOf, fromSpec };
