@@ -17,10 +17,9 @@ import { store } from "../common/storage.js";
 
 const KEY = "improvRandom.v1";
 export const DEFAULTS = {
-  // 처음 방문(저장된 설정이 없을 때)의 코드 종류 (사용자 지정 2026-11-10): 3화음은 Major·minor만, 7화음 전부, 6·m6, add9·madd9.
-  // dim·aug·sus 코드·6(9)·m6(9)·텐션 코드는 꺼짐. 이미 저장된 기기의 설정은 그대로
+  // 처음 방문(저장된 설정이 없을 때)의 코드 종류 (사용자 지정 2026-11-10): 7화음 전부, 6·m6, add9·madd9.
+  // 3화음 전부(Major·minor도 2026-11-10에 뺌)·sus 코드·6(9)·m6(9)·텐션 코드는 꺼짐. 이미 저장된 기기의 설정은 그대로
   types: {
-    maj: true, min: true,
     M7: true, m7: true, dom7: true, "7sus4": true, aug7: true, dim7: true, m7b5: true, mM7: true, augM7: true,
     "6": true, m6: true,
     add9: true, madd9: true,
@@ -31,10 +30,11 @@ export const DEFAULTS = {
 
 /**
  * 코드 초견에서만 쓰는 출제 가중치 (엔진 TYPES의 w 대신 — 랜덤 코드 연습·코드 추론하기는 그대로).
- * 실제로 드물게 쓰는 mM7·aug7·augM7을 낮춰 세 코드 합이 전체의 9~10%가 되게 (사용자 결정 2026-11-10, 원래 w 1.2·1·1 → 약 13%).
- * 처음 설정(위 DEFAULTS)에서 측정: 합 약 10.0%, 옵션 E·텐션을 켜면 약 9.4~9.5%. 코드 종류를 전부 켜면 약 7.9%
+ * 실제로 드물게 쓰는 mM7·aug7·augM7을 낮춰 세 코드 합이 전체의 9~10%가 되게 (사용자 결정 2026-11-10, 원래 w 1.2·1·1).
+ * 처음 설정에서 Major·minor를 뺀 뒤 다시 맞춤(0.9·0.75·0.75 → 0.8·0.65·0.65). 처음 설정(위 DEFAULTS)에서 측정:
+ * 합 약 9.7%(mM7 3.7 · aug7 3.0 · augM7 3.0), 옵션 E·텐션을 켜면 약 9.2~9.3%
  */
-export const WEIGHTS = { mM7: 0.9, aug7: 0.75, augM7: 0.75 };
+export const WEIGHTS = { mM7: 0.8, aug7: 0.65, augM7: 0.65 };
 
 /** 지금 설정 (다른 파일이 이 객체를 계속 참조하므로 새 객체로 바꾸지 말 것) */
 export const S = structuredClone(DEFAULTS);

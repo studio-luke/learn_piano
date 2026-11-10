@@ -36,12 +36,14 @@ test("improv random: bars per chord → beats per chord (½ = 2, 1 = 4, 2 = 8, u
 test("improv random: page-only weights bring mM7 + aug7 + augM7 to about 9–10% of the default chord set", async () => {
   const { Engine } = await import("../src/assets/js/core/engine.js");
   const { WEIGHTS } = await import("../src/assets/js/improv/settings.js");
-  const on = ["maj", "min", "M7", "m7", "dom7", "7sus4", "aug7", "dim7", "m7b5", "mM7", "augM7", "6", "m6", "add9", "madd9"];
+  const { DEFAULTS } = await import("../src/assets/js/improv/settings.js");
+  const on = Object.keys(DEFAULTS.types).filter(id => DEFAULTS.types[id]);
+  assert.deepStrictEqual([...on].sort(), ["6", "7sus4", "M7", "add9", "aug7", "augM7", "dim7", "dom7", "m6", "m7", "m7b5", "mM7", "madd9"]);
   const s = { types: Object.fromEntries(on.map(id => [id, true])), optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false, weights: WEIGHTS };
   const N = 40000; let n = 0;
   for (let i = 0; i < N; i++) if (["mM7", "aug7", "augM7"].includes(Engine.generate(s).type)) n++;
   const pct = 100 * n / N;
-  assert.ok(pct > 8.8 && pct < 11, pct.toFixed(1));
+  assert.ok(pct > 8.8 && pct < 10.6, pct.toFixed(1));
   // 다른 연습이 쓰는 원래 가중치는 그대로
   assert.deepStrictEqual(["mM7", "aug7", "augM7"].map(id => Engine.BY_ID[id].w), [1.2, 1, 1]);
 });
