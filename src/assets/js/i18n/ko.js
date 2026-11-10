@@ -401,4 +401,13 @@ export default {
   hintRoots: "근음 후보",
   keysQuestionOnly: "문제에서 선택된 건반만 소리를 들어볼 수 있어요.",
   nextPlain: "다음 문제",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
+  // 출제 설정 공유 링크 (common/share-settings.js, 2026-11-10)
+  cancel: "취소",
+  presetMake: "🔗 이 설정으로 링크 만들기",
+  presetCopied: "이 출제 설정이 담긴 링크를 복사했어요.",
+  presetCopyManual: "아래 링크를 복사해서 보내 주세요. 이 링크를 연 사람은 지금 출제 설정으로 바꿀 수 있어요.",
+  presetAsk: "방금 여신 링크에는 출제 설정이 포함되어 있어요. 지금 출제 설정을 이 설정으로 바꿀까요?",
+  presetApply: "바꾸기",
+  presetDone: "출제 설정을 바꿨어요.",
+  presetBad: "링크에 담긴 출제 설정이 올바르지 않아 적용하지 않았어요.",
 };

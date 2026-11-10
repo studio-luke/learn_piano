@@ -69,6 +69,8 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     common/sitemap.js       사이트 지도: 메뉴와 홈 카드에 나오는 페이지 목록 (새 기능은 여기에 추가), 링크 주소 만들기 pageUrl()
     common/dom.js           $("id"), esc()(HTML 안전하게), toast()(아래 알림)
     common/storage.js       localStorage 읽기·쓰기 (chordoven.* 키)
+    common/preset.js        출제 설정 공유 링크(?preset=…) 값 만들기·읽기·검사 (순수 함수)
+    common/share-settings.js  출제 설정 공유 링크 화면: [🔗 이 설정으로 링크 만들기] 버튼(관리자만), 링크로 들어온 사람에게 바꿀지 묻는 창
     account/account.js      로그인 상태와 DB 연결 (Supabase를 부르는 곳은 여기뿐)
     account/auth-dialog.js  로그인 창·회원가입·계정 사이드바 화면
     account/helpers.js      회원 기능의 작은 규칙 (오류 문구, 공개 키 확인 등 — 테스트용으로 분리)
@@ -88,7 +90,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
 
 supabase/schema.sql   DB 표·권한(RLS)·함수. Supabase SQL Editor에서 실행 (다시 실행해도 안전)
 dist/                 빌드 결과 = 실제 사이트 (자동 생성, git에 안 올림)
-tests/                engine.test.js, naming.test.js, schema.test.js, account.test.js, build.test.js (npm test), layout-audit.js (npm run audit)
+tests/                engine.test.js, naming.test.js, schema.test.js, account.test.js, build.test.js, preset.test.js (npm test), layout-audit.js (npm run audit)
 tools/build.js        사이트 만들기: 언어별 페이지·입구·sitemap.xml (언어별 페이지 목록 PAGES, 사이트 주소 SITE)
 tools/serve.js        로컬 서버 (npm run dev — 빌드 후 dist/를 사이트처럼 보여주고 src/ 변경을 지켜봄, 레이아웃 검사도 사용)
 package.json          npm 명령 (dev, build, test, audit)
@@ -143,6 +145,8 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - [x] 개인 학습 통계 기능 (마이페이지: 정답·오답, 코드 종류·베이스·텐션별, 날짜별, 틀린 문제 다시 풀기)
 - [x] 선생님이 학생의 학습 상태를 조회할 수 있는 페이지 (학생 기록)
 - [ ] 선생님으로 가입 (필요해지면)
+- [x] 출제 설정 공유 링크 (랜덤 코드 연습·코드 추론하기 — 관리자가 지금 설정으로 링크를 만들면, 연 사람이 확인 후 자기 설정(기기·계정)을 그 설정으로 바꿈)
+- [ ] 코드 초견에도 출제 설정 공유 링크 (improv 브랜치를 main에 합친 뒤)
 - [x] 미디 입력 인식 구현 (랜덤 코드 연습 — 컴퓨터의 Chrome·Edge, MIDI 입력 모드에서는 88건반)
 - [ ] 건반(&악보)을 보고 코드 맞추기
 - [ ] BPM 설정 후 랜덤 코드가 자동으로 넘어가는 '랜덤 코드 초견' 페이지 만들기 (완전 무작위 순서 / 조표 설정 기능)

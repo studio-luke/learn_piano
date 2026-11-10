@@ -123,6 +123,7 @@ export function syncSettingsUI() {
 // ---------- 잠금 (랜덤 코드 연습과 같음, practice/settings.js) ----------
 // 틀린 문제 다시 풀기 중(출제 설정이 적용되지 않음)과 타이머 실행 중(타이머 세션에 저장한 설정을 지키려고)에는
 // 출제 설정을 회색으로 잠가요. 위에 투명한 막(#sheetLock)이 클릭을 받아 이유를 알려줘요.
+// 공유 링크 버튼(.preset-btn)은 설정을 바꾸지 않고 읽기만 하므로 잠그지 않아요.
 let lockReason = null;
 /** reason: 안내 문구 키("lockNote" | "lockTimer") 또는 null(잠금 해제) */
 export function setLocked(reason) {
@@ -131,6 +132,6 @@ export function setLocked(reason) {
   sheet.classList.toggle("locked", !!reason);
   $("lockNote").hidden = !reason; $("sheetLock").hidden = !reason;
   if (reason) $("lockNote").textContent = t(reason);
-  sheet.querySelectorAll("input, button:not(.sheet-lock)").forEach(el => { el.disabled = !!reason; });
+  sheet.querySelectorAll("input, button:not(.sheet-lock):not(.preset-btn)").forEach(el => { el.disabled = !!reason; });
   if (!reason) syncSettingsUI();   // 옵션 E는 자리바꿈일 때 계속 꺼져 있어야 해서 다시 맞춤
 }

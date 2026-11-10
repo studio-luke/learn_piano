@@ -400,4 +400,13 @@ export default {
   hintRoots: "Possible roots",
   keysQuestionOnly: "You can only listen to the keys selected in the question.",
   nextPlain: "Next",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
+  // 출제 설정 공유 링크 (common/share-settings.js, 2026-11-10)
+  cancel: "Cancel",
+  presetMake: "🔗 Make a link with these settings",
+  presetCopied: "Copied a link with these practice settings.",
+  presetCopyManual: "Copy the link below and send it. Anyone who opens it can switch to these practice settings.",
+  presetAsk: "The link you just opened includes practice settings. Replace your current practice settings with them?",
+  presetApply: "Replace",
+  presetDone: "Your practice settings have been updated.",
+  presetBad: "The practice settings in this link aren't valid, so they weren't applied.",
 };

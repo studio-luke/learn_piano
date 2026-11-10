@@ -400,4 +400,13 @@ export default {
   hintRoots: "ルート候補",
   keysQuestionOnly: "問題で選ばれた鍵盤だけ音を聴くことができます。",
   nextPlain: "次の問題",   // 화살표 없는 "다음 문제" (→ 단축키를 따로 표시하는 곳)
+  // 출제 설정 공유 링크 (common/share-settings.js, 2026-11-10)
+  cancel: "キャンセル",
+  presetMake: "🔗 この設定でリンクを作る",
+  presetCopied: "この出題設定を含むリンクをコピーしました。",
+  presetCopyManual: "下のリンクをコピーして送ってください。このリンクを開いた人は、この出題設定に切り替えられます。",
+  presetAsk: "開いたリンクには出題設定が含まれています。今の出題設定をこの設定に変更しますか？",
+  presetApply: "変更する",
+  presetDone: "出題設定を変更しました。",
+  presetBad: "リンクの出題設定が正しくないため、適用しませんでした。",
 };
