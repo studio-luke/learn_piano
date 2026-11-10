@@ -22,6 +22,8 @@ import { Sound } from "../practice/audio.js";
 import { initTimer, setTimer, renderTimer, timerSettings } from "../practice/timer.js";
 import { Midi } from "../input/midi.js";
 
+Sound.preload();   // 피아노 녹음은 페이지를 열자마자 받기 시작 (소리로 푸는 건 첫 터치 뒤 — practice/audio.js)
+
 startPage({ title: "navNameTrainer", stats: true });
 
 // ---------- 출제 설정·건반·입력·버튼 ----------

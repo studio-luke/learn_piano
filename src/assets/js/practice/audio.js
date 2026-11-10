@@ -37,7 +37,11 @@ function fetchSamples(list) {
     if (ctx) decoding.set(m, decodeOne(m));
   }
 }
-fetchSamples(SAMPLES);   // 기본 녹음: 페이지를 열자마자
+/**
+ * 기본 녹음 받기 시작 — 페이지를 열자마자 부름(두 연습 페이지). 여러 번 불러도 한 번만.
+ * (2026-11-10: 예전엔 이 파일을 불러오기만 해도 받았는데, 코드 초견은 폰에서 피아노 소리를 쓰지 않아서(메트로놈만) 페이지가 고르게 함)
+ */
+function preload() { fetchSamples(SAMPLES); }
 
 /** 88건반 전체용 녹음도 받기 (MIDI 건반이 연결되면 페이지가 부름 — 여러 번 불러도 한 번만) */
 function loadFull() { fetchSamples(EXTRA); }
@@ -117,6 +121,7 @@ function whenReady() {
  */
 function note(m, when = 0, dur = 1.8, vel = 0.5, held = false) {
   if (!init()) return;
+  preload();   // 아직 안 받았으면 지금 (이미 받았으면 아무것도 안 함)
   if (m < SAMPLES[0][0] - 2 || m > SAMPLES[SAMPLES.length - 1][0] + 2) loadFull();   // 기본 녹음 범위 밖 → 나머지 녹음도 받기
   // 멈춰 있으면 다시 켬. iPhone(Safari·Chrome 모두 WebKit)은 "suspended" 말고 "interrupted"가 되기도 해서
   // running이 아니면 모두 다시 켬 (2026-11-08: 코드 추론하기의 [들어보기]가 iPhone에서 안 들렸음)
@@ -258,4 +263,14 @@ function release(m, fade) {
 /** 소리 장치가 소리를 낼 수 있는 상태인지 — 화면을 한 번도 누르지 않았으면 false (MIDI 입력만으로는 브라우저가 소리를 허락하지 않음) */
 const running = () => !!ctx && ctx.state === "running";
 
-export const Sound = { note, chord, stop, stopAll, noteOn, noteOff, pedal, loadFull, running };
+/**
+ * 소리 장치(AudioContext)를 다른 소리(메트로놈 등)와 함께 쓰기 — 없으면 만듦, 못 만들면 null.
+ * 같은 장치를 써야 위의 iPhone 처리(무음 <audio>, 다시 켜기)가 그 소리에도 그대로 적용돼요 (코드 초견, 2026-11-10)
+ */
+function context() {
+  if (!init()) return null;
+  if (ctx.state !== "running") ctx.resume();
+  return ctx;
+}
+
+export const Sound = { note, chord, stop, stopAll, noteOn, noteOff, pedal, loadFull, preload, running, context };

@@ -66,6 +66,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     naming/settings.js keys.js keypad.js staff.js quiz.js   코드 추론하기의 출제 설정·건반(보기만)·코드 입력 키패드·오선지 악보(SVG)·문제 흐름(기록·타이머·다시 풀기)
     pages/naming.js         코드 추론하기 페이지 (trainer/chords-name/)
     pages/improv.js         코드 초견 페이지 (trainer/chord-improv/, 모양은 css/improv.css)
+    improv/metronome.js keys.js   코드 초견의 메트로놈(박을 소리 장치 시계에 미리 예약, 카운트인)·88건반(누르는 동안만 선택, 컴퓨터만)
     i18n/index.js           언어 고르기, t("키") 문구 함수, data-i18n 속성 채우기
     i18n/ko.js en.js ja.js zh.js   화면 문구 (ko가 원문, 네 파일의 키가 같아야 함)
     common/layout.js        모든 페이지의 머리글·바닥글·☰ 왼쪽 메뉴·도움말(?)과 페이지 시작(startPage)
@@ -91,7 +92,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
 
 supabase/schema.sql   DB 표·권한(RLS)·함수. Supabase SQL Editor에서 실행 (다시 실행해도 안전)
 dist/                 빌드 결과 = 실제 사이트 (자동 생성, git에 안 올림)
-tests/                engine.test.js, naming.test.js, schema.test.js, account.test.js, build.test.js (npm test), layout-audit.js (npm run audit)
+tests/                engine.test.js, naming.test.js, improv.test.js, schema.test.js, account.test.js, build.test.js (npm test), layout-audit.js (npm run audit)
 tools/build.js        사이트 만들기: 언어별 페이지·입구·sitemap.xml (언어별 페이지 목록 PAGES, 사이트 주소 SITE)
 tools/serve.js        로컬 서버 (npm run dev — 빌드 후 dist/를 사이트처럼 보여주고 src/ 변경을 지켜봄, 레이아웃 검사도 사용)
 package.json          npm 명령 (dev, build, test, audit)
@@ -148,7 +149,7 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - [ ] 선생님으로 가입 (필요해지면)
 - [x] 미디 입력 인식 구현 (랜덤 코드 연습 — 컴퓨터의 Chrome·Edge, MIDI 입력 모드에서는 88건반)
 - [ ] 건반(&악보)을 보고 코드 맞추기
-- [ ] '코드 초견' 페이지 (`/trainer/chord-improv/`, 만드는 중 — 1단계 페이지 틀 완료): 메트로놈에 맞춰 무작위 코드가 넘어가는 모드 + 실용음악 입시형 8마디 코드진행 모드. 나중에 녹음, 연주 채점
+- [ ] '코드 초견' 페이지 (`/trainer/chord-improv/`, 만드는 중 — 페이지 틀·메트로놈·88건반 완료): 메트로놈에 맞춰 무작위 코드가 넘어가는 모드 + 실용음악 입시형 8마디 코드진행 모드. 나중에 녹음, 연주 채점
 - [ ] 보이스리딩 학습 페이지
 - [ ] 각 코드별 설명 페이지
 - [ ] 화성학 이론 학습 페이지

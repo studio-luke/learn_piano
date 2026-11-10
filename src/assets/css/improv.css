@@ -1,5 +1,7 @@
 /* ===== 코드 초견 (trainer/chord-improv/) =====
    한 페이지에 모드 탭 두 개(무작위 코드 / 8마디 코드진행). 색은 base.css 토큰만 씀.
+   건반(.keyboard/.key)은 practice.css를 그대로 씀. practice.css의 폰 레이아웃 규칙(.desk .prompt .actions …)이
+   끼어들지 않게 이 페이지는 그 클래스 이름을 쓰지 않음(카드는 .im-card).
    폰 레이아웃을 바꾸면 폰 크기별로 다시 확인할 것. */
 
 .improv { display: flex; flex-direction: column; gap: 14px; }
@@ -11,8 +13,51 @@
 .im-mode[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40,20,10,.15); }
 @media (max-width: 420px) { .im-modes { width: 100%; } .im-mode { flex: 1; padding-inline: 6px; } }
 
-/* ---------- 모드 카드 (랜덤 코드 연습의 .desk와 같은 카드 모양) ---------- */
-.desk { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 24px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-.im-panel[hidden] { display: none; }
+/* ---------- 카드 (랜덤 코드 연습의 연습 카드와 같은 모양) ---------- */
+.im-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 24px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.im-card[hidden], .im-panel[hidden] { display: none; }
 .im-intro { margin: 0; color: var(--muted); font-size: 15px; }
-.im-wip { margin: 0; font-size: 14px; color: var(--muted); }
+.im-wip { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+
+/* ---------- 카운트인·박 표시 ---------- */
+/* 높이를 고정해서 "3 2 1 GO"가 나타나고 사라질 때 아래 버튼이 움직이지 않게 */
+.im-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 140px; }
+.im-count { font-family: var(--font-display); font-size: clamp(56px, 12vw, 96px); line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.im-count.go { color: var(--ok); }
+.im-count.pop { animation: im-pop .35s ease-out; }
+@keyframes im-pop { from { transform: scale(1.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .im-count.pop { animation: none; } }
+/* 박 점 4개: 지금 박만 켬, 마디 첫 박은 포인트 색 */
+.im-beats { display: flex; gap: 12px; }
+.im-beats i { width: 14px; height: 14px; border-radius: 50%; background: var(--sunken); border: 1px solid var(--line); transition: background-color 60ms; }
+.im-beats i.on { background: var(--ink); border-color: var(--ink); }
+.im-beats i.on.accent { background: var(--accent); border-color: var(--accent); }
+
+/* ---------- 템포·시작 ---------- */
+.im-transport { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.im-tempo { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.im-tempo label { margin-right: 4px; display: inline-flex; align-items: center; gap: 8px; }
+/* ♩= (음표는 SVG 도형 — 높이 24px로 글자보다 조금 크게, 음표와 = 사이 여백) */
+.im-note { display: inline-flex; align-items: center; gap: 4px; }
+.im-note svg { display: block; fill: currentColor; }
+.im-eq { font-weight: 500; }
+/* −/+ : 누르는 순간 바뀌고 꾹 누르면 반복 (pages/improv.js) — 꾹 누를 때 글자 선택·확대·폰 메뉴가 뜨지 않게 */
+.im-step { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.im-step { width: 34px; height: 38px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; font-size: 18px; line-height: 1; }
+.im-step:hover { background: var(--sunken); }
+.im-tempo input { width: 64px; height: 38px; text-align: center; font: inherit; font-variant-numeric: tabular-nums; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.im-play { flex: 1; min-width: 140px; font-size: 16px; }
+/* 재생 중에는 [중지]: 강조색 대신 글자색 버튼으로 바꿔 지금 상태가 한눈에 보이게 */
+.im-play[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+
+/* ---------- 88건반 (컴퓨터만) ---------- */
+.im-keys { gap: 12px; }
+.im-keys-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.im-midi { display: flex; align-items: center; gap: 8px; }
+/* MIDI 상태 글씨 (랜덤 코드 연습 .small-toggles .midi-status와 같은 모양) */
+.im-midi .midi-status { font-size: 11px; color: var(--muted); }
+.im-midi .midi-status:empty { display: none; }
+.im-midi .midi-status.on::before, .im-midi .midi-status.none::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--ok); vertical-align: 0.05em; }
+.im-midi .midi-status.none::before { background: var(--danger); }
+.im-midi .midi-status.on { cursor: help; }
+.im-keys .keyboard { cursor: pointer; }

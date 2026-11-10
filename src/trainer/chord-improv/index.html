@@ -3,7 +3,8 @@
      메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 연습. 한 페이지에 모드 탭 두 개:
        무작위 코드(?mode 없음)   한 마디(또는 ½·2마디)마다 무작위 코드, 이전·현재·다음 코드를 보여줌
        8마디 코드진행(?mode=prog) 실용음악 입시처럼 8마디 코드진행 악보
-     화면 구성: 머리글(공통) · 모드 탭 · 모드별 카드 · 바닥글(공통). 모양은 improv.css,
+     화면 구성: 머리글(공통) · 모드 탭 · 연습 카드(모드별 내용 + 카운트인·박 표시 + 템포·시작) · 88건반(컴퓨터만) · 바닥글(공통).
+     건반 모양은 랜덤 코드 연습의 practice.css(.keyboard/.key)를 그대로 쓰고, 이 페이지만의 모양은 improv.css,
      동작은 assets/js/pages/improv.js에서 시작해요. 규칙은 chordoven-spec.md "코드 초견". -->
 <html lang="ko">
 <head>
@@ -21,6 +22,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Music&display=swap">
 <link rel="stylesheet" href="/assets/css/base.css">
 <link rel="stylesheet" href="/assets/css/account.css">
+<link rel="stylesheet" href="/assets/css/practice.css">
 <link rel="stylesheet" href="/assets/css/improv.css">
 <script type="module" src="/assets/js/pages/improv.js"></script>
 </head>
@@ -35,16 +37,50 @@
       <button type="button" role="tab" class="im-mode" id="tabProg" data-mode="prog" aria-controls="panelProg" aria-selected="false" data-i18n="improvModeProg">8마디 코드진행</button>
     </div>
 
-    <!-- 무작위 코드 모드 (2단계부터 메트로놈·이전/현재/다음 코드·출제 설정이 들어옴) -->
-    <section class="desk im-panel" id="panelRandom" role="tabpanel" aria-labelledby="tabRandom">
-      <p class="im-intro" data-i18n="improvIntroRandom">메트로놈에 맞춰 마디마다 무작위로 나오는 코드를 보고 바로 연주해요.</p>
-      <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
+    <section class="im-card" aria-label="연습" data-i18n-aria="deskAria">
+      <!-- 무작위 코드 모드 (3단계에서 이전·현재·다음 코드와 출제 설정이 들어옴) -->
+      <div class="im-panel" id="panelRandom" role="tabpanel" aria-labelledby="tabRandom">
+        <p class="im-intro" data-i18n="improvIntroRandom">메트로놈에 맞춰 마디마다 무작위로 나오는 코드를 보고 바로 연주해요.</p>
+        <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
+      </div>
+      <!-- 8마디 코드진행 모드 (5단계에서 악보와 출제 설정이 들어옴) -->
+      <div class="im-panel" id="panelProg" role="tabpanel" aria-labelledby="tabProg" hidden>
+        <p class="im-intro" data-i18n="improvIntroProg">실용음악 입시처럼 8마디 코드진행 악보를 보고 연주해요.</p>
+        <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
+      </div>
+
+      <!-- 카운트인(3, 2, 1, GO)과 박 표시 — 메트로놈이 박마다 바꿈 (pages/improv.js) -->
+      <div class="im-stage" aria-live="off">
+        <div class="im-count" id="countIn" hidden></div>
+        <div class="im-beats" id="beatDots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </div>
+
+      <!-- 템포와 시작/중지 (두 모드 공통, 템포는 기기에 저장) -->
+      <div class="im-transport">
+        <div class="im-tempo">
+          <!-- ♩= : 음표는 글꼴마다 크기·높이가 달라서(♩ 글자는 작고 낮게 보였음) 도형(SVG)으로 그림. 색은 글자색을 따름 (2026-11-10) -->
+          <label for="bpm"><span data-i18n="improvTempo">템포</span>
+            <span class="im-note" aria-hidden="true"><svg viewBox="0 0 10 24" width="10" height="24"><ellipse cx="4.2" cy="19.6" rx="4" ry="2.9" transform="rotate(-22 4.2 19.6)"/><rect x="7.1" y="1" width="1.4" height="18.4"/></svg><span class="im-eq">=</span></span></label>
+          <button class="im-step" id="bpmDown" type="button" aria-label="템포 내리기" data-i18n-aria="improvBpmDown">−</button>
+          <input type="number" id="bpm" min="30" max="240" step="1" inputmode="numeric">
+          <button class="im-step" id="bpmUp" type="button" aria-label="템포 올리기" data-i18n-aria="improvBpmUp">+</button>
+        </div>
+        <button class="btn primary im-play" id="btnPlay" type="button" aria-pressed="false"><span id="btnPlayText">▶ 시작</span></button>
+      </div>
     </section>
 
-    <!-- 8마디 코드진행 모드 (5단계부터 악보·출제 설정이 들어옴) -->
-    <section class="desk im-panel" id="panelProg" role="tabpanel" aria-labelledby="tabProg" hidden>
-      <p class="im-intro" data-i18n="improvIntroProg">실용음악 입시처럼 8마디 코드진행 악보를 보고 연주해요.</p>
-      <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
+    <!-- 88건반 (컴퓨터에서만 — 폰은 악보대에 세워 두고 다른 피아노로 연주하니 건반이 필요 없음, 2026-11-10 사용자 결정).
+         누르고 있는 동안만 선택, 아직 채점은 없고 표시·소리만 (improv/keys.js) -->
+    <section class="im-card im-keys" id="keysCard" hidden aria-label="피아노 건반" data-i18n-aria="improvKeysAria">
+      <div class="im-keys-head">
+        <label class="check"><input type="checkbox" id="optMidiSound"> <span data-i18n="improvMidiSound">MIDI 건반 입력 시 소리 재생</span></label>
+        <span class="im-midi">
+          <!-- 아직 MIDI 권한을 받지 않은 브라우저에서만 보임: 누르면 권한 창 -->
+          <button class="linkbtn" id="midiConnect" type="button" hidden data-i18n="improvMidiConnect">MIDI 건반 연결</button>
+          <small class="midi-status" id="midiStatus"></small>
+        </span>
+      </div>
+      <div class="keyboard full" id="keyboard" role="img" aria-label="피아노 건반 (A0–C8)" data-i18n-aria="kbAriaFull"></div>
     </section>
   </main>
 
