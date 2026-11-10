@@ -22,11 +22,16 @@ import { initPresetLink } from "../common/share-settings.js";
 import { Engine } from "../core/engine.js";
 import { ROUTES } from "../common/sitemap.js";
 import * as Random from "../improv/random.js";
+import { generateProgression } from "../improv/progression.js";
+import { drawSheet, fitLabels } from "../improv/sheet.js";
+import { initProgSettings, syncProgUI, progOptions } from "../improv/prog-settings.js";
 
 startPage({ title: "navImprov" });
 
+
 /** 컴퓨터인지 (마우스처럼 정확히 가리키고 올릴 수 있는 기기) — 랜덤 코드 연습 practice/settings.js IS_PC와 같은 기준 */
 const IS_PC = !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches);
+document.body.classList.toggle("is-mobile", !IS_PC);   // 모바일에서만 다른 모양 (improv.css .is-mobile)
 
 // ---------- 기기에 저장하는 값 (계정에는 올리지 않음) ----------
 //   chordoven.improvBpm        템포 (두 모드 공통)
@@ -39,7 +44,7 @@ let midiSound = store.get("improvMidiSound") !== "off";
 const MODES = ["random", "prog"];
 const TABS = { random: $("tabRandom"), prog: $("tabProg") };
 const PANELS = { random: $("panelRandom"), prog: $("panelProg") };
-const SHEETS = { random: $("sheetRandom"), prog: null };   // 모드별 출제 설정 (8마디 모드는 5단계에서)
+const SHEETS = { random: $("sheetRandom"), prog: $("sheetProg") };   // 모드별 출제 설정
 let mode = "random";
 
 /** 주소의 ?mode → 지금 모드. 모르는 값이나 없으면 무작위 코드 */
@@ -65,7 +70,17 @@ function showMode(m) {
     if (SHEETS[x]) SHEETS[x].hidden = x !== m;
   }
   document.querySelector(".im-layout").classList.toggle("no-sheet", !SHEETS[m]);
-  scrollTip.show(m === "random");   // 아래쪽 scrollTip — showMode는 그것을 만든 뒤에만 불림
+  document.querySelector(".im-layout .im-card").classList.toggle("is-prog", m === "prog");
+  document.querySelector(".im-layout").classList.toggle("is-prog", m === "prog");   // 컴퓨터에서도 출제 설정을 악보 아래로
+  // 모바일 8마디 모드: [새 코드진행]이 주인공(주황), 시작 버튼은 보통 버튼 "메트로놈" (2026-11-10 사용자 요청)
+  const mobileProg = !IS_PC && m === "prog";
+  $("btnNewProg").classList.toggle("primary", mobileProg);
+  $("btnPlay").classList.toggle("primary", !mobileProg);
+  renderPlayText();
+  $("btnNewProg").hidden = m !== "prog";   // 모드별 모양 (폰 가로의 8마디 모드 등, improv.css)
+  scrollTip.show(m === "random");
+  $("rotateRandom").hidden = m !== "random"; $("rotateProg").hidden = m !== "prog";
+  if (m === "prog") fitLabels();   // 숨겨져 있을 때 그린 악보는 폭을 잴 수 없어서, 보일 때 코드 기호 크기를 다시 맞춤   // 폰 세로 안내: "코드를 더 크게" / "악보를 더 크게"   // 아래쪽 scrollTip — showMode는 그것을 만든 뒤에만 불림
   renderDots(null);
 }
 
@@ -90,7 +105,7 @@ $("tabRandom").parentElement.addEventListener("keydown", e => {
  */
 function renderDots(d) {
   const box = $("beatDots");
-  const count = d ? d.count : 4;
+  const count = d ? d.count : mode === "prog" && prog ? prog.meter.pulses : 4;
   if (box.children.length !== count) box.innerHTML = "<i></i>".repeat(count);
   [...box.children].forEach((el, i) => {
     el.classList.toggle("on", !!d && i === d.on);
@@ -112,18 +127,24 @@ const metro = createMetronome({
       c.classList.toggle("go", info.label === "GO");
       c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop");   // 숫자가 바뀔 때마다 톡 튀어나옴 (애니메이션 다시 시작)
     } else c.hidden = true;
-    renderDots({ count: 4, on: info.beat, accent: [0] });
+    renderDots({ count: prog.meter.pulses, on: info.beat, accent: [0] });
   },
   onStop: () => renderPlay(),
   // 소리 장치를 쓸 수 없음(영상통화 중 등) → 클릭 소리 없이 그대로 진행하고 안내만 (2026-11-10 사용자 결정, 이유는 metronome.js)
   onSilent: () => toast(t("improvSilent"), 6000),
 });
 
+/** 시작/중지 버튼 글자: "▶ 시작" / "■ 중지" — 모바일 8마디 모드에서는 "▶ 메트로놈" / "■ 중지" (그 화면의 주인공은 [새 코드진행]이라서) */
+function renderPlayText() {
+  const on = metro.running;
+  $("btnPlayText").textContent = t(on ? "improvStop" : !IS_PC && mode === "prog" ? "improvMetronome" : "improvStart");
+}
+
 /** 시작/중지 버튼 글자와 상태 + 멈췄으면 화면을 처음 상태로 */
 function renderPlay() {
   const on = metro.running;
   $("btnPlay").setAttribute("aria-pressed", String(on));
-  $("btnPlayText").textContent = t(on ? "improvStop" : "improvStart");
+  renderPlayText();
   if (!on) {
     $("countIn").hidden = true;
     Random.stop();
@@ -137,7 +158,7 @@ function togglePlay() {
   if (metro.running) { metro.stop(); return; }
   // 무작위 코드 모드: 첫 코드를 뽑을 수 없는 설정이면(코드 종류·베이스 0개) 시작하지 않고 이유를 알림
   if (mode === "random") { const err = Random.start(); if (err) { toast(t(err)); return; } }
-  metro.start({ bpm, beats: 4, countIn: true });   // 소리를 낼 수 없어도 소리 없이 진행 (onSilent)
+  metro.start({ bpm, beats: mode === "prog" ? prog.meter.pulses : 4, countIn: true });   // 소리를 낼 수 없어도 소리 없이 진행 (onSilent)
   renderPlay();
 }
 $("btnPlay").onclick = togglePlay;
@@ -276,6 +297,21 @@ function renderMidi() {
 
 initSettings();
 
+// ---------- 8마디 코드진행 (5단계, 2026-11-10) ----------
+// 페이지를 열 때 하나 만들어 두고, [새 코드진행]을 누를 때만 새로 (옵션을 바꿔도 지금 악보는 그대로 — 사용자 결정).
+// 메트로놈은 박자표의 펄스마다(6/8은 한 마디 2번). 연주 중에 새로 만들면: 박자표가 같으면 계속, 바뀌면 멈춤(한 마디 박 수가 달라져서)
+let prog = null;
+function newProgression() {
+  const before = prog;
+  prog = generateProgression(progOptions());
+  drawSheet(prog);
+  if (metro.running && mode === "prog" && before && before.meter.pulses !== prog.meter.pulses) metro.stop();
+  else if (!metro.running) renderDots(null);
+}
+initProgSettings();
+$("btnNewProg").onclick = newProgression;
+newProgression();
+
 // ---------- 폰 세로 첫 방문: 출제 설정이 아래에 있다고 알려주는 알약 (2026-11-10 사용자 요청) ----------
 // 연습 카드와 출제 설정 사이, "가로로 돌리면…" 안내 위에 겹쳐 뜸. 코드 추론하기(pages/naming.js)와 같은 방식이고 따로 기억(chordoven.improvScrollTip).
 // 출제 설정 제목이 화면 위쪽 40% 안에 한 번 들어오거나(= 아래로 내려서 봄) 알약을 누르면 다시 안 나옴. 알약은 CSS가 폰 세로에서만.
@@ -309,6 +345,6 @@ initPresetLink({
   hasPrior: () => HAD_SAVED,   // 이 페이지 설정은 이 기기에만 저장(계정에 안 올림)
 });
 
-onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); if (metro.running) Random.render(); });
+onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); syncProgUI(); if (metro.running) Random.render(); });
 showMode(modeFromUrl());
 renderPlay();

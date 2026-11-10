@@ -122,7 +122,7 @@ function hybrid(s, rnd) {
 
 /**
  * 코드 하나 출제 (무작위 코드 모드). s.slash가 꺼져 있으면 엔진 generate 그대로.
- * @param s     출제 설정 (improv/settings.js S + weights)
+ * @param s     출제 설정 (improv/settings.js S + weights, slashRate — 분수코드 비율, 없으면 SLASH_RATE)
  * @param rnd   난수 함수 (테스트에서 고정값)
  * @param prev  바로 앞 코드 — 맨 아래 음(bassPc)이 같은 코드가 연달아 나오지 않게
  * @returns 코드(q), 또는 { error } (출제할 수 없는 설정)
@@ -134,7 +134,7 @@ export function generate(s, rnd = Math.random, prev = null) {
     const q = Engine.generate(s, rnd, prevBass === null ? null : { rootPc: prevBass });
     return q.error ? q : { ...q, bassPc: q.rootPc };
   };
-  if (!s.slash || rnd() >= SLASH_RATE) return plain();
+  if (!s.slash || rnd() >= (s.slashRate ?? SLASH_RATE)) return plain();   // 8마디 모드는 slashRate 0.18 (progression.js)
   for (let tries = 0; tries < 20; tries++) {
     // 고른 종류에 조건이 맞는 모양이 없으면 다른 종류로 (둘 다 없으면 보통 코드)
     const q = rnd() < INV_SHARE ? inversion(s, rnd) || hybrid(s, rnd) : hybrid(s, rnd) || inversion(s, rnd);

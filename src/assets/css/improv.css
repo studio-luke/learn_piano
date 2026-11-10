@@ -22,6 +22,8 @@
 /* ---------- 연습 카드 + 출제 설정 (랜덤 코드 연습처럼 넓은 화면은 오른쪽에 출제 설정, 좁으면 아래로) ---------- */
 .im-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
 .im-layout.no-sheet { grid-template-columns: minmax(0, 1fr); }
+/* 8마디 모드: 컴퓨터에서도 출제 설정을 악보 아래로 — 악보 가로 길이를 확보 (2026-11-10 사용자 요청) */
+.im-layout.is-prog { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 900px) { .im-layout { grid-template-columns: minmax(0, 1fr); } }
 .sheet[hidden] { display: none; }
 .sheet .chips.radios .chip span { min-width: 64px; }
@@ -127,4 +129,47 @@
   .im-between { display: grid; place-items: center; min-height: 40px; }
   .im-between > * { grid-area: 1 / 1; }
   .im-between .scroll-tip { position: relative; bottom: auto; z-index: 2; }
+}
+
+/* ---------- 8마디 코드진행: 악보 (improv/sheet.js) ----------
+   한 줄 = 코드 기호 줄(.pg-chords, HTML) + 오선(SVG, 폭 100%). 코드 기호는 left %로 오선의 박 위치에 맞춤.
+   글자 크기는 화면 폭 비례 — 폰 세로는 작게 보여서 "가로로 돌리면…" 안내 */
+.pg-wrap { position: relative; }
+.pg-sheet { display: flex; flex-direction: column; gap: 6px; padding-block: 4px; }
+.pg-row { position: relative; }
+.pg-chords { position: relative; height: 2.1em; font-size: clamp(13px, 2.3vw, 24px); }
+.pg-chord.symbol { position: absolute; bottom: 0; font-size: 1em; line-height: 1; min-height: 0; white-space: nowrap; }
+.pg-staff { display: block; width: 100%; height: auto; color: var(--ink); overflow: visible; }
+.pg-line, .pg-bar { stroke: currentColor; stroke-width: 1; }
+.pg-thick { stroke: currentColor; stroke-width: 4; }
+.pg-fill { fill: currentColor; }
+.pg-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 46px; fill: currentColor; }
+.pg-meter { font-family: var(--font-display); font-size: 21px; font-weight: 700; text-anchor: middle; fill: currentColor; }
+/* 카운트인: 악보 가운데에 겹쳐 (배경을 살짝 깔아 악보 위에서도 읽히게) */
+.pg-wrap .im-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--surface) 70%, transparent); border-radius: 8px; }
+.pg-wrap .im-count[hidden] { display: none; }
+.im-new[hidden] { display: none; }
+.im-new { white-space: nowrap; }
+
+/* ---------- 8마디 출제 설정: 슬라이더와 칸 이름 ---------- */
+.pg-range { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+.pg-ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: -2px; }
+.pg-ticks span { flex: 0 0 auto; }
+.pg-soon { font-style: italic; }
+/* 8마디 모드, 폰 가로(악보대에 세운 폰): 악보·[새 코드진행]·박 점·템포가 화면 높이 안에 들어오게 간격을 줄임 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .pg-sheet { gap: 0; padding-block: 0; }
+  .pg-chords { height: 1.55em; }
+  .im-card.is-prog { gap: 6px; padding-block: 8px 10px; }
+  .im-card.is-prog .im-beats { display: none; }   /* 박 점은 카운트인 숫자와 박자표로 충분 — 세로 공간이 모자라서 */
+}
+
+/* ---------- 모바일(컴퓨터가 아닌 기기)의 8마디 모드 버튼 (2026-11-10 사용자 요청) ----------
+   [↻ 새 코드진행]은 맨 아래 한 줄 전체로 크게·주황 강조, 시작 버튼은 보통 버튼 + 글자 "메트로놈" (pages/improv.js가 클래스·글자를 바꿈) */
+.is-mobile .im-card.is-prog .im-new { order: 3; flex: 1 0 100%; font-size: 16px; padding-block: 13px; }
+.is-mobile .im-card.is-prog .im-play { flex: 1 1 auto; min-width: 0; font-size: 15px; }
+/* 폰 가로는 세로 공간이 모자라서 [새 코드진행]을 맨 아래 줄 대신 같은 줄 오른쪽 끝에 (크게·주황은 그대로) — 악보와 버튼이 한 화면에 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .is-mobile .im-card.is-prog .im-new { flex: 1.6 1 0; padding-block: 11px; }
+  .is-mobile .im-card.is-prog .im-play { flex: 1 1 0; }
 }

@@ -62,12 +62,13 @@
             <div class="im-slot next"><span class="im-tag" data-i18n="improvNext">다음</span><div class="symbol im-chord" id="chNext"></div></div>
           </div>
         </div>
-        <!-- 8마디 코드진행 모드 (5단계에서 악보와 출제 설정이 들어옴) -->
+        <!-- 8마디 코드진행 모드: 악보(improv/sheet.js가 그림) + [새 코드진행]. 메트로놈은 박자표의 펄스마다(6/8은 한 마디 2번) -->
         <div class="im-panel" id="panelProg" role="tabpanel" aria-labelledby="tabProg" hidden>
-          <p class="im-intro" data-i18n="improvIntroProg">실용음악 입시처럼 8마디 코드진행 악보를 보고 연주해요.</p>
-          <p class="im-wip" data-i18n="improvWip">이 모드는 지금 만들고 있어요.</p>
-          <!-- 카운트인(3, 2, 1, GO) — 8마디 모드용 (무작위 코드 모드는 현재 코드 자리에 보임) -->
-          <div class="im-count" id="countIn" hidden></div>
+          <div class="pg-wrap">
+            <div class="pg-sheet" id="progSheet" role="img"></div>
+            <!-- 카운트인(3, 2, 1, GO) — 악보 가운데에 겹쳐 (무작위 코드 모드는 현재 코드 자리에 보임) -->
+            <div class="im-count" id="countIn" hidden></div>
+          </div>
         </div>
 
         <!-- 박 점: 무작위 코드 모드는 한 코드가 이어지는 박 수만큼(½마디 2개 · 1마디 4개 · 2마디 8개), 그 밖에는 한 마디 4개 -->
@@ -83,6 +84,8 @@
             <input type="number" id="bpm" min="30" max="240" step="1" inputmode="numeric">
             <button class="im-step" id="bpmUp" type="button" aria-label="템포 올리기" data-i18n-aria="improvBpmUp">+</button>
           </div>
+          <!-- 8마디 모드에서만 보임: 새 코드진행 만들기 (템포·시작과 한 줄 — 폰 가로에서 악보와 버튼이 한 화면에 들어오게) -->
+          <button class="btn im-new" id="btnNewProg" type="button" hidden data-i18n="progNew">↻ 새 코드진행</button>
           <button class="btn primary im-play" id="btnPlay" type="button" aria-pressed="false"><span id="btnPlayText">▶ 시작</span></button>
         </div>
       </section>
@@ -91,7 +94,8 @@
            "폰을 가로로 돌리면…" 안내(닫기 없이 늘 보임)와, 그 위에 겹쳐 떠 있는 "▼ 아래로 내리면…" 알약(출제 설정을 한 번 보면 다시 안 나옴).
            랜덤 코드 연습에서 두 안내가 같은 자리에 겹치는 것과 같은 모양 -->
       <div class="im-between">
-        <p class="rotate-tip" data-i18n="improvRotateTip">폰을 가로로 돌리면 코드를 더 크게 볼 수 있어요.</p>
+        <p class="rotate-tip" id="rotateRandom" data-i18n="improvRotateTip">폰을 가로로 돌리면 코드를 더 크게 볼 수 있어요.</p>
+        <p class="rotate-tip" id="rotateProg" hidden data-i18n="progRotateTip">폰을 가로로 돌리면 악보를 더 크게 볼 수 있어요.</p>
         <div class="scroll-tip" id="scrollTip" hidden><button class="scroll-tip-go" id="scrollTipGo" type="button"><span class="scroll-tip-arrow" aria-hidden="true">▼</span><span data-i18n="improvScrollTip">아래로 내리면 등장할 코드를 고를 수 있어요</span></button><button class="scroll-tip-x" id="scrollTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></div>
       </div>
 
@@ -141,6 +145,49 @@
         </div>
 
         <p class="warnbox" id="rSettingsWarn"></p>
+      </aside>
+
+      <!-- 8마디 코드진행 모드의 출제 설정 (improv/prog-settings.js). 코드 종류·베이스는 고를 수 없음(전부) — 옵션 알파벳은 화면에 안 보임 -->
+      <aside class="sheet" id="sheetProg" aria-label="출제 설정" data-i18n-aria="settings" hidden>
+        <h2 data-i18n="settings">출제 설정</h2>
+        <p class="note" data-i18n="progApplyNew">바꾼 설정은 [새 코드진행]을 누르면 적용돼요.</p>
+
+        <div class="opt">
+          <label class="check"><input type="checkbox" id="pTen"><span><span data-i18n="progTen">텐션 허용</span><small data-i18n="progTenSub"></small></span></label>
+          <div class="sub" id="pTenBox" hidden>
+            <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
+              <label class="chip"><input type="radio" name="pTenMax" id="pTen1" value="1"><span data-i18n="max1">최대 1개</span></label>
+              <label class="chip"><input type="radio" name="pTenMax" id="pTen2" value="2"><span data-i18n="max2">최대 2개</span></label>
+              <label class="chip"><input type="radio" name="pTenMax" id="pTenhard" value="hard"><span>HARD</span></label>
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="pSlash"><span><span data-i18n="progSlash">분수코드 출제 허용</span><small data-i18n="progSlashSub"></small></span></label>
+        </div>
+
+        <hr class="divider">
+
+        <!-- 코드 개수: 3칸 슬라이더 (Low·Mid·High 글자는 화면에 안 보임 — 칸 이름과 그 아래 설명만) -->
+        <div class="opt">
+          <h3 id="pCountH" data-i18n="progCountH">코드 개수</h3>
+          <input class="pg-range" type="range" id="pCount" min="0" max="2" step="1" aria-labelledby="pCountH">
+          <div class="pg-ticks three" aria-hidden="true"><span data-i18n="progCountT0">최소</span><span data-i18n="progCountT1">적정</span><span data-i18n="progCountT2">최대</span></div>
+          <p class="note" id="pCountText"></p>
+        </div>
+
+        <!-- 코드 난이도: 4칸 슬라이더 -->
+        <div class="opt">
+          <h3 id="pLevelH" data-i18n="progLevelH">코드 난이도</h3>
+          <input class="pg-range" type="range" id="pLevel" min="0" max="3" step="1" aria-labelledby="pLevelH">
+          <div class="pg-ticks four" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+          <p class="note" id="pLevelText"></p>
+          <p class="note pg-soon" data-i18n="progLevelSoon">난이도별 코드진행은 곧 추가돼요. 지금은 모든 난이도에서 코드가 완전히 무작위로 나와요.</p>
+        </div>
+
+        <hr class="divider">
+
+        <div class="opt">
+          <label class="check"><input type="checkbox" id="pMeters"><span><span data-i18n="progMeters">다양한 박자표 허용</span><small data-i18n="progMetersSub"></small></span></label>
+        </div>
       </aside>
     </div>
 
