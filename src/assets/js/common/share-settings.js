@@ -20,10 +20,28 @@ import { Account } from "../account/account.js";
 import { ROOT } from "./sitemap.js";
 import { t } from "../i18n/index.js";
 import { $, esc, toast } from "./dom.js";
-import { PRESET_PARAM, encodePreset, decodePreset } from "./preset.js";
+import { PRESET_PARAM, encodePreset, decodePreset, samePreset } from "./preset.js";
 
 /** 공유 링크 주소 (언어 없는 입구 주소) */
 export const presetUrl = (S, spec) => `${ROOT}${spec.route}?${PRESET_PARAM}=${encodePreset(S, spec)}`;
+
+/**
+ * 로그인 확인이 끝나면 fn을 한 번 부름: 로그인 안 함 → 바로, 로그인함 → 계정 프로필(과 페이지의 계정 설정 받기)이 끝난 뒤.
+ * 페이지의 "profile" 처리(계정 설정으로 바꾸기)가 먼저 끝나도록 한 차례 미뤄서 부름. 네트워크 문제로 소식이 없으면 5초 뒤에라도
+ */
+function whenSettled(fn) {
+  let done = false;
+  const go = () => { if (!done) { done = true; setTimeout(fn, 0); } };
+  const check = () => {
+    if (!Account.ready) return;
+    if (!Account.user) return go();
+    if (Account.profile && (Account.profile.deleted_at || Account.needsConsent())) go();   // 탈퇴 유예·소셜 첫 방문: 계정 설정을 쓰지 않음
+  };
+  Account.on("change", check);
+  Account.on("profile", go);
+  setTimeout(go, 5000);
+  check();
+}
 
 // ---------- 화면 ----------
 // 작은 확인 창 하나를 두 용도로 씀: 링크를 연 사람에게 묻기 / 복사가 안 될 때 링크 보여 주기. 모양은 base.css dialog.mini-dlg
@@ -60,20 +78,26 @@ async function copyLink(url) {
  * @param S       그 페이지의 출제 설정 객체(읽기만 — 링크 만들 때), 또는 그런 객체를 돌려주는 함수
  *                (코드 초견처럼 링크에 담기 전에 값을 바꿔야 할 때 — 마디수 "0.5" → barsHalf)
  * @param apply   (설정 일부) => void  [바꾸기]를 눌렀을 때 페이지가 S에 넣고 화면·저장(기기+계정)·새 문제까지 처리
+ * @param hasPrior () => boolean  지금 이 사람에게 덮어쓸 "원래 설정"이 있는지 — 이 기기에 저장된 설정이 있거나, 로그인했고 계정에 그 페이지 설정이 있으면 true.
+ *                 없으면(처음 온 사람·로그인 안 했고 저장된 설정 없음) 묻지 않고 바로 적용 (2026-11-10 사용자 요청)
  * @returns {{ pending: boolean, consume(): boolean }}
  *   pending   주소에 ?preset이 있었는지 (페이지가 ?review=1과 함께 왔을 때 다시 풀기를 시작하지 않으려고)
  *   consume() 계정 설정을 받기 직전에 부름: 링크 설정을 적용했고 아직 계정에 올리지 않았으면 true(한 번만).
  *             로그인한 학생은 페이지를 열 때마다 계정 설정이 기기 설정을 덮어써서(Account "profile"),
  *             true면 페이지가 계정 설정을 받는 대신 지금 설정을 계정에 올려야 링크 설정이 되돌아가지 않음
  */
-export function initPresetLink({ spec, S, apply }) {
+export function initPresetLink({ spec, S, apply, hasPrior = () => true }) {
   // 버튼: 관리자에게만 (선생님 역할이 생기면 여기 조건에 추가)
   const btn = $("presetBtn");
   const showBtn = () => { btn.hidden = !Account.isAdmin(); };
   Account.on("change", showBtn); showBtn();
   btn.onclick = () => copyLink(presetUrl(typeof S === "function" ? S() : S, spec));
 
-  // 주소에 ?preset이 있으면: 주소창에서 먼저 지우고(새로고침해도 다시 묻지 않게) 확인 창
+  // 주소에 ?preset이 있으면: 주소창에서 먼저 지우고(새로고침해도 다시 묻지 않게), 로그인 확인이 끝난 뒤 정함 (2026-11-10 사용자 요청):
+  //   - 지금 설정과 같음 → 아무것도 안 함
+  //   - 덮어쓸 원래 설정이 없음(hasPrior() false — 처음 온 사람, 로그인 안 했고 저장된 설정 없음) → 묻지 않고 적용 + "출제 설정을 바꿨어요." 알림
+  //   - 그 밖 → "이 설정으로 바꿀까요?" 창
+  // 로그인 확인을 기다리는 이유: 로그인한 학생은 계정 설정이 페이지를 열 때 기기 설정을 덮어써서, 그 뒤의 설정과 비교해야 맞음
   const params = new URLSearchParams(location.search);
   const raw = params.get(PRESET_PARAM);
   const state = { pending: raw != null, applied: false };
@@ -84,18 +108,21 @@ export function initPresetLink({ spec, S, apply }) {
     history.replaceState(history.state, "", location.pathname + (q ? "?" + q : "") + location.hash);
     const preset = decodePreset(raw, spec);
     if (!preset) toast(t("presetBad"));
-    else {
-      const dlg = miniDialog(`<p>${esc(t("presetAsk"))}</p>
-        <div class="mini-dlg-btns"><button type="button" class="btn" data-no>${esc(t("cancel"))}</button><button type="button" class="btn primary" data-yes>${esc(t("presetApply"))}</button></div>`);
-      dlg.querySelector("[data-no]").onclick = () => dlg.close();
-      dlg.querySelector("[data-yes]").onclick = () => {
-        dlg.close();
+    else whenSettled(() => {
+      const cur = typeof S === "function" ? S() : S;
+      if (samePreset(preset, cur, spec)) return;
+      const applyNow = () => {
         // 이미 로그인 정보를 받은 뒤면 apply의 save()가 계정에도 바로 저장함 → consume()이 할 일 없음
         state.applied = !Account.active();
         apply(preset);
         toast(t("presetDone"));
       };
-    }
+      if (!hasPrior()) return applyNow();
+      const dlg = miniDialog(`<p>${esc(t("presetAsk"))}</p>
+        <div class="mini-dlg-btns"><button type="button" class="btn" data-no>${esc(t("cancel"))}</button><button type="button" class="btn primary" data-yes>${esc(t("presetApply"))}</button></div>`);
+      dlg.querySelector("[data-no]").onclick = () => dlg.close();
+      dlg.querySelector("[data-yes]").onclick = () => { dlg.close(); applyNow(); };
+    });
   }
   return {
     pending: state.pending,

@@ -45,9 +45,11 @@ export const WEIGHTS = {
 
 /** 지금 설정 (다른 파일이 이 객체를 계속 참조하므로 새 객체로 바꾸지 말 것) */
 export const S = structuredClone(DEFAULTS);
+const saved = store.getJSON(KEY);
+/** 이 기기에 저장된 설정이 있었는지 (페이지를 열 때) — 출제 설정 공유 링크를 묻지 않고 적용할지 정할 때 씀 */
+export const HAD_SAVED = !!(saved && typeof saved === "object");
 {
-  const saved = store.getJSON(KEY);
-  if (saved && typeof saved === "object") Object.assign(S, saved);
+  if (HAD_SAVED) Object.assign(S, saved);
   if (!["0.5", "1", "2"].includes(S.bars)) S.bars = "1";
 }
 const save = () => store.setJSON(KEY, S);

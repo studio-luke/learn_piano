@@ -96,3 +96,19 @@ test("preset: chord sight-reading — slash chords and bars per chord travel in 
   const p = dec("1-M7.m7-0-1-BC", spec);
   assert.ok(p.optB && p.optC && !p.slash && !p.barsHalf && !p.barsTwo);
 });
+
+// 링크 설정이 지금 설정과 같으면 "바꿀까요?" 창을 띄우지 않음 (2026-11-10)
+test("preset: samePreset — same settings are recognized, hidden differences (bases with B off, tension count with C off) don't count", async () => {
+  const { samePreset } = await import("../src/assets/js/common/preset.js");
+  const cur = settings(["M7", "m7", "dom7"], { optB: true, bases: [true, false, false, false, false, false, false, true, false, false, false, false], optC: true, cMax: 2 });
+  const p = decodePreset(encodePreset(cur, PLAY), PLAY);
+  assert.ok(samePreset(p, cur, PLAY));
+  assert.ok(!samePreset(p, { ...cur, types: { ...cur.types, M7: false } }, PLAY), "코드 종류가 다름");
+  assert.ok(!samePreset(p, { ...cur, cMax: 1 }, PLAY), "텐션 개수가 다름");
+  assert.ok(!samePreset(p, { ...cur, bases: Array(12).fill(false) }, PLAY), "베이스가 다름");
+  assert.ok(!samePreset(p, { ...cur, optD: true }, PLAY), "옵션이 다름");
+  // 특정 베이스·텐션이 꺼져 있으면 베이스 목록·텐션 개수는 화면에 차이가 없어서 같은 것으로
+  const off = settings(["M7"], { bases: [true, ...Array(11).fill(false)], cMax: 2 });
+  const q = decodePreset(encodePreset(settings(["M7"]), PLAY), PLAY);
+  assert.ok(samePreset(q, off, PLAY));
+});

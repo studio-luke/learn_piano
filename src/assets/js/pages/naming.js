@@ -10,7 +10,7 @@ import { hooks as authHooks, isOpen as authOpen } from "../account/auth-dialog.j
 import { t, onLangChange } from "../i18n/index.js";
 import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
-import { S, save, initSettings, syncSettingsUI, replaceSettings } from "../naming/settings.js";
+import { S, save, HAD_SAVED, initSettings, syncSettingsUI, replaceSettings } from "../naming/settings.js";
 import { initKeys } from "../naming/keys.js";
 import { menuOpen } from "../naming/answer-menu.js";
 import { initKeypad, type, backspace, deleteForward, moveCaret, caretTo, caretAtEnd, selectAll, undo, redo, extendCaret } from "../naming/keypad.js";
@@ -140,6 +140,8 @@ const preset = initPresetLink({
     if (S.optE) S.adv = true;   // [심화] 옵션이 켜져 있으면 펼쳐서 보여 줌
     syncSettingsUI(); save(); newQuestion();
   },
+  // 덮어쓸 원래 설정: 이 기기에 저장된 설정, 또는 로그인했고 계정에 코드 추론하기 설정이 있음
+  hasPrior: () => HAD_SAVED || (Account.active() && !!Account.profile.name_settings),
 });
 
 // 다른 페이지에서 [다시 풀기]로 들어옴. 출제 설정 공유 링크와 함께 오면 다시 풀기는 시작하지 않음(다시 풀기 중에는 출제 설정이 잠겨서)

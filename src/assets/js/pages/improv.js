@@ -17,7 +17,7 @@ import { Sound } from "../practice/audio.js";
 import { Midi } from "../input/midi.js";
 import { createMetronome, clampBpm, BPM_MIN, BPM_MAX } from "../improv/metronome.js";
 import { initKeys, press } from "../improv/keys.js";
-import { initSettings, syncSettingsUI, presetSource, applyPreset } from "../improv/settings.js";
+import { initSettings, syncSettingsUI, presetSource, applyPreset, HAD_SAVED } from "../improv/settings.js";
 import { initPresetLink } from "../common/share-settings.js";
 import { Engine } from "../core/engine.js";
 import { ROUTES } from "../common/sitemap.js";
@@ -285,6 +285,7 @@ initPresetLink({
     if (mode !== "random") TABS.random.click();   // 8마디 모드를 보고 있었으면 무작위 코드 모드로
     applyPreset(p);
   },
+  hasPrior: () => HAD_SAVED,   // 이 페이지 설정은 이 기기에만 저장(계정에 안 올림)
 });
 
 onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); if (metro.running) Random.render(); });

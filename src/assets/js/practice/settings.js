@@ -64,9 +64,11 @@ export const baseCount = () => S.bases.filter(Boolean).length;
 export const allWhite = () => Engine.WHITE.every(i => S.bases[i]);
 
 // 처음 열 때: 저장된 설정 읽기
+const saved = migrate(store.getJSON("settings.v2"));
+/** 이 기기에 저장된 설정이 있었는지 (페이지를 열 때) — 출제 설정 공유 링크를 묻지 않고 적용할지 정할 때 씀 */
+export const HAD_SAVED = !!(saved && typeof saved === "object");
 {
-  const saved = migrate(store.getJSON("settings.v2"));
-  if (saved && typeof saved === "object") Object.assign(S, saved);
+  if (HAD_SAVED) Object.assign(S, saved);
   if (!S.kbdTouched) S.kbd = IS_PC;   // 사용자가 직접 바꾸기 전까지 컴퓨터면 켬, 폰이면 끔
 }
 

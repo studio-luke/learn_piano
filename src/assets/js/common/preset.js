@@ -45,3 +45,16 @@ export function decodePreset(value, spec) {
   for (const f of spec.flags) out[FLAGS[f]] = flagPart.includes(f);
   return out;
 }
+
+/**
+ * 링크의 설정(decodePreset 결과)이 지금 설정과 같은지 (순수 함수) — 같으면 "바꿀까요?" 창을 띄우지 않음 (2026-11-10 사용자 요청).
+ * 화면에 차이가 없는 값은 같은 것으로 봄: 특정 베이스가 꺼져 있으면 베이스 목록, 텐션이 꺼져 있으면 텐션 개수는 비교하지 않음
+ * @param cur  지금 설정 (페이지의 S, 코드 초견은 presetSource()처럼 링크에 담는 모양으로 바꾼 것)
+ */
+export function samePreset(p, cur, spec) {
+  if (spec.types.some(id => !!(cur.types && cur.types[id]) !== !!p.types[id])) return false;
+  for (const f of spec.flags) if (!!cur[FLAGS[f]] !== !!p[FLAGS[f]]) return false;
+  if (p.optB && (cur.bases || []).some((on, pc) => !!on !== p.bases[pc])) return false;
+  if (p.optC && (cur.cMax === 2 ? 2 : 1) !== p.cMax) return false;
+  return true;
+}

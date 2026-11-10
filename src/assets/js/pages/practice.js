@@ -9,7 +9,7 @@ import { hooks as authHooks, isOpen as authOpen } from "../account/auth-dialog.j
 import { t, onLangChange } from "../i18n/index.js";
 import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
-import { S, IS_PC, initSettings, syncSettingsUI, replaceSettings, save } from "../practice/settings.js";
+import { S, IS_PC, HAD_SAVED, initSettings, syncSettingsUI, replaceSettings, save } from "../practice/settings.js";
 import { initKeyboard, setKeyLabels, selected, renderKeys, CODE_TO_MIDI, LOW, HIGH, setFull, selectable, select } from "../practice/keyboard.js";
 import { Sound } from "../practice/audio.js";
 import { initTimer, setTimer, renderTimer, timerSettings, markInput } from "../practice/timer.js";
@@ -214,6 +214,8 @@ const preset = initPresetLink({
     if (S.optD || S.optE) S.adv = true;   // [심화] 옵션이 켜져 있으면 펼쳐서 보여 줌
     syncSettingsUI(); save(); newQuestion();
   },
+  // 덮어쓸 원래 설정: 이 기기에 저장된 설정, 또는 로그인했고 계정에 랜덤 코드 연습 설정이 있음
+  hasPrior: () => HAD_SAVED || (Account.active() && !!Account.profile.settings),
 });
 
 // 마이페이지의 [다시 풀기]. 출제 설정 공유 링크와 함께 오면 다시 풀기는 시작하지 않음(다시 풀기 중에는 출제 설정이 잠겨서)
