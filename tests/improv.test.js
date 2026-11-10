@@ -106,9 +106,13 @@ test("improv slash: hybrid shapes — B♭/C B♭M7/C Gm7/C Am/D B♭m/C Gm7(♭
   const shape = q => q.type + ":" + (q.bassPc - q.rootPc + 12) % 12;
   const want = new Set(HYBRIDS.map(([id, [semi]]) => id + ":" + semi));
   assert.deepStrictEqual(new Set(qs.map(shape)), want);
-  // 같은 비율 (10가지 각 약 10%)
+  // 비율은 HYBRIDS의 가중치대로 (B♭/C 약 25% … Am/D·Gm7(♭5)/C 약 2%, 2026-11-10)
   const c = {}; for (const q of qs) c[shape(q)] = (c[shape(q)] || 0) + 1;
-  for (const k of want) assert.ok(c[k] / qs.length > 0.08 && c[k] / qs.length < 0.12, k + " " + (c[k] / qs.length).toFixed(3));
+  const total = HYBRIDS.reduce((a, h) => a + h[2], 0);
+  for (const [id, [semi], w] of HYBRIDS) {
+    const got = (c[id + ":" + semi] || 0) / qs.length, exp = w / total;
+    assert.ok(Math.abs(got - exp) < Math.max(0.012, exp * 0.2), id + ":" + semi + " " + got.toFixed(3) + " ≈ " + exp.toFixed(3));
+  }
   // 베이스 철자는 음정에 맞는 글자: C 위 코드의 예
   const Slash = await import("../src/assets/js/improv/slash.js");
   const names = new Set();
