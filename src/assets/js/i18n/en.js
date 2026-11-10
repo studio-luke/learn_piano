@@ -164,6 +164,8 @@ export default {
   restoreNote: "You asked to delete this account. It and its saved settings will be permanently deleted on {date}. Restore it to keep using it as before.",
   doRestore: "Restore account",
   msgRestored: "Your account has been restored. Welcome back!",
+  copyId: "Copy ID",
+  msgCopied: "Copied to clipboard.",
   errNameInvalid: "This doesn’t look like a valid name.",
   fullNameLocked: "Only your teacher can change your full name. Ask your teacher if it needs changing.",
   nameEdit: "Edit name",

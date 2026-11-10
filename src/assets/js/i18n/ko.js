@@ -165,6 +165,8 @@ export default {
   restoreNote: "탈퇴를 신청한 계정이에요. {date}에 계정과 저장된 설정이 완전히 삭제돼요. 복구하면 지금처럼 계속 쓸 수 있어요.",
   doRestore: "계정 복구",
   msgRestored: "계정을 복구했어요. 다시 만나서 반가워요!",
+  copyId: "ID 복사",
+  msgCopied: "클립보드에 복사됐어요.",
   errNameInvalid: "유효하지 않은 이름이에요.",
   fullNameLocked: "성명은 선생님만 바꿀 수 있어요. 바꾸려면 선생님께 말씀해 주세요.",
   nameEdit: "이름 수정",

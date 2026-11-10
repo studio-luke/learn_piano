@@ -247,3 +247,21 @@ test("db: full name rules, lock after sign-up, admin edit", async () => {
   await as(U5, "select public.complete_signup('Gil Hong', 'g5', 'en', true, 'x', false)");
   r = await db.query("select full_name, age14_confirmed from public.profiles where id=$1", [U5]); ok(r.rows[0].full_name === "Gil Hong" && r.rows[0].age14_confirmed, "소셜 첫 방문 완료");
 });
+
+// 회원 ID (2026-11-10): 무작위 8자리(0 O 1 I 없음), 회원마다 다름, 본인은 읽기만, 예전 회원에게도 schema.sql을 실행하면 생김
+test("db: member ID — random 8-character code per member, read-only, given to existing members", async () => {
+  const { schemaSQL } = await import("./db/harness.js");
+  const db = await bootDb();
+  await addUsers(db);
+  const as = (uid, sql, params) => asUser(db, uid, sql, params);
+  let r = await db.query("select member_code from public.profiles");
+  ok(r.rows.length === 3 && r.rows.every(x => /^[2-9A-HJ-NP-Z]{8}$/.test(x.member_code)), "8자리, 0 O 1 I 없음 " + JSON.stringify(r.rows));
+  ok(new Set(r.rows.map(x => x.member_code)).size === 3, "회원마다 다름");
+  r = await as(S1, "select member_code from public.profiles where id = $1", [S1]); ok(r.rows[0].member_code, "본인은 자기 ID를 읽음");
+  let e = null; try { await as(S1, "update public.profiles set member_code = 'AAAAAAAA' where id = $1", [S1]); } catch (x) { e = x; } ok(e, "본인은 ID를 못 바꿈");
+  // 예전 회원(ID 없음): schema.sql을 다시 실행하면 ID가 생김
+  await db.exec("alter table public.profiles alter column member_code drop not null; update public.profiles set member_code = null where id in ('" + S1 + "', '" + S2 + "');");
+  await db.exec(schemaSQL());
+  r = await db.query("select member_code from public.profiles");
+  ok(r.rows.every(x => /^[2-9A-HJ-NP-Z]{8}$/.test(x.member_code)) && new Set(r.rows.map(x => x.member_code)).size === 3, "예전 회원에게 ID " + JSON.stringify(r.rows));
+});

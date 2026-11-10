@@ -46,6 +46,9 @@ export function toast(text, ms = 3200) {
     document.body.appendChild(el);
     swipeToClose(el);
   }
+  // 열린 창(로그인 창·내 계정 사이드바 등 <dialog>)이 있으면 그 안에 띄움 — 밖에 두면 창에 가려서 안 보임 (2026-11-10)
+  const host = document.querySelector("dialog[open]") || document.body;
+  if (el.parentElement !== host) host.appendChild(el);
   el.textContent = text;
   el.hidden = false;
   el.classList.remove("out");   // 흐려지던 중에 다시 뜨면 바로 또렷하게

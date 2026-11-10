@@ -164,6 +164,8 @@ export default {
   restoreNote: "该账户已申请注销，将于 {date} 永久删除账户及已保存的设置。恢复后即可照常使用。",
   doRestore: "恢复账户",
   msgRestored: "账户已恢复，欢迎回来！",
+  copyId: "复制 ID",
+  msgCopied: "已复制到剪贴板。",
   errNameInvalid: "姓名格式无效。",
   fullNameLocked: "姓名只能由老师修改。如需修改，请联系老师。",
   nameEdit: "修改姓名",

@@ -164,6 +164,8 @@ export default {
   restoreNote: "退会を申請したアカウントです。{date}にアカウントと保存した設定が完全に削除されます。復元すると今まで通り使えます。",
   doRestore: "アカウントを復元",
   msgRestored: "アカウントを復元しました。おかえりなさい！",
+  copyId: "IDをコピー",
+  msgCopied: "クリップボードにコピーしました。",
   errNameInvalid: "有効な名前ではありません。",
   fullNameLocked: "氏名は先生だけが変更できます。変更したいときは先生に伝えてください。",
   nameEdit: "名前を編集",

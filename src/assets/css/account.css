@@ -53,6 +53,12 @@ dialog.auth.side[open] { animation: side-in 180ms ease-out; }
 .acct-head .acct-who { min-width: 0; overflow-wrap: anywhere; }
 .acct-who { margin: 0; display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
 .acct-who span { color: var(--muted); font-size: 13px; font-weight: 400; }
+.acct-who .acct-id { font-variant-numeric: tabular-nums; letter-spacing: .04em; user-select: all; }   /* 회원 ID — 누르면 통째로 선택돼 복사하기 쉬움 */
+.acct-who .acct-id-row { display: inline-flex; align-items: center; gap: 4px; }
+.acct-who .acct-id-row[hidden] { display: none; }
+/* 회원 ID 옆 작은 복사 버튼 */
+.copy-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); }
+.copy-btn:hover { color: var(--accent); border-color: var(--accent); }
 .side-menu { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 /* 메뉴 줄: <a>(다른 페이지로)와 <button>(이 자리에서) 모양을 같게 */
 .menu-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; border: none; border-bottom: 1px solid var(--line); background: none; padding: 13px 4px; font-size: 15px; font-weight: 500; color: var(--ink); text-decoration: none; }

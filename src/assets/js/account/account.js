@@ -21,7 +21,7 @@ import { isPublicKey, missingFields, needsConsent, syncable } from "./helpers.js
 // 버전을 올리면 두 값을 같이 바꿀 것 (지문: https://www.srihash.org 또는 openssl dgst -sha384 -binary | openssl base64 -A)
 const SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
 const SDK_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
-const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at, age14_confirmed, terms_version, avatar_version";
+const PROFILE_COLS = "nickname, full_name, preferred_lang, role, settings, deleted_at, age14_confirmed, terms_version, avatar_version, member_code";
 // 프로필 사진: Storage의 avatars 버킷, 파일 이름은 "<회원 id>.jpg" (supabase/schema.sql의 권한과 같게)
 const AVATAR_BUCKET = "avatars";
 let avatarCache = null;   // 방금 올린 내 사진 (주소가 반영되기 전에도 바로 보이게 이 기기에서만 씀)

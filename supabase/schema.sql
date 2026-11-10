@@ -39,6 +39,11 @@ alter table public.profiles add column if not exists name_settings jsonb;
 -- (rare syllable or no Korean surname — checked in the browser, src/assets/js/account/names.js). Shown to the admin
 -- so a joke name confirmed this way is easy to find; cleared when the admin changes the name.
 alter table public.profiles add column if not exists name_confirmed boolean not null default false;
+-- 2026-11-10: member ID (#K7M3Q9TX) — a random 8-character code, one per member and never reused, shown in the account
+-- sidebar so a teacher can find the student. Random (not 1, 2, 3 …) so the member count does not show and codes
+-- cannot be guessed. Letters and digits without 0 O 1 I. Set by the profiles_member_code trigger below; members who
+-- joined before this get one when this file runs. The browser can read its own code but never change it.
+alter table public.profiles add column if not exists member_code text;
 
 alter table public.profiles enable row level security;
 
@@ -148,6 +153,52 @@ end;
 $$;
 revoke execute on function public.set_my_full_name(text, boolean) from public, anon;
 grant execute on function public.set_my_full_name(text, boolean) to authenticated;
+
+-- ---------- member ID (2026-11-10) ----------
+create or replace function public.new_member_code()
+returns text language plpgsql volatile set search_path = '' as $$
+declare
+  abc constant text := '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';   -- 32 characters: no 0 O 1 I
+  b bytea;
+  code text;
+begin
+  loop
+    b := extensions.gen_random_bytes(8);
+    code := '';
+    for i in 0..7 loop
+      code := code || substr(abc, get_byte(b, i) % 32 + 1, 1);
+    end loop;
+    exit when not exists (select 1 from public.profiles where member_code = code);
+  end loop;
+  return code;
+end;
+$$;
+revoke execute on function public.new_member_code() from public, anon, authenticated;
+
+create or replace function public.assign_member_code()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if new.member_code is null then
+    new.member_code := public.new_member_code();
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists profiles_member_code on public.profiles;
+create trigger profiles_member_code before insert on public.profiles
+  for each row execute function public.assign_member_code();
+
+-- members who joined before member IDs: one each (one row at a time so every code is checked against the others)
+do $$
+declare r record;
+begin
+  for r in select id from public.profiles where member_code is null loop
+    update public.profiles set member_code = public.new_member_code() where id = r.id;
+  end loop;
+end;
+$$;
+create unique index if not exists profiles_member_code_key on public.profiles (member_code);
+alter table public.profiles alter column member_code set not null;
 
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql set search_path = '' as $$

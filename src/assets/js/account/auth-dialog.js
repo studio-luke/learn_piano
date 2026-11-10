@@ -7,7 +7,7 @@
 import { Account } from "./account.js";
 import { errorKey, missingFields, langForTimeZone, TERMS_VERSION, PW_MIN, NICK_MAX, NAME_MAX, GRACE_DAYS } from "./helpers.js";
 import { t, lang, locale, setLang, applyI18n, onLangChange } from "../i18n/index.js";
-import { $ } from "../common/dom.js";
+import { $, toast } from "../common/dom.js";
 import { ROUTES, pageUrl } from "../common/sitemap.js";
 import { CONFIG } from "../config.js";
 import { drawAvatar, squareJpeg } from "./avatar.js";
@@ -57,6 +57,9 @@ const RECOVERY = hint => `
 const rqText = (q, custom) => q === "custom" ? custom || "" : q === "default" ? t("rqDefault") : t("rq_" + q);
 // "직접 입력하기..."를 고르면 질문 입력 칸을 보여줌
 function toggleCustom(f) { f.querySelector(".rq-custom").hidden = f.rq.value !== "custom"; }
+
+// 회원 ID 옆 복사 버튼 (2026-11-10)
+const COPY_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
 
 // 성명 칸 + 바로 아래 형식 오류 줄 (2026-11-10 사용자 결정, 규칙은 names.js).
 // 실제 이름일 수도 있는 오류(흔하지 않은 한글 글자, 성씨가 아님)에는 ? 표시 — 마우스를 올리거나 누르면 안내와 [확인] 버튼.
@@ -194,7 +197,7 @@ const MARKUP = `
   <div class="auth-form" data-view="account" hidden>
     <div class="acct-head">
       <span class="avatar avatar-md" id="acctAvatar" aria-hidden="true"></span>
-      <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span></p>
+      <p class="acct-who"><b id="acctName"></b><span id="acctFullName"></span><span id="acctEmail"></span><span class="acct-id-row" id="acctIdRow" hidden><span class="acct-id" id="acctId"></span><button type="button" class="copy-btn" id="acctIdCopy" aria-label="ID 복사" title="ID 복사" data-i18n-aria="copyId" data-i18n-title="copyId">${COPY_ICON}</button></span></p>
     </div>
     <nav class="side-menu">
       <a class="menu-item" id="menuMy" href="${pageUrl(ROUTES.mypage)}"><span data-i18n="menuMy"></span><span class="chev" aria-hidden="true">›</span></a>
@@ -315,6 +318,9 @@ function render() {
   drawAvatar($("acctAvatar"), Account.avatarUrl(), name);
   $("acctFullName").textContent = profile && profile.full_name ? profile.full_name : "";
   $("acctEmail").textContent = user ? user.email : "";
+  // 회원 ID: 선생님이 학생을 찾을 때 쓰는 무작위 8자리 코드 (2026-11-10, DB profiles.member_code)
+  $("acctId").textContent = profile && profile.member_code ? `ID #${profile.member_code}` : "";
+  $("acctIdRow").hidden = !(profile && profile.member_code);
   $("menuStudents").hidden = !Account.isAdmin();
   $("restoreText").textContent = profile && profile.deleted_at
     ? t("restoreNote", { date: fmtDate(new Date(new Date(profile.deleted_at).getTime() + GRACE_DAYS * 864e5)) }) : "";
@@ -753,6 +759,12 @@ export function initAuthDialog() {
   dlg().addEventListener("input", e => { if (e.target.name === "password" || e.target.name === "password2") pwMatch(); });
   onLangChange(pwMatch);
 
+  // 회원 ID 복사: 코드만(#K7M3Q9TX의 K7M3Q9TX) 클립보드로. 못 쓰면 ID 글자를 선택해 두어 직접 복사하게
+  $("acctIdCopy").onclick = () => {
+    const code = (Account.profile && Account.profile.member_code) || "";
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($("acctId")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+    try { navigator.clipboard.writeText(code).then(() => toast(t("msgCopied"), 2000), fallback); } catch (e) { fallback(); }
+  };
   $("resendBtn").onclick = resend;
   dlg().querySelectorAll("[data-provider]").forEach(b => {
     b.onclick = async () => {
