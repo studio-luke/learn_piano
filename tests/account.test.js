@@ -195,3 +195,14 @@ test("checkName: hard errors, soft (unusual Korean) names, and normalizing", asy
   assert.strictEqual(checkName("  김 철수 ").name, "김철수");
   assert.strictEqual(checkName(" John   Smith ").name, "John Smith");
 });
+
+test("checkName: unreadable English words (no vowel, 6+ consonants in a row) are soft; initials and Ng are skipped (2026-11-10)", async () => {
+  const { checkName } = await import("../src/assets/js/account/names.js");
+  const lv = s => checkName(s).level;
+  for (const s of ["Rvwt Zxcb", "Bcdfgh Lee", "Hmm Lee", "Anna Rstvwx"]) assert.strictEqual(lv(s), "soft", s);
+  // y는 모음, 자음 5개 이어짐(Engstrom)은 허용, 한 글자 단어(이니셜)·Ng는 검사 안 함
+  for (const s of ["Lynn Glynn", "Sky Park", "Anna Schwarz", "Erik Engstrom", "John F Kennedy", "Kevin Ng", "Mary-Jane O'Brien"]) assert.strictEqual(lv(s), "ok", s);
+  assert.strictEqual(lv("rvwtyzxv"), "hard");   // 한 단어는 원래 확실한 오류
+  assert.strictEqual(checkName("Rvwt Zxcb").script, "en");
+  assert.strictEqual(checkName("김믜나").script, "ko");
+});

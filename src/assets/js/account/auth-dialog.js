@@ -62,11 +62,11 @@ function toggleCustom(f) { f.querySelector(".rq-custom").hidden = f.rq.value !==
 const COPY_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
 
 // 성명 칸 + 바로 아래 형식 오류 줄 (2026-11-10 사용자 결정, 규칙은 names.js).
-// 실제 이름일 수도 있는 오류(흔하지 않은 한글 글자, 성씨가 아님)에는 ? 표시 — 마우스를 올리거나 누르면 안내와 [확인] 버튼.
-// 안내는 한국어 이름에만 나와서 번역하지 않아요
+// 실제 이름일 수도 있는 오류(흔하지 않은 한글 글자, 성씨가 아님, 읽을 수 없는 영문 단어)에는 ? 표시 —
+// 마우스를 올리거나 누르면 안내와 [확인] 버튼. 문구는 모두 페이지 언어로 (2026-11-10)
 const NAME_FIELD = `
     <label class="field"><span data-i18n="fullName"></span><input type="text" name="fullName" autocomplete="name" maxlength="${NAME_MAX}" required><small data-i18n="fullNameHint"></small></label>
-    <p class="name-err" hidden><span class="name-err-text"></span><span class="help name-help" hidden><button type="button" class="help-btn" aria-expanded="false" aria-label="안내">?</button><span class="help-pop left" role="tooltip">일반적인 한국 이름 형식이 아니어서 메시지가 출력됐어요. 본인의 이름이 맞으면 아래 [확인] 버튼을 눌러주세요. 가입은 정상적으로 진행됩니다.<button type="button" class="mini-btn name-ok">확인</button></span></span></p>`;
+    <p class="name-err" hidden><span class="name-err-text"></span><span class="help name-help" hidden><button type="button" class="help-btn" aria-expanded="false" aria-label="안내">?</button><span class="help-pop left" role="tooltip"><span class="name-soft-text"></span><button type="button" class="mini-btn name-ok" data-i18n="nameOk"></button></span></span></p>`;
 
 // 처음 가입할 때 받는 동의 (이메일 가입 화면, 소셜 로그인 첫 방문의 정보 입력 화면)
 const CONSENT = `
@@ -527,9 +527,13 @@ function checkNameField(f, show = true) {
     const box = f.querySelector(".name-err"), text = box.querySelector(".name-err-text");
     box.hidden = ok;
     box.querySelector(".name-help").hidden = r.level !== "soft";
-    // 확실한 오류는 화면 언어로, 한국 이름 안내(soft)는 한국어로
-    if (r.level === "hard") { text.dataset.i18n = "errNameInvalid"; text.textContent = t("errNameInvalid"); }
-    else { delete text.dataset.i18n; text.textContent = "유효하지 않은 이름이에요."; }
+    // 오류 문구와 ? 안내 모두 페이지 언어로 (안내는 한글 이름 / 영문 이름에 따라)
+    text.dataset.i18n = "errNameInvalid"; text.textContent = t("errNameInvalid");
+    if (r.level === "soft") {
+      const tip = box.querySelector(".name-soft-text");
+      tip.dataset.i18n = r.script === "en" ? "nameSoftEn" : "nameSoftKo";
+      tip.textContent = t(tip.dataset.i18n);
+    }
   }
   return { ok, name: r.name, confirmed };
 }

@@ -12,6 +12,8 @@
 //          soft: 일상에서 쓰는 한글 2,350자(KS X 1001 완성형) 밖의 글자(괤, 쀍, 믜), 첫 글자가 한국 성씨가 아님
 //   영문   글자·빈칸·하이픈·아포스트로피만, 두 단어 이상·글자 4개 이상(Li Na는 됨, ab는 안 됨),
 //          키보드를 따라 친 글자(qwer, asdf, zxcv, hjkl, uiop과 거꾸로) 없음
+//          soft: 읽을 수 없는 단어 — 모음(a e i o u y, 악센트 모음)이 없거나 자음이 6개 이상 이어짐 (2026-11-10).
+//          한 글자 단어(이니셜 F)와 Ng(성씨)는 검사하지 않음. 5개 이어짐은 실제 이름(Engstrom)이 있어서 허용
 //   한자·가나(일본어·중국어 이름)  2~10글자(빈칸·가운뎃점 빼고), 가운뎃점(·, ・) 허용 — 실명 판별이 어려워 막친 글자만 거름
 import { NAME_MAX } from "./helpers.js";
 
@@ -21,6 +23,11 @@ const LATIN = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/;
 const LATIN_LETTER = /[A-Za-zÀ-ÖØ-öø-ÿ]/g;
 const CJK = /^[぀-ヿ㐀-鿿· ]+$/;   // 히라가나·가타카나(・ ー 포함), 한자, 가운뎃점
 const KEYBOARD = /qwer|asdf|zxcv|hjkl|uiop|rewq|fdsa|vcxz|lkjh|poiu/;
+const VOWEL = /[aeiouyà-æè-ïò-öø-ýÿ]/;           // y도 모음으로 (Lynn, Glynn, Sky)
+const CONSONANTS6 = /[^aeiouyà-æè-ïò-öø-ýÿ]{6}/;
+/** 영문 이름에 읽을 수 없는 단어가 있는지 (하이픈·아포스트로피로 나뉜 조각마다, 소문자로) */
+const unreadable = name => name.toLowerCase().split(/[ '-]+/)
+  .some(w => w.length > 1 && w !== "ng" && (!VOWEL.test(w) || CONSONANTS6.test(w)));
 
 // 한국 성씨 (두 글자 성 먼저). 목록에 없는 드문 성은 soft라 본인이 [확인]으로 통과할 수 있어요
 const SURNAMES2 = ["남궁", "제갈", "선우", "서문", "독고", "황보", "사공", "동방", "어금", "망절", "소봉", "장곡", "강전"];
@@ -49,11 +56,12 @@ export function normalizeName(raw) {
 
 /**
  * 성명 검사.
- * @returns { name: 정리한 이름(저장할 값), level: "ok" | "soft" | "hard" }
+ * @returns { name: 정리한 이름(저장할 값), level: "ok" | "soft" | "hard", script: "ko" | "en" | "cjk" | null (어느 글자의 이름인지 — soft 안내 문구용) }
  */
 export function checkName(raw) {
   const name = normalizeName(raw);
-  const out = level => ({ name, level });
+  const script = HANGUL.test(name) ? "ko" : LATIN.test(name) ? "en" : CJK.test(name) ? "cjk" : null;
+  const out = level => ({ name, level, script });
   if (!name || name.length > NAME_MAX || JAMO.test(name) || /(.)\1\1/u.test(name.toLowerCase())) return out("hard");
   if (HANGUL.test(name)) {
     if (name.length < 2 || name.length > 5) return out("hard");
@@ -65,7 +73,8 @@ export function checkName(raw) {
   if (LATIN.test(name)) {
     const words = name.split(" ");
     const letters = (name.match(LATIN_LETTER) || []).length;
-    return out(words.length >= 2 && letters >= 4 && !KEYBOARD.test(name.toLowerCase()) ? "ok" : "hard");
+    if (words.length < 2 || letters < 4 || KEYBOARD.test(name.toLowerCase())) return out("hard");
+    return out(unreadable(name) ? "soft" : "ok");
   }
   if (CJK.test(name)) {
     const n = name.replace(/[ ·・]/g, "").length;
