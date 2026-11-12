@@ -200,7 +200,7 @@ test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-on
     }
     for (const c of p.bars.flat()) assert.ok(c.q.items.every(x => !/[+-]/.test(x)), c.q.symbol);
   }
-  const off = chordsOf(await progs({ tension: "off" }, 400)), hard = chordsOf(await progs({ tension: "hard" }, 400)), one = chordsOf(await progs({ tension: "1" }, 400));
+  const off = chordsOf(await progs({ tension: "off" }, 400)), hard = chordsOf(await progs({ tension: "hard", level: 6 }, 400)), one = chordsOf(await progs({ tension: "1", level: 6 }, 400));
   assert.ok(!off.some(c => c.q.group === "tension" || c.q.alt || c.q.tens.length), "텐션 꺼짐");
   assert.ok(!one.some(c => c.q.group === "tension") && one.some(c => c.q.alt) && one.every(c => c.q.tens.length <= 1), "최대 1개");
   assert.ok(hard.some(c => c.q.group === "tension") && hard.filter(c => c.q.group === "tension").every(c => c.q.tens.length <= 1), "HARD");
@@ -282,6 +282,36 @@ test("improv grammar: slash chords come from the bass line — passing, same cho
   // 난이도 4부터 V7·세컨더리·토닉·IV 자리도 가끔 하이브리드
   assert.ok(chordsOf(await progs({ slash: true, level: 5 }, 800)).some(c => c.q.slash === "hybrid" && c.q.role !== "Vsus"));
   assert.ok(chordsOf(await progs({ slash: true, level: 3 }, 800)).every(c => c.q.slash !== "hybrid" || c.q.role === "Vsus"));
+});
+
+test("improv grammar: tensions by level — 10% on 0~2 (one per chart on 0), 15/20/40/60% on 3~6; two in parentheses and tension chords only from 3 with the '2'·HARD option; scale tones only on 0·1 (2026-11-13)", async () => {
+  const { Engine } = await import("../src/assets/js/core/engine.js");
+  const rate = {};
+  for (const level of [0, 1, 2, 3, 4, 5, 6]) {
+    let can = 0, has = 0, tc = 0;
+    for (const p of await progs({ tension: "hard", level, slash: false }, 400)) {
+      const sc = new Set((p.key.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11]).map(x => (Engine.pcOf(p.key.l, p.key.a) + x) % 12));
+      const qs = p.bars.flat().map(c => c.q);
+      if (level === 0) assert.ok(qs.filter(q => q.tens.length || q.alt).length <= 1, "난이도 0은 8마디에 하나까지");
+      for (const q of qs) {
+        if (q.group === "tension") tc++;
+        assert.ok(q.items.length <= (level >= 3 ? 2 : 1), "괄호 안 개수 " + q.symbol);   // m7(♭5)의 ♭5도 괄호 안 1개
+        if (level <= 1) {
+          assert.ok(!q.alt && q.group !== "tension", q.symbol);
+          for (const t of q.tones) if (t.role === "tension") assert.ok(sc.has(t.pc), "조 안의 텐션만 " + p.key.name + " " + q.symbol);
+        }
+        const eligible = Engine.BY_ID[q.type].seventh && !["7sus4", "dim7", "mM7", "m7b5"].includes(q.type);
+        if (eligible || q.group === "tension") { can++; if (q.tens.length || q.alt || q.group === "tension") has++; }
+      }
+    }
+    rate[level] = 100 * has / can;
+    if (level < 3) assert.strictEqual(tc, 0, "텐션 코드는 난이도 3부터");
+    if (level >= 4) assert.ok(tc > 0, "난이도 " + level + " 텐션 코드");
+  }
+  // 옵션 '최대 1개'면 어느 난이도든 괄호 안 1개, 텐션 코드 없음
+  assert.ok(chordsOf(await progs({ tension: "1", level: 6, slash: false }, 300)).every(c => c.q.items.length <= 1 && c.q.group !== "tension"));
+  const near = (v, want, tol) => Math.abs(v - want) < tol;
+  assert.ok(near(rate[1], 10, 3) && near(rate[2], 10, 3) && near(rate[3], 15, 3.5) && near(rate[4], 20, 4) && near(rate[5], 40, 5) && near(rate[6], 60, 5), JSON.stringify(rate));
 });
 
 test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), halves never identical, bar 5 never starts on bar 1's chord, at most 2 non-diatonic in a row on level 2", async () => {

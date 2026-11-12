@@ -250,29 +250,43 @@ const FREE_ODDS = { 2: 0.03, 3: 0.06, 4: 0.08, 5: 0.1, 6: 0.12 };
 const RANDOM_INV = 0.2;   // 개연성 랜덤: 용법·해결과 상관없이 코드마다 20%
 const hasMinor7 = typeId => /^(dom7|dom9|dom13|m7|m9|m11|m7b5|7sus4)$/.test(typeId);
 
+// 텐션 (사용자 결정 2026-11-13) — 출제 설정의 텐션 옵션을 켰을 때만, 코드 진행 난이도에 따라:
+//   텐션이 붙는 비율(붙일 수 있는 코드 중): 0·1·2 10% (0은 8마디에 하나까지) · 3 15% · 4 20% · 5 40% · 6 60%
+//   괄호 안 텐션 2개: 옵션이 '최대 2개'·HARD이고 난이도 3부터 — 텐션이 붙는 코드 중 3 10% · 4 20% · 5 30% · 6 47% (2026-11-13 사용자 결정, 그 밖에는 1개)
+//     m7(♭5)는 ♭5가 이미 괄호에 있어서 텐션을 붙이면 괄호 안 2개 → '2개'가 뽑혔을 때만 m7(♭5,9)·m7(♭5,11)·m7(♭5,♭13)
+//   난이도 0·1은 조의 음계 음(단조는 자연단음계)인 텐션만 — G7(9)·G7(13)은 되고 G7(♭9)는 안 됨, 7alt 없음
+//   텐션 코드(HARD — M9·13·m11 …): 난이도 3부터, 텐션이 붙는 코드 중 3 5% · 4 10% · 5 20% · 6 50%. 괄호 텐션은 '2개'가 뽑혔을 때만 하나 더(CM9(13))
+const TEN_ODDS = { 0: 0.1, 1: 0.1, 2: 0.1, 3: 0.15, 4: 0.2, 5: 0.4, 6: 0.6 };
+const TWO_ODDS = { 3: 0.1, 4: 0.2, 5: 0.3, 6: 0.47 };
+const HARD_ODDS = { 3: 0.05, 4: 0.1, 5: 0.2, 6: 0.5 };
+
 /**
- * 역할 + 코드 종류 → 엔진 코드 (q). 텐션은 출제 설정의 텐션 옵션대로, 베이스("3" 등)가 있으면 분수코드.
+ * 역할 + 코드 종류 → 엔진 코드 (q). 텐션은 위 규칙대로, 베이스("3" 등)가 있으면 분수코드.
+ * o.scale = 조의 음계 pc 집합(난이도 0·1의 텐션 거르기용)
  * @returns q 또는 null(엔진이 쓰지 않는 철자)
  */
 function makeChord(role, typeId, bass, o, rnd) {
   let type = Engine.BY_ID[typeId];
   let tens = [], alt = false;
-  // 텐션 (7화음만): 끔 0 / 최대 1개 / 최대 2개·HARD. 마이너로 해결하는 도미넌트는 ♭9·♯9·♭13, 메이저로 해결하면 9·13·♯11·♭9
-  if (o.tension !== "off" && type.seventh && !role.sus && typeId !== "dim7" && typeId !== "mM7") {
-    if (typeId === "dom7" && rnd() < 0.1) alt = true;
+  const level = o.level ?? 6;
+  // 텐션 (7화음만). 마이너로 해결하는 도미넌트는 ♭9·♯9·♭13, 메이저로 해결하면 9·13·♯11·♭9
+  const twoOk = level >= 3 && (o.tension === "2" || o.tension === "hard");
+  const two = twoOk && rnd() < (TWO_ODDS[level] || 0);   // 이 코드는 괄호 안 2개까지
+  const canTen = type.seventh && !role.sus && typeId !== "dim7" && typeId !== "mM7" && (typeId !== "m7b5" || two);
+  if (o.tension !== "off" && canTen && rnd() < (TEN_ODDS[level] ?? 0.6)) {
+    if (typeId === "dom7" && level >= 2 && rnd() < 0.1) alt = true;
     else {
       let pool = type.ten.slice();
       if (typeId === "dom7") pool = pool.filter(t => (role.targetMinor ? ["b9", "#9", "b13"] : ["9", "13", "#11", "b9"]).includes(t));
-      const max = Math.min(o.tension === "1" ? 1 : 2, type.maxTen || 9);
-      const w = max >= 2 ? [0.25, 0.4, 0.35] : [0.4, 0.6];
-      let n = 0, x = rnd(); while (n < w.length - 1 && x > w[n]) { x -= w[n]; n++; }
+      if (level <= 1 && o.scale) pool = pool.filter(t => o.scale.has((role.root.pc + Engine.TEN[t][0]) % 12));
+      const n = two && type.maxTen !== 1 ? 2 : 1;   // m7(♭5)는 텐션 1개 = 괄호 안 2개
       while (tens.length < n && pool.length) {
         const t = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
         if (tens.every(u => Engine.TEN[u][1] !== Engine.TEN[t][1])) tens.push(t);
       }
       tens.sort((p, q) => Engine.TEN_ORDER.indexOf(p) - Engine.TEN_ORDER.indexOf(q));
       // HARD: 9·13·11을 텐션 코드 이름으로 (M7+9 → M9, 7+13 → 13, m7+11 → m11 …), 텐션 코드는 추가 텐션 1개까지 (사용자 결정)
-      if (o.tension === "hard" && rnd() < 0.5) {
+      if (o.tension === "hard" && level >= 3 && rnd() < (HARD_ODDS[level] || 0)) {
         const conv = { M7: [["13", "M13"], ["9", "M9"]], m7: [["11", "m11"], ["9", "m9"]], dom7: [["13", "dom13"], ["9", "dom9"]] }[typeId] || [];
         const hit = conv.find(([t]) => tens.includes(t));
         if (hit) { type = Engine.BY_ID[hit[1]]; tens = tens.filter(t => t !== hit[0] && (hit[0] !== "13" || t !== "9")).slice(0, 1); }
@@ -428,6 +442,7 @@ export function generateGrammar(o, slots, rnd, fits = () => true) {
  */
 export function generateRandom(o, slots, rnd, fits = () => true) {
   const key = chooseKey(rnd);
+  o = { ...o, scale: scaleOf(key) };
   const roles = buildRoles(key, o.level);
   const chords = [];
   let prevBass = null;
@@ -448,9 +463,25 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
     }
     chords.push(out);
   }
+  capTensions(chords.flat(), o, rnd);
   // 분수코드: 용법과 상관없이 코드마다 RANDOM_INV (하이브리드는 realize가 난이도별로)
   bassLine(chords.flat(), slots.flatMap((bar, b) => bar.map((sl, i) => ({ ...sl, bar: b, idx: i }))), o, rnd, fits, key, true);
   return { key, chords, violations: [] };
+}
+
+/** 조의 음계 pc 집합 (단조는 자연단음계) — 난이도 0·1의 텐션 거르기용 */
+const scaleOf = key => new Set((key.minor ? MINOR : MAJOR).map(x => (Engine.pcOf(key.l, key.a) + x) % 12));
+
+/** 난이도 0: 텐션이 붙은 코드는 8마디에 하나까지 — 두 번째부터는 텐션을 떼고 다시 만듦 (사용자 결정 2026-11-13) */
+function capTensions(chords, o, rnd) {
+  if (o.level !== 0 || o.tension === "off") return;
+  let seen = false;
+  for (const q of chords) {
+    if (!q.tens.length && !q.alt) continue;
+    if (!seen) { seen = true; continue; }
+    const plain = makeChord(q.roleObj, q.type, null, { ...o, tension: "off" }, rnd);
+    if (plain) Object.assign(q, plain);
+  }
 }
 
 /** 코드에 역할 정보를 붙임 (roleObj는 베이스 라인 단계용 — 화면·테스트에 안 보이게 열거 안 됨) */
@@ -467,6 +498,7 @@ function chooseKey(rnd) {
 
 function attempt(o, slots, rnd, fits) {
   const key = chooseKey(rnd);
+  o = { ...o, scale: scaleOf(key) };
   const roles = buildRoles(key, o.level);
   const byId = Object.fromEntries(roles.map(r => [r.id, r]));
   const ctx = { table: key.minor ? TABLE_MINOR : TABLE_MAJOR, chance: o.chance, count: f => roles.filter(f).length || 1 };
@@ -569,6 +601,7 @@ function attempt(o, slots, rnd, fits) {
     return s;
   }
 
+  capTensions(chords, o, rnd);
   // 베이스 라인: 화성을 다 정한 뒤 전위형 (위 bassLine)
   bassLine(chords, flat, o, rnd, fits, key);
 
