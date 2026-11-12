@@ -71,6 +71,9 @@ const baseId = id => (id === "Vsus" ? "V" : id);
 
 /** add 코드는 난이도 0·1에서만 (사용자 결정 2026-11-12) — 2부터는 목록에서 빼고 나머지 비율로 */
 const withoutAdd = types => types.filter(t => !/add/.test(t[0]));
+/** 6th 코드(6·m6)는 난이도 2부터 (사용자 결정 2026-11-13) — 0·1에서는 목록에서 빼고 나머지 비율로 */
+const SIXTH = ["6", "m6"];
+const withoutSixth = types => types.filter(t => !SIXTH.includes(t[0]));
 
 /** 조 하나의 역할 목록 (난이도 0~3) */
 export function buildRoles(key, level) {
@@ -80,7 +83,7 @@ export function buildRoles(key, level) {
   for (let [id, deg, alt, types, fn] of key.minor ? DIA_MINOR : DIA_MAJOR) {
     if (id === "Vsus" && level < 1) continue;   // V7sus4는 난이도 1부터
     if (id === "viio" && level < 3) continue;   // dim7은 난이도 3부터 (단조 VII°7도)
-    if (level >= 2) types = withoutAdd(types);
+    types = level >= 2 ? withoutAdd(types) : withoutSixth(types);
     roles.push({ id, root: spell(tonic, sc[deg - 1] + alt, deg), types, kind: "dia", fn, sus: id === "Vsus" });
   }
   const byId = Object.fromEntries(roles.map(r => [r.id, r]));
@@ -208,7 +211,10 @@ const TEMPERATURE = { 1: 0.6, 2: 0.9, 3: 1.3 };
 
 // ---------- 코드 만들기 ----------
 const pickBy = (list, w, rnd) => { let x = rnd() * list.reduce((s, e) => s + w(e), 0); for (const e of list) { x -= w(e); if (x < 0) return e; } return list[list.length - 1]; };
-const BASS = { "3": null, "5": [7, 5], b7: [10, 7], "7": [11, 7], "6": [9, 6] };
+const BASS = { "3": null, "5": null, b7: [10, 7], "7": [11, 7], "6": [9, 6] };
+/** 코드 종류의 3음·5음 (근음에서 반음 수) — 전위형 베이스를 코드 구성음으로 (m7(♭5)의 5음은 ♭5: Am7(♭5)/E♭, 2026-11-13 버그 수정) */
+const thirdOf = typeId => (MINORISH.includes(typeId) || /^dim/.test(typeId) ? 3 : 4);
+const fifthOf = typeId => (/^(m7b5|dim)/.test(typeId) ? 6 : /^aug/.test(typeId) ? 8 : 7);
 // 전위형을 시도할 비율 — 앞 베이스와 순차(반음·온음)로 이어지는 전위가 있을 때만 실제로 붙음.
 // 분수코드를 켰을 때 전체의 약 18%가 되게 맞춤 (사용자 결정 2026-11-10 "분수코드 18%", 측정은 tests/improv.test.js)
 const INV_TRY = 0.8;
@@ -250,10 +256,10 @@ function makeChord(role, typeId, bass, o, rnd) {
   q.rootName = role.root.name; q.symbol = q.rootName + q.label;   // 철자 정리(tidy)한 근음 이름으로
   q.bassPc = q.rootPc;
   if (bass && o.slash) {
-    const third = MINORISH.includes(type.id) || type.id === "dim7" ? 3 : 4;
-    const [semi, deg] = bass === "3" ? [third, 3] : BASS[bass];
+    const [semi, deg] = bass === "3" ? [thirdOf(type.id), 3] : bass === "5" ? [fifthOf(type.id), 5] : BASS[bass];
     const b = spell(role.root, semi, deg);
-    Object.assign(q, { bass: b.name, bassPc: b.pc, slash: "inv", symbol: q.symbol + "/" + b.name });
+    // 베이스가 실제 구성음일 때만 (7alt는 완전5도가 없어 G7alt/D가 되면 틀린 코드 — 그때는 기본형으로)
+    if (q.tones.some(t => t.pc === b.pc)) Object.assign(q, { bass: b.name, bassPc: b.pc, slash: "inv", symbol: q.symbol + "/" + b.name });
   }
   return q;
 }
@@ -272,8 +278,7 @@ function realize(role, prevBass, o, rnd, forced) {
     // sus 코드는 3음이 없으니 5음 베이스만 (G7sus4/D)
     const opts = (typeId === "dim7" || role.kind === "dim") ? [] : /sus/.test(typeId) ? ["5"] : ["3", "5"];
     const cands = opts.map(b => {
-      const third = MINORISH.includes(typeId) ? 3 : 4;
-      const pc = (role.root.pc + (b === "3" ? third : 7)) % 12;
+      const pc = (role.root.pc + (b === "3" ? thirdOf(typeId) : fifthOf(typeId))) % 12;
       return [b, bassFactor(prevBass, pc) > 1.3 ? 1 : 0.05];
     });
     const keep = [null, 1];
@@ -380,7 +385,10 @@ function attempt(o, slots, rnd, fits) {
     if (!pool.length) continue;
     const p = pool[Math.floor(rnd() * pool.length)];
     used.push(p.name);
-    p.seq.forEach((it, j) => { out[start + j] = { pattern: p.name, item: Array.isArray(it) ? it : [it] }; });
+    // 난이도 0·1은 6th 코드가 없으니 라인 클리셰도 Im7까지만 (사용자 결정 2026-11-13)
+    const cut = p.seq.findIndex(it => Array.isArray(it) && SIXTH.includes(it[1]));
+    const seq = o.level < 2 && cut >= 0 ? p.seq.slice(0, cut) : p.seq;
+    seq.forEach((it, j) => { out[start + j] = { pattern: p.name, item: Array.isArray(it) ? it : [it] }; });
   }
 
   // 한 자리씩

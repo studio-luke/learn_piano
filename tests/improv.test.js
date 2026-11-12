@@ -235,6 +235,9 @@ test("improv grammar: level 0 = diatonic only, no slash chords, no V7sus4; level
       }
     }
   }
+  // 6th 코드는 난이도 2부터, 난이도 0·1의 라인 클리셰는 Im7까지 (2026-11-13)
+  for (const level of [0, 1]) assert.ok(chordsOf(await progs({ level, chance: 1 }, 600)).every(c => !["6", "m6"].includes(c.q.type)), "난이도 " + level + " 6th");
+  assert.ok(chordsOf(await progs({ level: 2 }, 600)).some(c => ["6", "m6"].includes(c.q.type)), "난이도 2 6th");
   const one = chordsOf(await progs({ level: 1 }, 600));
   assert.ok(one.some(c => c.q.bass) && one.some(c => c.q.type === "7sus4") && one.some(c => /add/.test(c.q.type)));
   const two = chordsOf(await progs({ level: 2 }, 600));
@@ -293,6 +296,10 @@ test("improv prog: ~18% slash chords when allowed; notation odds M 10% · m 50% 
     assert.ok(sl > 12 && sl < 24, "개연성 " + chance + " 분수코드 " + sl.toFixed(1));
   }
   assert.ok(chordsOf(await progs({ slash: false }, 300)).every(c => !c.q.bass));
+  // 전위형 베이스는 코드 구성음 (Am7(♭5)/E 같은 틀린 코드가 나왔던 버그 — 2026-11-13)
+  for (const level of [1, 3]) for (const c of chordsOf(await progs({ slash: true, level, tension: "2" }, 1500))) {
+    if (c.q.bass && c.q.slash === "inv") assert.ok(c.q.tones.some(t => t.pc === c.q.bassPc), c.q.symbol);
+  }
   // sus 코드(3음 없음)의 전위형은 5음 베이스만
   const sus = chordsOf(await progs({ slash: true }, 1500)).filter(c => /sus/.test(c.q.type) && c.q.bass);
   assert.ok(sus.every(c => (c.q.bassPc - c.q.rootPc + 12) % 12 === 7), sus.map(c => c.q.symbol).join(" "));
