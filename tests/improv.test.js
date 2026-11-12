@@ -251,7 +251,40 @@ test("improv grammar: level 0 = diatonic only, no slash chords, no V7sus4; level
   assert.ok(chordsOf(await progs({ level: 6 }, 200)).some(c => c.q.kind === "dim"));
 });
 
-test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), halves never identical, at most 2 non-diatonic in a row on level 2", async () => {
+test("improv grammar: slash chords come from the bass line — passing, same chord, cadential 6/4, tonic/dominant pedal; free inversions from level 2; 7th basses fall by step, leading-tone basses rise (2026-11-13)", async () => {
+  const iv = (a, b) => (((b - a) % 12) + 12) % 12;
+  const why = {};
+  for (const level of [1, 2, 4, 6]) for (const chance of [1, 2, 3]) {
+    for (const p of await progs({ slash: true, level, chance, tension: "2" }, 250)) {
+      const f = p.bars.flatMap((bar, b) => bar.map(c => ({ ...c.q, bar: b })));
+      f.forEach((q, j) => {
+        const nx = f[(j + 1) % f.length];
+        if (j && f[j - 1].bar === q.bar) assert.notStrictEqual(f[j - 1].symbol, q.symbol, "같은 마디에 같은 이름 연달아");
+        if (!q.bass) return;
+        why[q.why] = (why[q.why] || 0) + 1;
+        assert.ok(["passing", "same", "cad64", "pedal", "free", "hybrid", "pattern"].includes(q.why), q.symbol + " " + q.why);
+        if (q.why === "free") assert.ok(level >= 2, "낯선 전위는 난이도 2부터 " + q.symbol);
+        if (q.slash === "inv") {
+          assert.ok(q.tones.some(t => t.pc === q.bassPc), "베이스는 구성음 " + q.symbol);   // Am7(♭5)/E 같은 버그 (2026-11-13)
+          if (/sus/.test(q.type)) assert.notStrictEqual(q.invKind, "3", q.symbol);
+          if (q.invKind === "b7") assert.ok(nx.bassPc === q.bassPc || [1, 2].includes(iv(nx.bassPc, q.bassPc)), "7음 베이스는 아래로 " + q.symbol + " → " + nx.symbol);
+          if (q.invKind === "3" && ["dom7", "dom9", "dom13"].includes(q.type)) assert.strictEqual(iv(q.bassPc, nx.bassPc), 1, "이끔음 베이스는 반음 위로 " + q.symbol + " → " + nx.symbol);
+        }
+        if (q.slash === "hybrid" && level === 1) assert.ok(/\//.test(q.symbol) && q.kind === "dia" && q.role === "Vsus", "난이도 1 하이브리드는 V7sus4 자리의 IV/V만 " + q.symbol);
+      });
+    }
+  }
+  for (const k of ["passing", "same", "cad64", "pedal", "free", "hybrid"]) assert.ok(why[k] > 0, k);
+  // 난이도 1의 하이브리드는 IV/V(장3화음)만, 4부터는 IV/V 없이
+  const hyb = async level => chordsOf(await progs({ slash: true, level }, 800)).filter(c => c.q.slash === "hybrid" && c.q.role === "Vsus");
+  assert.ok((await hyb(1)).every(c => c.q.type === "maj" && (c.q.bassPc - c.q.rootPc + 12) % 12 === 2));
+  assert.ok((await hyb(4)).every(c => !(c.q.type === "maj" && (c.q.bassPc - c.q.rootPc + 12) % 12 === 2)));
+  // 난이도 4부터 V7·세컨더리·토닉·IV 자리도 가끔 하이브리드
+  assert.ok(chordsOf(await progs({ slash: true, level: 5 }, 800)).some(c => c.q.slash === "hybrid" && c.q.role !== "Vsus"));
+  assert.ok(chordsOf(await progs({ slash: true, level: 3 }, 800)).every(c => c.q.slash !== "hybrid" || c.q.role === "Vsus"));
+});
+
+test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), halves never identical, bar 5 never starts on bar 1's chord, at most 2 non-diatonic in a row on level 2", async () => {
   const { countIIV } = await import("../src/assets/js/improv/grammar.js");
   for (const [chance, need] of [[1, 2], [2, 1]]) {
     let ok = 0, N = 300;
@@ -259,6 +292,7 @@ test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), 
       const flat = p.bars.flat().map(c => c.q);
       if (countIIV(flat) >= need) ok++;
       const half = (a, b) => p.bars.slice(a, b).map(bar => bar.map(c => c.q.symbol).join(" ")).join("|");
+      assert.notStrictEqual(p.bars[4][0].q.symbol, p.bars[0][0].q.symbol, "5마디 첫 코드 = 1마디 첫 코드");   // 난이도 1부터 (2026-11-13)
       assert.notStrictEqual(half(0, 4), half(4, 8));
       let run = 0, max = 0; for (const q of flat) { run = q.kind === "dia" || q.kind === "surprise" ? 0 : run + 1; max = Math.max(max, run); }
       assert.ok(max <= 2, "연속 " + max);
@@ -285,24 +319,15 @@ test("improv grammar: dominant 7ths mostly on weak beats (~80%), chance 4 is ran
   const dim = rand.filter(c => c.q.type === "dim7").length / rand.length;
   assert.ok(dim < 0.15, "무작위에서 dim7 " + (100 * dim).toFixed(1));
   for (const level of [0, 1]) assert.ok(chordsOf(await progs({ level, chance: 4 }, 300)).every(c => c.q.kind === "dia"), "난이도 " + level + " 무작위는 다이아토닉만");
+  assert.ok((await progs({ level: 1, chance: 4 }, 500)).every(p => p.bars[4][0].q.symbol !== p.bars[0][0].q.symbol), "무작위도 5마디 첫 코드 ≠ 1마디 첫 코드");
 });
 
-test("improv prog: ~18% slash chords when allowed; notation odds M 10% · m 50% · dim/aug 60% symbols; max-count split ratios (2026-11-10)", async () => {
+test("improv prog: slash chords only when allowed and more on higher levels; notation odds M 10% · m 50% · dim/aug 60% symbols; max-count split ratios (2026-11-10)", async () => {
   const P = await import("../src/assets/js/improv/progression.js");
-  // 분수코드(베이스 진행용 전위형 + V7sus4의 하이브리드): 켰을 때 전체의 약 18% (개연성 1~3 평균), 끄면 없음
-  for (const chance of [1, 2, 3]) {
-    const on = chordsOf(await progs({ slash: true, chance }, 800));
-    const sl = 100 * on.filter(c => c.q.bass).length / on.length;
-    assert.ok(sl > 12 && sl < 24, "개연성 " + chance + " 분수코드 " + sl.toFixed(1));
-  }
+  // 분수코드는 비율 목표 없음 — 용법(베이스 라인)·하이브리드 자리에서만 (2026-11-13). 끄면 없음, 난이도가 오를수록 많아짐
   assert.ok(chordsOf(await progs({ slash: false }, 300)).every(c => !c.q.bass));
-  // 전위형 베이스는 코드 구성음 (Am7(♭5)/E 같은 틀린 코드가 나왔던 버그 — 2026-11-13)
-  for (const level of [1, 3]) for (const c of chordsOf(await progs({ slash: true, level, tension: "2" }, 1500))) {
-    if (c.q.bass && c.q.slash === "inv") assert.ok(c.q.tones.some(t => t.pc === c.q.bassPc), c.q.symbol);
-  }
-  // sus 코드(3음 없음)의 전위형은 5음 베이스만
-  const sus = chordsOf(await progs({ slash: true }, 1500)).filter(c => /sus/.test(c.q.type) && c.q.bass);
-  assert.ok(sus.every(c => (c.q.bassPc - c.q.rootPc + 12) % 12 === 7), sus.map(c => c.q.symbol).join(" "));
+  const slashShare = async level => { const all = chordsOf(await progs({ slash: true, level, chance: 2 }, 800)); return all.filter(c => c.q.bass).length / all.length; };
+  assert.ok(await slashShare(1) + 0.02 < await slashShare(6), "난이도 6이 1보다 분수코드가 많음");
   const N = 20000, st = { M: 0, m: 0, dim: 0, aug: 0 };
   for (let i = 0; i < N; i++) { const s = P.randomStyle(Math.random); st.M += s.M === "△"; st.m += s.m === "-"; st.dim += s.dim === "°"; st.aug += s.aug === "+"; }
   const near = (v, want) => assert.ok(Math.abs(100 * v / N - want) < 2, (100 * v / N).toFixed(1) + " ≈ " + want);

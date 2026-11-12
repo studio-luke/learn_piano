@@ -141,7 +141,8 @@ const quality = typeId => (MINORISH.includes(typeId) ? "m" : ["dom7", "7sus4", "
  * 도미넌트: 해결 65 · 위종지 15 · 지연 해결 8 · 새 II-V의 II 5 · 그 밖 4 (사용자 결정, docs §4) — 후보 수에 상관없이 이 몫을 나눠 줌
  */
 function transition(a, b, roles, ctx) {
-  if (a === b) return 0;
+  // 자기 자신으로: 아주 낮게 (사용자 결정 2026-11-13 — 같은 마디 안에서는 이름이 달라야 함: C → C/G·CM7 → C6은 되고 C → C는 안 됨)
+  if (a === b) return SELF;
   const base = ctx.table;
   // 디미니시드 다음: 목표로 85 · 공통음 3개 도미넌트(근음 -4·-1·+2·+5) 10 · 다른 디미니시드 5
   if (a.kind === "dim") {
@@ -180,6 +181,8 @@ function transition(a, b, roles, ctx) {
   return 1;
 }
 
+const SELF = 0.4;
+
 // ---------- 패턴 (대중적 진행 — 개연성 1·2에서 통째로) ----------
 // 항목: 역할 id, 또는 [역할 id, 코드 종류(없으면 보통대로), 베이스("3"·"5"·"b7"·"7"·"6", 분수코드 허용일 때만)]
 const PATTERNS = {
@@ -192,8 +195,9 @@ const PATTERNS = {
     { name: "2-5-1", seq: ["II", "V", "I"] },
     { name: "3-6-2-5", seq: ["III", "VI", "II", "V"] },
     { name: "4-5-6", seq: ["IV", "V", "VI"] },
-    { name: "canon", seq: ["I", ["V", null, "3"], "VI", ["III", null, "5"], "IV", ["I", null, "3"], "IV", "V"] },
-    { name: "desc-bass", seq: ["I", ["V", null, "3"], "VI", ["I", null, "5"], "IV", ["I", null, "3"], "II", "V"] },
+    // 캐논·하행 베이스: 분수코드(G/B 등)는 베이스 라인 단계(bassLine)가 경과 베이스로 붙임 — 패턴에 박아 두지 않음 (2026-11-13)
+    { name: "canon", seq: ["I", "V", "VI", "III", "IV", "I", "IV", "V"] },
+    { name: "desc-bass", seq: ["I", "V", "VI", "I", "IV", "I", "II", "V"] },
     { name: "sec-chain", seq: ["I", "V/VI", "VI", "V/V", "V"], level: 2 },
   ],
   minor: [
@@ -215,9 +219,36 @@ const BASS = { "3": null, "5": null, b7: [10, 7], "7": [11, 7], "6": [9, 6] };
 /** 코드 종류의 3음·5음 (근음에서 반음 수) — 전위형 베이스를 코드 구성음으로 (m7(♭5)의 5음은 ♭5: Am7(♭5)/E♭, 2026-11-13 버그 수정) */
 const thirdOf = typeId => (MINORISH.includes(typeId) || /^dim/.test(typeId) ? 3 : 4);
 const fifthOf = typeId => (/^(m7b5|dim)/.test(typeId) ? 6 : /^aug/.test(typeId) ? 8 : 7);
-// 전위형을 시도할 비율 — 앞 베이스와 순차(반음·온음)로 이어지는 전위가 있을 때만 실제로 붙음.
-// 분수코드를 켰을 때 전체의 약 18%가 되게 맞춤 (사용자 결정 2026-11-10 "분수코드 18%", 측정은 tests/improv.test.js)
-const INV_TRY = 0.8;
+
+// ---------- 하이브리드 코드 (사용자 결정 2026-11-13) ----------
+// 모양: [위 코드 근음이 베이스에서 위로 몇 반음, 도수, 위 코드 종류, 비율] — 베이스 = 그 자리 코드의 근음(무작위 코드 모드 slash.js HYBRIDS와 같은 모양)
+// 서스 도미넌트형 (베이스 = 도미넌트 근음): IV/V(F/G) IVM7/V IIm7/V(Dm7/G) IVm/V IIm7(♭5)/V IIm/V(Am/D형)
+const SUS_HYBRIDS = [[10, 7, "maj", 3, "IV/V"], [10, 7, "M7", 1.5], [7, 5, "m7", 1], [10, 7, "min", 0.7], [7, 5, "m7b5", 0.25], [7, 5, "min", 0.25]];
+// 페달형 (베이스 = 토닉·IV 근음): 리디안 II/I(D/C) · V/I(G/C) · dim7(D°7/C · B°7/C)
+const PEDAL_HYBRIDS = [[2, 2, "maj", 2], [7, 5, "maj", 2], [2, 2, "dim7", 0.5], [11, 7, "dim7", 0.5]];
+/** V7sus4 자리가 하이브리드가 될 확률과 모양: 1 IV/V만 40% · 2 서스 도미넌트형 6종 30% · 3 20% · 4~6 IV/V를 뺀 5종 20% */
+const susHybrids = level => (level <= 1 ? SUS_HYBRIDS.slice(0, 1) : level >= 4 ? SUS_HYBRIDS.slice(1) : SUS_HYBRIDS);
+const SUS_HYBRID_ODDS = { 1: 0.4, 2: 0.3, 3: 0.2 };
+/** V7·세컨더리 도미넌트 자리(서스 도미넌트형), 토닉·IV 자리(페달형)가 하이브리드로 바뀔 확률: 3 0% · 4 2% · 5~6 5% */
+const SWAP_ODDS = { 4: 0.02, 5: 0.05, 6: 0.05 };
+
+/** 하이브리드 코드 하나 — 베이스는 role의 근음 */
+function makeHybrid(role, shapes, o, rnd) {
+  const [semi, deg, type] = pickBy(shapes, h => h[3], rnd);
+  const q = makeChord({ ...role, root: spell(role.root, semi, deg), sus: false }, type, null, { ...o, tension: "off" }, rnd);
+  return q && Object.assign(q, { bass: role.root.name, bassPc: role.root.pc, slash: "hybrid", why: "hybrid", symbol: q.symbol + "/" + role.root.name });
+}
+
+// ---------- 베이스 라인 (분수코드, 사용자 결정 2026-11-13) ----------
+// 화성(역할·코드 종류)을 다 정한 뒤 베이스 라인을 따로 다듬음 — "몇 %가 분수코드" 같은 목표는 없음.
+// 용법이 있는 전위형(난이도 1부터, 2전위 포함): 경과(앞·뒤 베이스와 같은 방향으로 순차) · 같은 코드 안의 전위(C – C/G) · 종지 6/4(C/G – G7) · 페달(앞 베이스 유지: C – F/C)
+//   개연성에 따라 그 자리에서 쓸 확률 높음 70% · 중간 50% · 낮음 35%
+// 용법이 없는 전위형(낯선 소리): 난이도 2부터 코드마다 3% · 6% · 8% · 10% · 12%
+// 지켜야 할 해결: 7음 베이스는 다음 베이스가 반음·온음 아래(페달로 그대로도 됨), 도미넌트의 3음(이끔음) 베이스는 다음 베이스가 반음 위
+const USE_ODDS = { 1: 0.7, 2: 0.5, 3: 0.35 };
+const FREE_ODDS = { 2: 0.03, 3: 0.06, 4: 0.08, 5: 0.1, 6: 0.12 };
+const RANDOM_INV = 0.2;   // 개연성 랜덤: 용법·해결과 상관없이 코드마다 20%
+const hasMinor7 = typeId => /^(dom7|dom9|dom13|m7|m9|m11|m7b5|7sus4)$/.test(typeId);
 
 /**
  * 역할 + 코드 종류 → 엔진 코드 (q). 텐션은 출제 설정의 텐션 옵션대로, 베이스("3" 등)가 있으면 분수코드.
@@ -264,34 +295,93 @@ function makeChord(role, typeId, bass, o, rnd) {
   return q;
 }
 
-/** 베이스 진행 점수: 순차(반음·온음) ×1.4, 같은 음 ×1.2, 완전5도 하행 ×1.2 (docs §3) */
-const bassFactor = (from, to) => { const d = Math.min(iv(from, to), iv(to, from)); return d === 1 || d === 2 ? 1.4 : d === 0 ? 1.2 : iv(from, to) === 5 ? 1.2 : 1; };
+/**
+ * 역할을 코드로 (기본형): 코드 종류를 비율대로. 분수코드 허용이면 V7sus4 자리·(난이도 4부터) 도미넌트·토닉·IV 자리를 가끔 하이브리드로.
+ * 전위형은 여기서 붙이지 않음 — bassLine이 진행을 다 만든 뒤에. forced = 패턴이 정한 { type, bass }(라인 클리셰)
+ */
+function realize(role, o, rnd, forced) {
+  const typeId = forced?.type || pickBy(role.types, t => t[1], rnd)[0];
+  if (!forced && o.slash) {
+    if (role.sus && rnd() < (SUS_HYBRID_ODDS[o.level] ?? 0.2)) return makeHybrid(role, susHybrids(o.level), o, rnd);
+    const swap = SWAP_ODDS[o.level] || 0;
+    if (swap && rnd() < swap) {
+      if (isDominant(role) && !role.sus && (role.id === "V" || role.kind === "sec")) return makeHybrid(role, susHybrids(o.level), o, rnd);
+      if (role.kind === "dia" && ["I", "i", "IV", "iv"].includes(role.id)) return makeHybrid(role, PEDAL_HYBRIDS, o, rnd);
+    }
+  }
+  const q = makeChord(role, typeId, forced?.bass || null, o, rnd);
+  if (q?.bass) q.why = "pattern";
+  return q;
+}
+
+const step = (a, b) => { const d = iv(a, b); return d === 1 || d === 2 ? 1 : d === 10 || d === 11 ? -1 : 0; };   // 순차 상행 1 · 하행 -1 · 아니면 0
+
+/** 전위형 후보: [베이스 종류, 근음에서 반음, 도수] — sus는 3음 없음, M7의 7음 베이스(CM7/B)·6음 베이스는 부딪혀서 안 씀, dim7·aug는 전위 안 함 */
+function inversionsOf(q) {
+  const t = q.type;
+  if (q.alt || /^(dim7|aug)/.test(t)) return [];
+  const list = [];
+  if (!/sus/.test(t)) list.push(["3", thirdOf(t), 3]);
+  list.push(["5", fifthOf(t), 5]);
+  if (hasMinor7(t)) list.push(["b7", 10, 7]);
+  return list;
+}
+
+/** 이 베이스(전위형)가 다음 베이스에 요구하는 해결 — 지키면 true */
+function resolves(kind, role, bass, next) {
+  if (kind === "b7") return next === bass || step(bass, next) === -1;          // 7음 베이스: 아래로 순차 (페달이면 그대로)
+  if (kind === "3" && role && isDominant(role)) return iv(bass, next) === 1;    // 도미넌트의 이끔음 베이스: 반음 위로
+  return true;
+}
 
 /**
- * 역할을 코드로: 코드 종류를 비율대로, 분수코드 허용이면 베이스를 앞 베이스와 매끄럽게 잇는 전위형을 가끔
- * (사용자 결정 Q6 — 분수코드는 난이도 1부터 베이스 진행용. V7sus4는 하이브리드 IV/V · IIm7/V로도)
+ * 베이스 라인 단계: 기본형으로 만든 진행에 전위형을 붙임 (위 설명 참고). 같은 마디의 같은 이름 코드(C – C)는 반드시 전위형으로 바꿈.
+ * @param chords  [q] 진행 순서대로 (q.roleObj = 역할), 이 함수가 q를 바꿈
+ * @param flat    자리 목록 { bar, idx, len … }
+ * @param random  개연성 랜덤 — 용법·해결 없이 코드마다 RANDOM_INV
  */
-function realize(role, prevBass, o, rnd, forced) {
-  const typeId = forced?.type || pickBy(role.types, t => t[1], rnd)[0];
-  let bass = forced?.bass || null;
-  if (!forced && o.slash && prevBass != null && rnd() < INV_TRY) {
-    // sus 코드는 3음이 없으니 5음 베이스만 (G7sus4/D)
-    const opts = (typeId === "dim7" || role.kind === "dim") ? [] : /sus/.test(typeId) ? ["5"] : ["3", "5"];
-    const cands = opts.map(b => {
-      const pc = (role.root.pc + (b === "3" ? thirdOf(typeId) : fifthOf(typeId))) % 12;
-      return [b, bassFactor(prevBass, pc) > 1.3 ? 1 : 0.05];
-    });
-    const keep = [null, 1];
-    const ch = pickBy([keep, ...cands], c => c[1], rnd);
-    bass = ch[0];
+function bassLine(chords, flat, o, rnd, fits, key, random = false) {
+  if (!o.slash) return;
+  const n = chords.length;
+  const tonic = Engine.pcOf(key.l, key.a), dominant = (tonic + 7) % 12;
+  const upper = c => c.rootName + c.label;   // 베이스를 뺀 코드 이름
+  for (let i = 0; i < n; i++) {
+    const q = chords[i], role = q.roleObj, prev = chords[i - 1], nextQ = chords[(i + 1) % n];
+    const sameBarPrev = prev && flat[i - 1].bar === flat[i].bar ? prev : null;
+    const must = !!(sameBarPrev && sameBarPrev.symbol === q.symbol);   // C – C (같은 마디) → 이름이 달라지게
+    if (q.bass || !role || /^cliche/.test(q.pattern || "")) continue;   // 하이브리드·라인 클리셰는 그대로
+    const prevBass = prev ? prev.bassPc : null, next = nextQ.bassPc;
+    // 앞 코드의 전위가 이 코드의 베이스에 기대고 있으면(7음·이끔음 해결, 경과 베이스의 방향) 그걸 깨는 전위는 안 됨
+    const before2 = chords[i - 2];
+    const prevNeeds = b => !prev || prev.slash !== "inv" || random ||
+      (resolves(prev.invKind, prev.roleObj, prev.bassPc, b) && (prev.why !== "passing" || step(before2.bassPc, prev.bassPc) === step(prev.bassPc, b)));
+    const opts = inversionsOf(q).map(([kind, semi, deg]) => ({ kind, semi, deg, pc: (q.rootPc + semi) % 12 }))
+      .filter(x => q.tones.some(t => t.pc === x.pc) && prevNeeds(x.pc) && (random || resolves(x.kind, role, x.pc, next)));
+    let pick = null;
+    if (random) {
+      if (opts.length && (must || rnd() < RANDOM_INV)) pick = { ...opts[Math.floor(rnd() * opts.length)], why: "random" };
+    } else {
+      const uses = [];
+      for (const x of opts) {
+        if (prevBass != null && step(prevBass, x.pc) && step(prevBass, x.pc) === step(x.pc, next)) uses.push({ ...x, why: "passing" });
+        else if (prev && upper(prev) === upper(q)) uses.push({ ...x, why: "same" });   // 같은 코드 안의 전위 (C – C/G)
+        else if (x.kind === "5" && /^(I|i)$/.test(q.role) && isDominant(nextQ.roleObj || {}) && nextQ.rootPc === x.pc) uses.push({ ...x, why: "cad64" });
+        // 페달: 토닉 베이스를 유지(C – F/C), 또는 도미넌트 베이스를 유지하고 다음도 그 베이스(G – C/G – G7)
+        else if (prevBass === x.pc && (x.pc === tonic || (x.pc === dominant && next === dominant))) uses.push({ ...x, why: "pedal" });
+      }
+      if (must && opts.length) pick = (uses.length ? uses : opts.map(x => ({ ...x, why: "same" })))[Math.floor(rnd() * (uses.length || opts.length))];
+      else if (uses.length && rnd() < (USE_ODDS[o.chance] || 0)) pick = uses[Math.floor(rnd() * uses.length)];
+      else if (opts.length && rnd() < (FREE_ODDS[o.level] || 0)) pick = { ...opts[Math.floor(rnd() * opts.length)], why: "free" };
+    }
+    if (!pick) continue;
+    const b = spell(role.root, pick.semi, pick.deg);
+    const inv = { ...q, bass: b.name, bassPc: b.pc, slash: "inv", invKind: pick.kind, why: pick.why, symbol: q.symbol + "/" + b.name };
+    // 긴 코드 자리 규칙: 이 마디의 다른 코드(앞·뒤 모두 — 화성은 이미 다 정해짐)와 함께 검사
+    const barOthers = chords.filter((_, k) => k !== i && flat[k].bar === flat[i].bar);
+    if (!fits(inv, flat[i], barOthers)) continue;
+    if (sameBarPrev && sameBarPrev.symbol === inv.symbol) continue;
+    Object.assign(q, inv);
   }
-  // V7sus4의 하이브리드 표기: IV/V(F/G) · IIm7/V(Dm7/G) — 분수코드 허용일 때 40%
-  if (role.sus && o.slash && !forced && rnd() < 0.4) {
-    const hybrid = rnd() < 0.6 ? { root: spell(role.root, 10, 7), type: "maj" } : { root: spell(role.root, 7, 5), type: "m7" };
-    const q = makeChord({ ...role, root: hybrid.root, sus: false }, hybrid.type, null, { ...o, tension: "off" }, rnd);
-    if (q) return Object.assign(q, { bass: role.root.name, bassPc: role.root.pc, slash: "hybrid", symbol: q.symbol + "/" + role.root.name });
-  }
-  return makeChord(role, typeId, bass, o, rnd);
 }
 
 /** 개연성 3의 "뜬금없는" 코드: 아무 근음의 dim7(어센딩처럼) 또는 도미넌트 7(완전5도 아래로 가려 함) */
@@ -348,15 +438,25 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
       for (let k = 0; k < 40 && !q; k++) {
         // 종류별 비율: 디미니시드는 역할 수가 많아서 하나하나를 낮게(전체에서 가끔만) — 다이아토닉·세컨더리 1, II-minor 0.7, 디미니시드 0.25
         const role = pickBy(roles, r => ({ dia: 1, sec: 1, ii: 0.7, dim: 0.25 })[r.kind] || 1, rnd);
-        const c = realize(role, prevBass, k < 30 ? o : { ...o, tension: "off", slash: false }, rnd);
-        if (c && c.bassPc !== prevBass && fits(c, slot, out)) q = Object.assign(c, { role: role.id, kind: role.kind, fn: role.fn, pattern: null });
+        const c = realize(role, k < 30 ? o : { ...o, tension: "off", slash: false }, rnd);
+        // 난이도 1부터: 5마디 첫 코드는 1마디 첫 코드와 다른 코드(이름 전체로 비교, 2026-11-13)
+        const sameAsBar1 = o.level >= 1 && chords.length === 4 && !out.length && c && c.symbol === chords[0][0].symbol;
+        if (c && !sameAsBar1 && c.bassPc !== prevBass && fits(c, slot, out)) q = tag(c, role, null);
       }
-      q = q || Object.assign(makeChord(roles[0], key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd), { role: roles[0].id, kind: "dia", fn: "T", pattern: null });
+      q = q || tag(makeChord(roles[0], key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd), roles[0], null);
       out.push(q); prevBass = q.bassPc;
     }
     chords.push(out);
   }
+  // 분수코드: 용법과 상관없이 코드마다 RANDOM_INV (하이브리드는 realize가 난이도별로)
+  bassLine(chords.flat(), slots.flatMap((bar, b) => bar.map((sl, i) => ({ ...sl, bar: b, idx: i }))), o, rnd, fits, key, true);
   return { key, chords, violations: [] };
+}
+
+/** 코드에 역할 정보를 붙임 (roleObj는 베이스 라인 단계용 — 화면·테스트에 안 보이게 열거 안 됨) */
+function tag(q, role, pattern) {
+  Object.defineProperty(q, "roleObj", { value: role, enumerable: false, writable: true });
+  return Object.assign(q, { role: role.id, kind: role.kind, fn: role.fn, pattern });
 }
 
 function chooseKey(rnd) {
@@ -381,7 +481,10 @@ function attempt(o, slots, rnd, fits) {
   for (const startBar of [0, 4]) {
     if (rnd() >= patOdds) continue;
     const start = flat.findIndex(s => s.bar === startBar);
-    const pool = pats.filter(p => o.chance === 1 || !used.includes(p.name)).filter(p => start + p.seq.length <= flat.length && p.seq.every((_, j) => !out[start + j]));
+    const firstId = it => (Array.isArray(it) ? it[0] : it);
+    const pool = pats.filter(p => o.chance === 1 || !used.includes(p.name)).filter(p => start + p.seq.length <= flat.length && p.seq.every((_, j) => !out[start + j]))
+      // 난이도 1부터: 5마디 패턴이 1마디 패턴과 같은 코드(같은 역할·종류·베이스)로 시작하지 않게 — 종류·베이스를 정하지 않은 같은 역할이면 아직 같을 수 있어 뺌
+      .filter(p => !(o.level >= 1 && startBar === 4 && out[0] && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
     if (!pool.length) continue;
     const p = pool[Math.floor(rnd() * pool.length)];
     used.push(p.name);
@@ -393,7 +496,7 @@ function attempt(o, slots, rnd, fits) {
 
   // 한 자리씩
   const chords = [];
-  let prev = null, prevBass = null, pending = null;
+  let prev = null, pending = null;
   const barOf = n => chords.filter((_, i) => flat[i].bar === flat[n].bar);   // 이 마디에서 이미 고른 코드들
   for (let n = 0; n < flat.length; n++) {
     const slot = flat[n];
@@ -420,7 +523,10 @@ function attempt(o, slots, rnd, fits) {
     for (let k = 0; k < 8 && !q && cand.length; k++) {
       role = pickBy(cand, c => c[1], rnd)[0];
       for (const opt of [o, o, { ...o, tension: "off" }, { ...o, tension: "off", slash: false }]) {
-        const c = realize(role, prevBass, opt, rnd, forced && opt.slash === false ? { ...forced, bass: null } : forced);
+        const c = realize(role, opt, rnd, forced && opt.slash === false ? { ...forced, bass: null } : forced);
+        // 같은 마디에서 바로 앞과 같은 이름(C – C)은 베이스 라인 단계에서 전위형으로 바꿀 수 있을 때만
+        const before = barOf(n).at(-1);
+        if (c && before && before.symbol === c.symbol && !(o.slash && inversionsOf(c).length)) continue;
         if (c && fits(c, slot, barOf(n))) { q = c; break; }
       }
       if (!q) cand = cand.filter(c => c[0] !== role);
@@ -429,12 +535,12 @@ function attempt(o, slots, rnd, fits) {
       role = byId[key.minor ? "i" : "I"];
       q = makeChord(role, key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd);
     }
-    Object.assign(q, { role: role.id, kind: role.kind, fn: role.fn, pattern: out[n]?.pattern || null });
+    tag(q, role, out[n]?.pattern || null);
     chords.push(q);
     // 지연 해결 기억: 도미넌트 다음에 해결이 아닌 다이아토닉이 왔으면 다음 2코드 안에 원래 목표가 오도록 점수를 올림
     if (prev && isDominant(prev) && role.root.pc !== prev.target && role.kind === "dia" && role.fn !== "D") pending = { pc: prev.target, left: 2 };
     else if (pending && (role.root.pc === pending.pc || --pending.left <= 0)) pending = null;
-    prev = role; prevBass = q.bassPc;
+    prev = role;
   }
 
   /** 박 위치 점수: 도미넌트 7은 강박에서 ×0.12 (약박 80% 목표 — 측정해서 맞춘 값), 디미니시드는 ×0.5 */
@@ -449,7 +555,7 @@ function attempt(o, slots, rnd, fits) {
     if (s <= 0) return 0;
     if (pending && r.root.pc === pending.pc) s *= 5;
     if (o.chance === 1 && slot.bar === 4 && slot.idx === 0 && chords[0]) {
-      // 평행 악절: 5마디 첫 코드 = 1마디 첫 코드(×4) 또는 3도 위아래 대리화음(×2)
+      // 평행 악절: 5마디 첫 코드 = 1마디 첫 코드(×4, 난이도 0만) 또는 3도 위아래 대리화음(×2)
       const d = iv(chords[0].rootPc, r.root.pc);
       if (d === 0) s *= 4; else if ([3, 4, 8, 9].includes(d) && r.kind === "dia") s *= 2;
     }
@@ -462,6 +568,9 @@ function attempt(o, slots, rnd, fits) {
     }
     return s;
   }
+
+  // 베이스 라인: 화성을 다 정한 뒤 전위형 (위 bassLine)
+  bassLine(chords, flat, o, rnd, fits, key);
 
   // 마디별로 다시 묶기
   const bars = slots.map(() => []);
@@ -495,6 +604,11 @@ function check(o, key, flat, chords, used) {
   // 1–4마디와 5–8마디가 완전히 같음 (개연성 1도 금지)
   const half = (a, b) => flat.map((s, n) => (s.bar >= a && s.bar < b ? chords[n].symbol : null)).filter(Boolean).join(" ");
   if (half(0, 4) === half(4, 8)) v.push("halves identical");
+  // 같은 마디 안에서 같은 이름이 연달아 (C – C) — 전위형으로 못 바꾼 경우
+  if (chords.some((c, i) => i && flat[i].bar === flat[i - 1].bar && c.symbol === chords[i - 1].symbol)) v.push("same chord in a bar");
+  // 난이도 1부터: 1마디 첫 코드와 5마디 첫 코드가 같은 코드면 안 됨 — 코드 이름 전체로 비교(CM7 → C6·C/E는 다른 코드, 사용자 결정 2026-11-13)
+  const bar5 = flat.findIndex(s => s.bar === 4);
+  if (o.level >= 1 && chords[0].symbol === chords[bar5].symbol) v.push("bar 5 = bar 1");
   // 개연성 2부터: 같은 패턴 두 번 이상 금지
   if (o.chance >= 2 && new Set(used).size !== used.length) v.push("pattern twice");
   // 다이아토닉 밖 코드 연속: 난이도 2는 최대 2개
