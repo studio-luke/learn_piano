@@ -157,7 +157,7 @@ test("improv slash: option B filters the chord before the slash; the lowest note
 // ---------- 8마디 코드진행 (improv/progression.js, 5단계 2026-11-10) ----------
 const progs = async (o, n = 300) => {
   const P = await import("../src/assets/js/improv/progression.js");
-  return Array.from({ length: n }, () => P.generateProgression({ tension: "off", slash: true, count: "mid", level: 2, chance: 2, meters: false, ...o }));
+  return Array.from({ length: n }, () => P.generateProgression({ tension: "off", slash: true, count: "mid", level: 3, chance: 2, meters: false, ...o }));
 };
 const chordsOf = ps => ps.flatMap(p => p.bars.flat());
 
@@ -217,22 +217,35 @@ test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-on
 });
 
 // ---------- 코드진행 문법 (improv/grammar.js, 6단계 난이도 1·2 — 2026-11-11) ----------
-test("improv grammar: level 1 = one key's diatonic chords (+ V7sus4, minor V7·VII°7); ImM7 only in the line cliché; level 2 adds secondary dominants, II-minor, diminished", async () => {
-  const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10, 11];   // 단조는 VII°7(이끔음) 포함
+test("improv grammar: level 0 = diatonic only, no slash chords, no V7sus4; level 1 adds V7sus4 + slash; add chords only on 0·1; dim7 from level 3; ImM7 only in the line cliché (2026-11-12)", async () => {
+  const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10, 11];   // 단조는 V7의 이끔음 포함
   const { Engine } = await import("../src/assets/js/core/engine.js");
-  for (const chance of [1, 2]) {
-    for (const p of await progs({ level: 1, chance, slash: false }, 400)) {
-      const tonic = Engine.pcOf(p.key.l, p.key.a), sc = p.key.minor ? MINOR : MAJOR;
-      for (const c of p.bars.flat()) {
-        assert.strictEqual(c.q.kind, "dia", c.q.symbol);
-        assert.ok(sc.includes((c.q.rootPc - tonic + 12) % 12), p.key.name + " " + c.q.symbol);
-        assert.ok(!["sus4", "sus2"].includes(c.q.type), c.q.symbol);
-        if (c.q.type === "mM7") assert.ok(/^cliche/.test(c.q.pattern), "ImM7은 클리셰로만 " + c.q.symbol);
+  for (const level of [0, 1]) {
+    for (const chance of [1, 2, 3]) {
+      for (const p of await progs({ level, chance, slash: level === 0 }, 300)) {   // 난이도 0은 분수코드를 켜도 없음
+        const tonic = Engine.pcOf(p.key.l, p.key.a), sc = p.key.minor ? MINOR : MAJOR;
+        for (const c of p.bars.flat()) {
+          if (level === 1 && c.q.kind === "surprise") continue;   // 개연성 3의 뜬금 도미넌트
+          assert.strictEqual(c.q.kind, "dia", c.q.symbol);
+          assert.ok(sc.includes((c.q.rootPc - tonic + 12) % 12), p.key.name + " " + c.q.symbol);
+          assert.ok(!["sus4", "sus2", "dim7"].includes(c.q.type), c.q.symbol);
+          if (level === 0) assert.ok(!c.q.bass && c.q.type !== "7sus4", "난이도 0 " + c.q.symbol);
+          if (c.q.type === "mM7") assert.ok(/^cliche/.test(c.q.pattern), "ImM7은 클리셰로만 " + c.q.symbol);
+        }
       }
     }
   }
-  const kinds = new Set(chordsOf(await progs({ level: 2, chance: 2 }, 400)).map(c => c.q.kind));
-  for (const k of ["dia", "sec", "ii", "dim"]) assert.ok(kinds.has(k), k);
+  const one = chordsOf(await progs({ level: 1 }, 600));
+  assert.ok(one.some(c => c.q.bass) && one.some(c => c.q.type === "7sus4") && one.some(c => /add/.test(c.q.type)));
+  const two = chordsOf(await progs({ level: 2 }, 600));
+  const kinds2 = new Set(two.map(c => c.q.kind));
+  for (const k of ["dia", "sec", "ii"]) assert.ok(kinds2.has(k), k);
+  assert.ok(two.every(c => c.q.type !== "dim7" && !/add/.test(c.q.type)), "난이도 2: dim7·add 없음");
+  for (const chance of [3, 4]) assert.ok(chordsOf(await progs({ level: 2, chance }, 400)).every(c => c.q.type !== "dim7"), "개연성 " + chance);
+  const three = chordsOf(await progs({ level: 3 }, 600));
+  assert.ok(three.some(c => c.q.kind === "dim") && three.every(c => !/add/.test(c.q.type)), "난이도 3: 디미니시드 있음, add 없음");
+  // 난이도 4~6은 아직 3과 같게
+  assert.ok(chordsOf(await progs({ level: 6 }, 200)).some(c => c.q.kind === "dim"));
 });
 
 test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), halves never identical, at most 2 non-diatonic in a row on level 2", async () => {
@@ -265,10 +278,10 @@ test("improv grammar: dominant 7ths mostly on weak beats (~80%), chance 4 is ran
     }
     assert.ok(weak / all > 0.72 && weak / all < 0.86, "개연성 " + chance + " 약박 " + (100 * weak / all).toFixed(1));
   }
-  const rand = chordsOf(await progs({ level: 2, chance: 4 }, 600));
+  const rand = chordsOf(await progs({ level: 3, chance: 4 }, 600));
   const dim = rand.filter(c => c.q.type === "dim7").length / rand.length;
   assert.ok(dim < 0.15, "무작위에서 dim7 " + (100 * dim).toFixed(1));
-  assert.ok(chordsOf(await progs({ level: 1, chance: 4 }, 300)).every(c => c.q.kind === "dia"), "난이도 1 무작위는 다이아토닉만");
+  for (const level of [0, 1]) assert.ok(chordsOf(await progs({ level, chance: 4 }, 300)).every(c => c.q.kind === "dia"), "난이도 " + level + " 무작위는 다이아토닉만");
 });
 
 test("improv prog: ~18% slash chords when allowed; notation odds M 10% · m 50% · dim/aug 60% symbols; max-count split ratios (2026-11-10)", async () => {

@@ -1,8 +1,10 @@
-// ===== 코드 초견 — 8마디 코드진행 문법 (난이도 1·2, 순수 함수, tests/improv.test.js) =====
+// ===== 코드 초견 — 8마디 코드진행 문법 (난이도 0~3, 순수 함수, tests/improv.test.js) =====
 // 규칙 초안: docs/chord-progression-rules.md (사용자 검토 2026-11-11). 요약은 chordoven-spec.md "코드 초견".
 //
 // 만드는 방법 (규칙 기반 확률):
-//   1) 조(키)를 고르고, 그 난이도에서 쓸 수 있는 코드를 "역할"(로마숫자)로 펼침 — 다이아토닉, (난이도 2) 세컨더리 도미넌트·II-minor·디미니시드
+//   1) 조(키)를 고르고, 그 난이도에서 쓸 수 있는 코드를 "역할"(로마숫자)로 펼침 — 다이아토닉, (난이도 2) 세컨더리 도미넌트·II-minor, (3) 디미니시드
+//      난이도 (2026-11-12 사용자 결정): 0 다이아토닉만·분수코드 없음·V7sus4 없음 / 1 + V7sus4·분수코드 / 2 + 세컨더리·II-minor, add 코드 없음 /
+//      3 + dim7(단조 VII°7 포함). 3의 나머지(SubV7 등)와 4~6은 아직 — 지금은 3과 같음
 //   2) 1마디 첫 코드부터 한 자리씩: 다음 후보마다 점수 = 기능 화성 점수 × 박 위치 × 그 밖의 규칙, 점수를 "온도"로 확률로 바꿔 하나 고름
 //   3) 코드 개연성(1~3)에 따라 대중적 패턴을 통째로 끼워 넣음
 //   4) 다 만든 뒤 조건 검사(II-V 횟수, 토닉, 반복, 종지 …) — 안 맞으면 처음부터 다시(최대 RETRIES번, 그래도 안 되면 어긴 것이 가장 적은 것)
@@ -67,12 +69,18 @@ const TABLE_MINOR = {
 };
 const baseId = id => (id === "Vsus" ? "V" : id);
 
-/** 조 하나의 역할 목록 (난이도 1·2) */
+/** add 코드는 난이도 0·1에서만 (사용자 결정 2026-11-12) — 2부터는 목록에서 빼고 나머지 비율로 */
+const withoutAdd = types => types.filter(t => !/add/.test(t[0]));
+
+/** 조 하나의 역할 목록 (난이도 0~3) */
 export function buildRoles(key, level) {
   const sc = key.minor ? MINOR : MAJOR;
   const tonic = { l: key.l, a: key.a };
   const roles = [];
-  for (const [id, deg, alt, types, fn] of key.minor ? DIA_MINOR : DIA_MAJOR) {
+  for (let [id, deg, alt, types, fn] of key.minor ? DIA_MINOR : DIA_MAJOR) {
+    if (id === "Vsus" && level < 1) continue;   // V7sus4는 난이도 1부터
+    if (id === "viio" && level < 3) continue;   // dim7은 난이도 3부터 (단조 VII°7도)
+    if (level >= 2) types = withoutAdd(types);
     roles.push({ id, root: spell(tonic, sc[deg - 1] + alt, deg), types, kind: "dia", fn, sus: id === "Vsus" });
   }
   const byId = Object.fromEntries(roles.map(r => [r.id, r]));
@@ -98,7 +106,8 @@ export function buildRoles(key, level) {
     if (dup) { (dup.iiOf = dup.iiOf || []).push(d.id); continue; }
     roles.push({ id: "ii/" + d.id, root, types, kind: "ii", fn: "S", dominant: d.id });
   }
-  // 디미니시드 (사용자 결정 Q1 — 난이도 2부터): 어센딩 = 목표의 반음 아래, 디센딩 = 목표의 반음 위, 어그질러리 = I°7·V°7
+  if (level < 3) return roles;
+  // 디미니시드 (사용자 결정 Q1 — 난이도 2부터였다가 2026-11-12 사용자 결정으로 3부터): 어센딩 = 목표의 반음 아래, 디센딩 = 목표의 반음 위, 어그질러리 = I°7·V°7
   const dimTargets = key.minor ? ["ii", "bIII", "iv", "V", "bVI", "bVII"] : ["II", "III", "IV", "V", "VI"];
   for (const t of dimTargets) {
     const tr = byId[t].root;
@@ -281,10 +290,10 @@ function realize(role, prevBass, o, rnd, forced) {
 }
 
 /** 개연성 3의 "뜬금없는" 코드: 아무 근음의 dim7(어센딩처럼) 또는 도미넌트 7(완전5도 아래로 가려 함) */
-function surprise(rnd) {
+function surprise(rnd, level) {
   const r0 = Math.floor(rnd() * 12);
   const root = tidy(Engine.spellTone({ l: 0, a: 0 }, r0, [1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7][r0]));   // C D♭ D E♭ E F G♭ G A♭ A B♭ B
-  return rnd() < 0.5
+  return level >= 3 && rnd() < 0.5   // dim7은 난이도 3부터
     ? { id: "surprise", root, types: [["dim7", 1]], kind: "surprise", fn: "D", target: (r0 + 1) % 12, dimKind: "asc" }
     : { id: "surprise", root, types: [["dom7", 1]], kind: "surprise", fn: "D", target: (r0 + 5) % 12 };
 }
@@ -302,7 +311,7 @@ export function strong(lens, i, bar) {
 // ---------- 한 진행 만들기 ----------
 /**
  * 난이도 1·2 코드진행.
- * @param o       { tension, slash, level(1·2), chance(1~3) }
+ * @param o       { tension, slash, level(0~3), chance(1~3) }
  * @param slots   [[{ len, start, strong, longOk }] × 8] — 마디 나누기(progression.js가 정함)
  * @param rnd     난수
  * @param fits    (q, slot) => boolean — 그 자리에 그 코드를 써도 되는지(긴 코드 자리 규칙 등, progression.js가 줌)
@@ -363,7 +372,7 @@ function attempt(o, slots, rnd, fits) {
 
   // 패턴 끼워 넣기: 1마디(그리고 개연성 1·2면 5마디)에서 확률로
   const patOdds = PATTERN_ODDS[o.chance] || 0;
-  const pats = (key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => (p.level || 1) <= o.level);
+  const pats = (key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => (p.level || 0) <= o.level);
   for (const startBar of [0, 4]) {
     if (rnd() >= patOdds) continue;
     const start = flat.findIndex(s => s.bar === startBar);
@@ -395,8 +404,8 @@ function attempt(o, slots, rnd, fits) {
       // 온도는 화성 점수에만 — 박 위치(도미넌트 약박 80%)는 온도와 상관없이 같은 힘으로 (개연성이 낮아도 박 규칙은 지킴)
       cand = roles.map(r => [r, score(r, slot, n)]).filter(c => c[1] > 0).map(([r, s]) => [r, Math.pow(s, 1 / T) * beat(r, slot)]);
     }
-    // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드·도미넌트 7 (사용자 결정)
-    if (o.chance === 3 && !out[n] && prev && rnd() < 0.1) cand = [[surprise(rnd), 1]];
+    // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드(난이도 3부터)·도미넌트 7 (사용자 결정). 난이도 0은 다이아토닉만이라 없음
+    if (o.chance === 3 && o.level > 0 && !out[n] && prev && rnd() < 0.1) cand = [[surprise(rnd, o.level), 1]];
 
     // 역할을 고르고 코드로 — 그 자리에 맞지 않으면(긴 코드 자리 등) 텐션·분수코드를 빼 보고, 그래도 안 되면 다른 역할로
     let role = null, q = null;
@@ -483,6 +492,6 @@ function check(o, key, flat, chords, used) {
   // 다이아토닉 밖 코드 연속: 난이도 2는 최대 2개
   let run = 0, maxRun = 0;
   for (const c of chords) { run = c.kind === "dia" || c.kind === "surprise" ? 0 : run + 1; maxRun = Math.max(maxRun, run); }
-  if (maxRun > { 1: 0, 2: 2 }[o.level]) v.push("non-diatonic run " + maxRun);
+  if (maxRun > (o.level < 2 ? 0 : 2)) v.push("non-diatonic run " + maxRun);
   return v;
 }

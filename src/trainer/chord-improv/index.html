@@ -174,20 +174,20 @@
           <p class="note" id="pCountText"></p>
         </div>
 
-        <!-- 코드 진행 난이도: 6칸 슬라이더 (2026-11-11) -->
+        <!-- 코드 진행 난이도: 7칸 슬라이더 0~6 (2026-11-11 6칸, 2026-11-12 난이도 0 추가) -->
         <div class="opt">
           <h3 id="pLevelH" data-i18n="progLevelH">코드 진행 난이도</h3>
-          <input class="pg-range" type="range" id="pLevel" min="0" max="5" step="1" aria-labelledby="pLevelH">
-          <div class="pg-ticks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+          <input class="pg-range" type="range" id="pLevel" min="0" max="6" step="1" aria-labelledby="pLevelH">
+          <div class="pg-ticks" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
           <p class="note" id="pLevelText"></p>
-          <p class="note pg-soon" id="pLevelSoon" data-i18n="progLevelSoon">난이도 3~6은 곧 추가돼요. 지금은 난이도 2와 같은 코드로 나와요.</p>
+          <p class="note pg-soon" id="pLevelSoon" data-i18n="progLevelSoon">난이도 3은 지금 디미니시드까지, 4~6은 곧 추가돼요. 지금은 3과 같은 코드로 나와요.</p>
         </div>
 
-        <!-- 코드 개연성: 4칸 슬라이더 (2026-11-11) -->
+        <!-- 코드 개연성: 4칸 슬라이더 (2026-11-11), 칸 이름 높음·중간·낮음·랜덤 (2026-11-12) -->
         <div class="opt">
           <h3 id="pChanceH" data-i18n="progChanceH">코드 개연성</h3>
           <input class="pg-range" type="range" id="pChance" min="0" max="3" step="1" aria-labelledby="pChanceH">
-          <div class="pg-ticks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+          <div class="pg-ticks" aria-hidden="true"><span data-i18n="progChanceT0">높음</span><span data-i18n="progChanceT1">중간</span><span data-i18n="progChanceT2">낮음</span><span data-i18n="progChanceT3">랜덤</span></div>
           <p class="note" id="pChanceText"></p>
         </div>
 

@@ -92,8 +92,8 @@ export const isLong = q => !q.error && displayLength(q) >= LONG;
 
 /**
  * 8마디 코드진행 하나.
- * @param o    출제 설정 { tension: "off"|"1"|"2"|"hard", slash, count: "low"|"mid"|"high", level: 1~6, chance: 1~4, meters }
- *             level = 코드 진행 난이도, chance = 코드 개연성 (2026-11-11). 지금은 난이도 1·2까지 — 3~6은 2와 같게(improv/grammar.js)
+ * @param o    출제 설정 { tension: "off"|"1"|"2"|"hard", slash, count: "low"|"mid"|"high", level: 0~6, chance: 1~4, meters }
+ *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 분수코드 없음), chance = 코드 개연성 (2026-11-11). 지금은 난이도 0~3까지 — 4~6은 3과 같게(improv/grammar.js)
  * @param rnd  난수 함수 (테스트에서 고정값)
  * @returns { meter, style, key, bars: [[{ q, start, len, short }] × 8] }
  *   start·len은 펄스 단위, short는 "/B♭"처럼 베이스만 쓸지(같은 마디에서 바로 앞과 위 코드가 같고 베이스만 다름)
@@ -102,7 +102,7 @@ export function generateProgression(o, rnd = Math.random) {
   const meter = o.meters ? pickBy(METERS, m => m.w, rnd) : METERS[0];
   const style = randomStyle(rnd);
   const splits = SPLITS[o.count] || SPLITS.mid;
-  const chance = o.chance || 2, level = Math.min(o.level || 2, 2);
+  const chance = o.chance || 2, level = Math.min(o.level ?? 2, 3);
   // 마디 나누기 먼저. 화성 리듬 가속(사용자 결정 2026-11-11): 4·8마디는 코드 여러 개로 나누는 쪽에 개연성 1 ×1.6 · 2 ×1.2 · 3·4 없음
   const accel = { 1: 1.6, 2: 1.2 }[chance] || 1;
   const slots = Array.from({ length: BARS }, (_, b) => {
@@ -115,7 +115,7 @@ export function generateProgression(o, rnd = Math.random) {
   // 생성기가 코드를 고를 때 이 검사로 거름 (기호 표기를 바꾼 뒤의 길이로 판단 — dim7보다 °7이 짧음)
   const longIn = q => isLong(restyle(q, style));
   const fits = (q, slot, barChords) => !longIn(q) || (slot.len * 2 >= meter.pulses && !barChords.some(longIn));
-  const g = (chance === 4 ? generateRandom : generateGrammar)({ tension: o.tension, slash: !!o.slash, level, chance }, slots, rnd, fits);
+  const g = (chance === 4 ? generateRandom : generateGrammar)({ tension: o.tension, slash: !!o.slash && level > 0, level, chance }, slots, rnd, fits);
   const bars = slots.map((bar, b) => bar.map((sl, i) => ({ raw: g.chords[b][i], start: sl.start, len: sl.len })));
   // dim·aug가 하나라도 1박짜리 자리에 오면 이 악보에서는 반드시 기호(°·+)로 (사용자 결정 2026-11-10 — 1박 자리는 좁아서).
   // 기호로 바꾸면 이름이 짧아지기만 하므로 위의 긴 코드 자리 규칙은 그대로 지켜짐
