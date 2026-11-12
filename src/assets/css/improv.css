@@ -135,11 +135,13 @@
    한 줄 = 코드 기호 줄(.pg-chords, HTML) + 오선(SVG, 폭 100%). 코드 기호는 left %로 오선의 박 위치에 맞춤.
    글자 크기는 화면 폭 비례 — 폰 세로는 작게 보여서 "가로로 돌리면…" 안내 */
 .pg-wrap { position: relative; }
-.pg-sheet { display: flex; flex-direction: column; gap: 6px; padding-block: 4px; }
+/* 종이 위 악보처럼 (2026-11-12 사용자 요청): 라이트·다크 상관없이 흰 바탕 + 모든 요소 검은색 — 테마 토큰을 쓰지 않는 예외 */
+.pg-sheet { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 12px; background: #fff; color: #000; border-radius: 6px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.18); }
+.pg-sheet * { color: #000; }
 .pg-row { position: relative; }
 .pg-chords { position: relative; height: 2.1em; font-size: clamp(13px, 2.3vw, 24px); }
 .pg-chord.symbol { position: absolute; bottom: 0; font-size: 1em; line-height: 1; min-height: 0; white-space: nowrap; }
-.pg-staff { display: block; width: 100%; height: auto; color: var(--ink); overflow: visible; }
+.pg-staff { display: block; width: 100%; height: auto; color: #000; overflow: visible; }
 .pg-line, .pg-bar { stroke: currentColor; stroke-width: 1; }
 .pg-thick { stroke: currentColor; stroke-width: 4; }
 .pg-fill { fill: currentColor; }
@@ -158,7 +160,7 @@
 .pg-soon { font-style: italic; }
 /* 8마디 모드, 폰 가로(악보대에 세운 폰): 악보·[새 코드진행]·박 점·템포가 화면 높이 안에 들어오게 간격을 줄임 */
 @media (orientation: landscape) and (max-height: 520px) {
-  .pg-sheet { gap: 0; padding-block: 0; }
+  .pg-sheet { gap: 0; padding-block: 4px; }
   .pg-chords { height: 1.55em; }
   .im-card.is-prog { gap: 6px; padding-block: 8px 10px; }
 }
