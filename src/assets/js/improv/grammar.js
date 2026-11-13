@@ -374,6 +374,7 @@ const PATTERNS = {
     { name: "picardy", seq: ["iv", "V", "PicI"], level: 4 },
   ],
 };
+const CLICHE_LONG = 0.04;   // 4마디 넘게 걸치는 라인 클리셰의 비중 (2026-11-13 사용자 결정 0.25 → 0.04)
 const PATTERN_ODDS = { 1: 0.7, 2: 0.4, 3: 0.15 };   // 개연성별로 패턴을 통째로 쓸 확률 (docs §5)
 const TEMPERATURE = { 1: 0.6, 2: 0.9, 3: 1.3 };
 
@@ -687,7 +688,9 @@ function attempt(o, slots, rnd, fits) {
       // 난이도 1부터: 5마디 패턴이 1마디 패턴과 같은 코드(같은 역할·종류·베이스)로 시작하지 않게 — 종류·베이스를 정하지 않은 같은 역할이면 아직 같을 수 있어 뺌
       .filter(p => !(o.level >= 1 && startBar === 4 && out[0] && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
     if (!pool.length) continue;
-    const p = pool[Math.floor(rnd() * pool.length)];
+    // 라인 클리셰가 4마디 이상을 차지하면(코드 개수 최소 등 한 마디에 코드 하나) 다른 패턴보다 ×0.25 (사용자 결정 2026-11-13)
+    const span = p => flat[Math.min(start + p.seq.length, flat.length) - 1].bar - flat[start].bar + 1;
+    const p = pickBy(pool, p => (/^cliche/.test(p.name) && span(p) >= 4 ? CLICHE_LONG : 1), rnd);
     used.push(p.name);
     // 난이도 0·1은 6th 코드가 없으니 라인 클리셰도 Im7까지만 (사용자 결정 2026-11-13)
     const cut = p.seq.findIndex(it => Array.isArray(it) && SIXTH.includes(it[1]));
@@ -796,8 +799,9 @@ function check(o, key, flat, chords, used) {
   const tonicPc = Engine.pcOf(key.l, key.a);
   // 토닉이 한 번은 (조가 들리게)
   if (!chords.some(c => c.rootPc === tonicPc && (c.role === "I" || c.role === "i"))) v.push("no tonic");
-  // II-V 최소: 개연성 1 → 2번, 2 → 1번
-  const need = { 1: 2, 2: 1 }[o.chance] || 0;
+  // II-V 최소: 개연성 1 → 2번, 2 → 1번. 라인 클리셰가 4마디 이상을 차지하면 하나 줄임 (남은 마디가 적어서 — 사용자 결정 2026-11-13)
+  const clicheBars = new Set(flat.filter((s, n) => /^cliche/.test(chords[n].pattern || "")).map(s => s.bar)).size;
+  const need = Math.max(0, ({ 1: 2, 2: 1 }[o.chance] || 0) - (clicheBars >= 4 ? 1 : 0));
   if (countIIV(chords) < need) v.push("II-V " + countIIV(chords) + "/" + need);
   // 같은 2코드 묶음 3번 이상 (패턴 밖)
   const pairs = {};
