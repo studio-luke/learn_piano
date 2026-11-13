@@ -351,7 +351,9 @@ test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), 
     let ok = 0, N = 300;
     for (const p of await progs({ level: 2, chance }, N)) {
       const flat = p.bars.flat().map(c => c.q);
-      if (countIIV(flat) >= need) ok++;
+      // 라인 클리셰가 2마디 이상이면 II-V 최소가 하나 줄어듦 (2026-11-13)
+      const clBars = new Set(p.bars.flatMap((bar, b) => bar.some(c => /^cliche/.test(c.q.pattern || "")) ? [b] : [])).size;
+      if (countIIV(flat) >= need - (clBars >= 2 ? 1 : 0)) ok++;
       const half = (a, b) => p.bars.slice(a, b).map(bar => bar.map(c => c.q.symbol).join(" ")).join("|");
       assert.notStrictEqual(p.bars[4][0].q.symbol, p.bars[0][0].q.symbol, "5마디 첫 코드 = 1마디 첫 코드");   // 난이도 1부터 (2026-11-13)
       assert.notStrictEqual(half(0, 4), half(4, 8));
@@ -437,4 +439,39 @@ test("improv prog: if dim or aug lands on a one-beat slot, that chart writes it 
   assert.ok(forced > 50, "1박 dim이 나온 악보 " + forced);
   // 1박에 없으면 60% 확률 그대로 → 글자 dim도 나옴
   assert.ok(free > 100 && wordDim / free > 0.25 && wordDim / free < 0.55, (100 * wordDim / free).toFixed(0) + "% 글자");
+});
+
+test("improv grammar: line clichés — minor (Im·IVm in minor, IIm·VIm in major, from level 1; Im from 0) and major (I·IV, ♭III·♭VI, from level 2); early stops; start bars by length (2026-11-13)", async () => {
+  const seen = {};
+  for (const level of [0, 1, 2, 3, 4]) for (const count of ["low", "mid", "high"]) {
+    for (const p of await progs({ level, chance: 1, count, slash: true, tension: "off" }, 300)) {
+      const flat = p.bars.flatMap((bar, b) => bar.map((c, i) => ({ ...c.q, bar: b, idx: i })));
+      for (let j = 0; j < flat.length; j++) {
+        const q = flat[j];
+        if (!/^cliche/.test(q.pattern || "") || !["min", "M7"].includes(q.type) || (j && flat[j - 1].pattern === q.pattern && flat[j - 1].role === q.role)) continue;
+        // 클리셰 하나 (같은 패턴 이름이 이어지는 동안 — 메이저의 마지막 7은 역할이 바뀜)
+        let k = j + 1;
+        while (k < flat.length && flat[k].pattern === q.pattern && ["mM7", "m7", "m6", "augM7", "6", "dom7"].includes(flat[k].type) && k - j < 4) k++;
+        const run = flat.slice(j, k), types = run.map(c => c.type), span = run.at(-1).bar - q.bar + 1;
+        assert.strictEqual(q.idx, 0, "마디 첫 자리에서 시작 " + q.symbol);
+        assert.ok(span <= 2 ? [0, 2, 4, 6].includes(q.bar) : [0, 4].includes(q.bar), "시작 마디 " + (q.bar + 1) + " · " + span + "마디");
+        const tag = (p.key.minor ? "m:" : "M:") + q.role;
+        seen[tag] = true;
+        if (q.pattern === "cliche-major") {
+          assert.ok(level >= 2, "메이저 클리셰는 난이도 2부터");
+          assert.deepStrictEqual(types.slice(0, 3), ["M7", "augM7", "6"], types.join(" "));
+          assert.ok(p.key.minor ? ["bIII", "bVI"].includes(q.role) : ["I", "IV"].includes(q.role), tag);
+          if (types.length === 4) {
+            assert.ok(!p.key.minor && (q.role === "I" ? run[3].role === "V/IV" : level >= 4 && run[3].role === "IV7"), tag + " → " + run[3].role);
+          }
+        } else {
+          assert.deepStrictEqual(types.slice(0, 3), ["min", "mM7", "m7"], types.join(" "));
+          assert.ok(p.key.minor ? ["i", "iv"].includes(q.role) : ["II", "VI"].includes(q.role), tag);
+          if (q.role !== "i") assert.ok(level >= 1, "Im 밖의 클리셰는 난이도 1부터");
+          if (level <= 1) assert.strictEqual(types.length, 3, "난이도 0·1은 m7에서 끝");
+        }
+      }
+    }
+  }
+  for (const k of ["m:i", "m:iv", "M:II", "M:VI", "M:I", "M:IV", "m:bIII", "m:bVI"]) assert.ok(seen[k], k);
 });

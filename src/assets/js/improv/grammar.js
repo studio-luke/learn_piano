@@ -367,14 +367,41 @@ const PATTERNS = {
     { name: "minor-2-5-1", seq: ["ii", "V", "i"] },
     { name: "6-7-1", seq: ["bVI", "bVII", "i"] },
     { name: "4-5-1", seq: ["iv", "V", "i"] },
-    // 하행 클리셰 (ImM7은 이 용법으로만 — 사용자 결정)
-    { name: "cliche-bass", seq: [["i", "min"], ["i", "mM7", "7"], ["i", "m7", "b7"], ["i", "m6", "6"]] },
-    { name: "cliche-top", seq: [["i", "min"], ["i", "mM7"], ["i", "m7"], ["i", "m6"]] },
     { name: "minor-2-subV-1", seq: ["ii", "subv/i", "i"], level: 3 },
     { name: "picardy", seq: ["iv", "V", "PicI"], level: 4 },
   ],
 };
-const CLICHE_LONG = 0.04;   // 4마디 넘게 걸치는 라인 클리셰의 비중 (2026-11-13 사용자 결정 0.25 → 0.04)
+
+// ---------- 라인 클리셰 (사용자 결정 2026-11-13) ----------
+// 패턴과 따로: 진행 중에 아래 코드가 뽑히면 그 자리에서 클리셰로 늘어날 수 있음 (마디 첫 자리에서만 시작).
+//   2마디 이하에 들어가면 1·3·5·7마디, 2마디를 넘으면 1·5마디에서만 시작. 끝나면 원래 코드(마지막 코드의 역할)의 다음 후보로 이어짐
+//   마이너: Im(단조, 난이도 0부터) · IVm(단조) · IIm7·VIm7(장조) — 난이도 1부터. m – mM7 – m7 – m6, 베이스 하행형(m – mM7/7 – m7/♭7 – m6/6)과 윗성부형 반반.
+//     50%는 m7에서 끝남, 난이도 0·1은 6th 코드가 없어 항상 m7에서
+//   메이저(윗성부형만): I·IV(장조), ♭III·♭VI(단조) — 난이도 2부터. M7 – augM7 – 6 – 7, 50%는 6에서 끝남.
+//     7까지 가면 I7은 V7/IV로, IV7은 모달 인터체인지(난이도 4부터)로 이어짐. IV는 난이도 2·3, ♭III·♭VI는 늘 6에서 끝남
+const CLICHE_ODDS = { 1: 0.34, 2: 0.25, 3: 0.14 };   // 클리셰가 될 수 있는 코드가 뽑혔을 때 (개연성별)
+const CLICHE_DEG = { i: 1, iv: 0.5, II: 0.6, VI: 0.6, I: 0.25, IV: 0.35, bIII: 0.35, bVI: 0.35 };   // 도수별 배율 — 마이너 총량은 예전(Im만)과 비슷하게, 메이저는 그 절반쯤
+const CLICHE_LONG = 0.12;   // 2마디를 넘게 걸치면 (코드 개수 최소 등) ×0.12 — 4마디짜리는 드물게 (2026-11-13 사용자 결정 "최소일 때 비율 낮추기")
+const CLICHE_LOW_LEVEL = { 0: 0.35, 1: 0.25 };   // 난이도 0·1: 클리셰가 짧고(m7에서 끝남) 코드 종류가 적어 더 자주 걸리므로 낮춤 — 난이도마다 비슷하게
+
+/** 이 역할에서 시작하는 라인 클리셰 { name, items: [[역할 id, 코드 종류, 베이스]…] } 또는 null */
+function clicheFor(role, key, level, rnd) {
+  if (role.kind !== "dia") return null;
+  const minorDeg = key.minor ? ["i", "iv"] : ["II", "VI"], majorDeg = key.minor ? ["bIII", "bVI"] : ["I", "IV"];
+  if (minorDeg.includes(role.id) && (role.id === "i" || level >= 1)) {
+    const bass = rnd() < 0.5;
+    const seq = bass ? [["min"], ["mM7", "7"], ["m7", "b7"], ["m6", "6"]] : [["min"], ["mM7"], ["m7"], ["m6"]];
+    if (level < 2 || rnd() < 0.5) seq.pop();
+    return { name: bass ? "cliche-bass" : "cliche-top", items: seq.map(([t, b]) => [role.id, t, b]) };
+  }
+  if (majorDeg.includes(role.id) && level >= 2) {
+    const items = [[role.id, "M7"], [role.id, "augM7"], [role.id, "6"]];
+    const seventh = key.minor ? null : role.id === "I" ? "V/IV" : level >= 4 ? "IV7" : null;
+    if (seventh && rnd() >= 0.5) items.push([seventh, "dom7"]);
+    return { name: "cliche-major", items };
+  }
+  return null;
+}
 const PATTERN_ODDS = { 1: 0.7, 2: 0.4, 3: 0.15 };   // 개연성별로 패턴을 통째로 쓸 확률 (docs §5)
 const TEMPERATURE = { 1: 0.6, 2: 0.9, 3: 1.3 };
 
@@ -688,14 +715,9 @@ function attempt(o, slots, rnd, fits) {
       // 난이도 1부터: 5마디 패턴이 1마디 패턴과 같은 코드(같은 역할·종류·베이스)로 시작하지 않게 — 종류·베이스를 정하지 않은 같은 역할이면 아직 같을 수 있어 뺌
       .filter(p => !(o.level >= 1 && startBar === 4 && out[0] && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
     if (!pool.length) continue;
-    // 라인 클리셰가 4마디 이상을 차지하면(코드 개수 최소 등 한 마디에 코드 하나) 다른 패턴보다 ×0.25 (사용자 결정 2026-11-13)
-    const span = p => flat[Math.min(start + p.seq.length, flat.length) - 1].bar - flat[start].bar + 1;
-    const p = pickBy(pool, p => (/^cliche/.test(p.name) && span(p) >= 4 ? CLICHE_LONG : 1), rnd);
+    const p = pool[Math.floor(rnd() * pool.length)];
     used.push(p.name);
-    // 난이도 0·1은 6th 코드가 없으니 라인 클리셰도 Im7까지만 (사용자 결정 2026-11-13)
-    const cut = p.seq.findIndex(it => Array.isArray(it) && SIXTH.includes(it[1]));
-    const seq = o.level < 2 && cut >= 0 ? p.seq.slice(0, cut) : p.seq;
-    seq.forEach((it, j) => { out[start + j] = { pattern: p.name, item: Array.isArray(it) ? it : [it] }; });
+    p.seq.forEach((it, j) => { out[start + j] = { pattern: p.name, item: Array.isArray(it) ? it : [it] }; });
   }
 
   // 한 자리씩
@@ -738,6 +760,28 @@ function attempt(o, slots, rnd, fits) {
     if (!q) {   // 마지막 수단: 이 조의 토닉 3화음 (짧아서 어디든 맞음)
       role = byId[key.minor ? "i" : "I"];
       q = makeChord(role, key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd);
+    }
+    // 라인 클리셰로 늘이기 (위 clicheFor) — 첫 코드도 클리셰의 첫 코드로 바꿈
+    if (!out[n] && slot.idx === 0 && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
+      const cl = clicheFor(role, key, o.level, rnd);
+      const end = cl && n + cl.items.length - 1;
+      const span = cl && end < flat.length ? flat[end].bar - slot.bar + 1 : 99;
+      const startOk = span <= 2 ? [0, 2, 4, 6].includes(slot.bar) : span <= 4 && [0, 4].includes(slot.bar);
+      if (cl && startOk && cl.items.every((_, j) => !out[n + j]) && (span <= 2 || rnd() < CLICHE_LONG)) {
+        // 미리 만들어 긴 코드 자리 규칙에 맞는지 (텐션 없이)
+        const pre = [];
+        const ok = cl.items.every(([id, t, b], j) => {
+          const c = byId[id] && makeChord(byId[id], t, b, { ...o, tension: "off" }, rnd);
+          const bar = [...barOf(n + j), ...pre.filter((_, i) => flat[n + i].bar === flat[n + j].bar)];
+          if (!c || !fits(c, flat[n + j], j ? bar : barOf(n))) return false;
+          pre.push(c); return true;
+        });
+        if (ok) {
+          cl.items.forEach((it, j) => { out[n + j] = { pattern: cl.name, item: it }; });
+          used.push(cl.name);
+          q = pre[0];
+        }
+      }
     }
     tag(q, role, out[n]?.pattern || null);
     chords.push(q);
@@ -799,9 +843,9 @@ function check(o, key, flat, chords, used) {
   const tonicPc = Engine.pcOf(key.l, key.a);
   // 토닉이 한 번은 (조가 들리게)
   if (!chords.some(c => c.rootPc === tonicPc && (c.role === "I" || c.role === "i"))) v.push("no tonic");
-  // II-V 최소: 개연성 1 → 2번, 2 → 1번. 라인 클리셰가 4마디 이상을 차지하면 하나 줄임 (남은 마디가 적어서 — 사용자 결정 2026-11-13)
+  // II-V 최소: 개연성 1 → 2번, 2 → 1번. 라인 클리셰가 2마디 이상을 차지하면 하나 줄임 (남은 마디가 적어서 — 사용자 결정 2026-11-13, 4마디 → 2마디는 클리셰 비율을 맞추며 Claude가 바꿈)
   const clicheBars = new Set(flat.filter((s, n) => /^cliche/.test(chords[n].pattern || "")).map(s => s.bar)).size;
-  const need = Math.max(0, ({ 1: 2, 2: 1 }[o.chance] || 0) - (clicheBars >= 4 ? 1 : 0));
+  const need = Math.max(0, ({ 1: 2, 2: 1 }[o.chance] || 0) - (clicheBars >= 2 ? 1 : 0));
   if (countIIV(chords) < need) v.push("II-V " + countIIV(chords) + "/" + need);
   // 같은 2코드 묶음 3번 이상 (패턴 밖)
   const pairs = {};
