@@ -441,37 +441,42 @@ test("improv prog: if dim or aug lands on a one-beat slot, that chart writes it 
   assert.ok(free > 100 && wordDim / free > 0.25 && wordDim / free < 0.55, (100 * wordDim / free).toFixed(0) + "% 글자");
 });
 
-test("improv grammar: line clichés — minor (Im·IVm in minor, IIm·VIm in major, from level 1; Im from 0) and major (I·IV, ♭III·♭VI, from level 2); early stops; start bars by length (2026-11-13)", async () => {
-  const seen = {};
+test("improv grammar: line clichés — minor (Im·IVm in minor, IIm·VIm in major, from level 1; Im from 0) and major (I·IV, ♭III·♭VI, from level 2); early stops; may start on the 2nd chord; start spots by length (2026-11-13)", async () => {
+  const MINOR = ["min", "mM7", "m7", "m6"], MAJOR = ["M7", "augM7", "6", "dom7"];
+  const seen = {}, forms = new Set();
   for (const level of [0, 1, 2, 3, 4]) for (const count of ["low", "mid", "high"]) {
     for (const p of await progs({ level, chance: 1, count, slash: true, tension: "off" }, 300)) {
-      const flat = p.bars.flatMap((bar, b) => bar.map((c, i) => ({ ...c.q, bar: b, idx: i })));
+      const flat = p.bars.flatMap((bar, b) => bar.map((c, i) => ({ ...c.q, bar: b, idx: i, start: c.start, len: c.len })));
       for (let j = 0; j < flat.length; j++) {
-        const q = flat[j];
-        if (!/^cliche/.test(q.pattern || "") || !["min", "M7"].includes(q.type) || (j && flat[j - 1].pattern === q.pattern && flat[j - 1].role === q.role)) continue;
-        // 클리셰 하나 (같은 패턴 이름이 이어지는 동안 — 메이저의 마지막 7은 역할이 바뀜)
+        const q = flat[j], order = q.pattern === "cliche-major" ? MAJOR : MINOR;
+        if (!/^cliche/.test(q.pattern || "")) continue;
+        const prev = flat[j - 1];
+        if (prev && prev.pattern === q.pattern && order.indexOf(prev.type) < order.indexOf(q.type) && (prev.role === q.role || q.type === "dom7")) continue;   // 클리셰 안
         let k = j + 1;
-        while (k < flat.length && flat[k].pattern === q.pattern && ["mM7", "m7", "m6", "augM7", "6", "dom7"].includes(flat[k].type) && k - j < 4) k++;
+        while (k < flat.length && flat[k].pattern === q.pattern && order.indexOf(flat[k].type) > order.indexOf(flat[k - 1].type) && (flat[k].role === q.role || flat[k].type === "dom7")) k++;
         const run = flat.slice(j, k), types = run.map(c => c.type), span = run.at(-1).bar - q.bar + 1;
-        assert.strictEqual(q.idx, 0, "마디 첫 자리에서 시작 " + q.symbol);
-        assert.ok(span <= 2 ? [0, 2, 4, 6].includes(q.bar) : [0, 4].includes(q.bar), "시작 마디 " + (q.bar + 1) + " · " + span + "마디");
+        const pulses = run.reduce((a, c) => a + c.len, 0);
+        // 시작 자리: 한 마디 안 1~7마디, 2마디 1·3·5·7마디, 더 길면 1·5마디 — 첫 박, 4박 마디의 2박짜리는 셋째 박도
+        if (q.idx === 0) assert.ok(span === 1 ? q.bar <= 6 : span === 2 ? [0, 2, 4, 6].includes(q.bar) : [0, 4].includes(q.bar), "시작 마디 " + (q.bar + 1) + " · " + span + "마디 " + types.join(" "));
+        else assert.ok(span === 1 && pulses === 2 && q.start === 2 && q.bar <= 6, "셋째 박 시작 " + types.join(" "));
+        assert.ok(types.length >= 2, types.join(" "));
         const tag = (p.key.minor ? "m:" : "M:") + q.role;
-        seen[tag] = true;
+        seen[tag] = true; forms.add(types.join(" "));
         if (q.pattern === "cliche-major") {
           assert.ok(level >= 2, "메이저 클리셰는 난이도 2부터");
-          assert.deepStrictEqual(types.slice(0, 3), ["M7", "augM7", "6"], types.join(" "));
+          assert.ok(MAJOR.join(" ").includes(types.join(" ")) && types.includes("augM7"), types.join(" "));
           assert.ok(p.key.minor ? ["bIII", "bVI"].includes(q.role) : ["I", "IV"].includes(q.role), tag);
-          if (types.length === 4) {
-            assert.ok(!p.key.minor && (q.role === "I" ? run[3].role === "V/IV" : level >= 4 && run[3].role === "IV7"), tag + " → " + run[3].role);
-          }
+          if (types.includes("dom7")) assert.ok(!p.key.minor && (q.role === "I" ? run.at(-1).role === "V/IV" : level >= 4 && run.at(-1).role === "IV7"), tag + " → " + run.at(-1).role);
         } else {
-          assert.deepStrictEqual(types.slice(0, 3), ["min", "mM7", "m7"], types.join(" "));
+          assert.ok(MINOR.join(" ").includes(types.join(" ")) || types.join(" ") === "mM7 m6", types.join(" "));
+          assert.ok(types.includes("mM7"), types.join(" "));
           assert.ok(p.key.minor ? ["i", "iv"].includes(q.role) : ["II", "VI"].includes(q.role), tag);
           if (q.role !== "i") assert.ok(level >= 1, "Im 밖의 클리셰는 난이도 1부터");
-          if (level <= 1) assert.strictEqual(types.length, 3, "난이도 0·1은 m7에서 끝");
+          if (level <= 1) assert.ok(!types.includes("m6"), "난이도 0·1은 m7에서 끝");
         }
       }
     }
   }
   for (const k of ["m:i", "m:iv", "M:II", "M:VI", "M:I", "M:IV", "m:bIII", "m:bVI"]) assert.ok(seen[k], k);
+  for (const f of ["min mM7 m7", "mM7 m7", "mM7 m6", "mM7 m7 m6", "augM7 6", "M7 augM7 6 dom7"]) assert.ok(forms.has(f), f);
 });

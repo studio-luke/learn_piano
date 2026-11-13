@@ -373,15 +373,17 @@ const PATTERNS = {
 };
 
 // ---------- 라인 클리셰 (사용자 결정 2026-11-13) ----------
-// 패턴과 따로: 진행 중에 아래 코드가 뽑히면 그 자리에서 클리셰로 늘어날 수 있음 (마디 첫 자리에서만 시작).
-//   2마디 이하에 들어가면 1·3·5·7마디, 2마디를 넘으면 1·5마디에서만 시작. 끝나면 원래 코드(마지막 코드의 역할)의 다음 후보로 이어짐
+// 패턴과 따로: 진행 중에 아래 코드가 뽑히면 그 자리에서 클리셰로 늘어날 수 있음 (마디 첫 박에서 시작).
+//   한 마디 안이면 1~7마디 어디서든, 2마디면 1·3·5·7마디, 2마디를 넘으면 1·5마디. 4박 마디의 2박짜리(1박 코드 둘)는 셋째 박에서도.
+//   30%는 두 번째 코드(mM7·augM7)부터 시작 — 가장 짧으면 DmM7 – Dm7, m7을 건너뛴 DmM7 – Dm6도. 끝나면 원래 코드(마지막 코드의 역할)의 다음 후보로 이어짐
 //   마이너: Im(단조, 난이도 0부터) · IVm(단조) · IIm7·VIm7(장조) — 난이도 1부터. m – mM7 – m7 – m6, 베이스 하행형(m – mM7/7 – m7/♭7 – m6/6)과 윗성부형 반반.
 //     50%는 m7에서 끝남, 난이도 0·1은 6th 코드가 없어 항상 m7에서
 //   메이저(윗성부형만): I·IV(장조), ♭III·♭VI(단조) — 난이도 2부터. M7 – augM7 – 6 – 7, 50%는 6에서 끝남.
 //     7까지 가면 I7은 V7/IV로, IV7은 모달 인터체인지(난이도 4부터)로 이어짐. IV는 난이도 2·3, ♭III·♭VI는 늘 6에서 끝남
-const CLICHE_ODDS = { 1: 0.34, 2: 0.25, 3: 0.14 };   // 클리셰가 될 수 있는 코드가 뽑혔을 때 (개연성별)
+const CLICHE_ODDS = { 1: 0.52, 2: 0.36, 3: 0.19 };   // 클리셰가 될 수 있는 코드가 뽑혔을 때 (개연성별 — 2026-11-13 사용자 결정으로 1.5배쯤 늘림)
 const CLICHE_DEG = { i: 1, iv: 0.5, II: 0.6, VI: 0.6, I: 0.25, IV: 0.35, bIII: 0.35, bVI: 0.35 };   // 도수별 배율 — 마이너 총량은 예전(Im만)과 비슷하게, 메이저는 그 절반쯤
 const CLICHE_LONG = 0.12;   // 2마디를 넘게 걸치면 (코드 개수 최소 등) ×0.12 — 4마디짜리는 드물게 (2026-11-13 사용자 결정 "최소일 때 비율 낮추기")
+const CLICHE_BAR_EACH = 0.25;   // 코드 둘이 한 마디씩 2마디(코드 개수 최소 등)면 ×0.25
 const CLICHE_LOW_LEVEL = { 0: 0.35, 1: 0.25 };   // 난이도 0·1: 클리셰가 짧고(m7에서 끝남) 코드 종류가 적어 더 자주 걸리므로 낮춤 — 난이도마다 비슷하게
 
 /** 이 역할에서 시작하는 라인 클리셰 { name, items: [[역할 id, 코드 종류, 베이스]…] } 또는 null */
@@ -390,18 +392,24 @@ function clicheFor(role, key, level, rnd) {
   const minorDeg = key.minor ? ["i", "iv"] : ["II", "VI"], majorDeg = key.minor ? ["bIII", "bVI"] : ["I", "IV"];
   if (minorDeg.includes(role.id) && (role.id === "i" || level >= 1)) {
     const bass = rnd() < 0.5;
-    const seq = bass ? [["min"], ["mM7", "7"], ["m7", "b7"], ["m6", "6"]] : [["min"], ["mM7"], ["m7"], ["m6"]];
+    let seq = bass ? [["min"], ["mM7", "7"], ["m7", "b7"], ["m6", "6"]] : [["min"], ["mM7"], ["m7"], ["m6"]];
     if (level < 2 || rnd() < 0.5) seq.pop();
+    if (rnd() < CLICHE_SECOND) {
+      seq.shift();   // 두 번째 코드부터 (DmM7 – Dm7 …)
+      if (seq.length === 3 && rnd() < 1 / 3) seq.splice(1, 1);   // m7을 건너뛴 DmM7 – Dm6도 (사용자 결정)
+    }
     return { name: bass ? "cliche-bass" : "cliche-top", items: seq.map(([t, b]) => [role.id, t, b]) };
   }
   if (majorDeg.includes(role.id) && level >= 2) {
     const items = [[role.id, "M7"], [role.id, "augM7"], [role.id, "6"]];
     const seventh = key.minor ? null : role.id === "I" ? "V/IV" : level >= 4 ? "IV7" : null;
     if (seventh && rnd() >= 0.5) items.push([seventh, "dom7"]);
+    if (rnd() < CLICHE_SECOND) items.shift();   // 두 번째 코드부터 (C+M7 – C6 …)
     return { name: "cliche-major", items };
   }
   return null;
 }
+const CLICHE_SECOND = 0.3;   // 두 번째 코드(mM7·augM7)부터 시작 (사용자 결정 2026-11-13)
 const PATTERN_ODDS = { 1: 0.7, 2: 0.4, 3: 0.15 };   // 개연성별로 패턴을 통째로 쓸 확률 (docs §5)
 const TEMPERATURE = { 1: 0.6, 2: 0.9, 3: 1.3 };
 
@@ -762,12 +770,17 @@ function attempt(o, slots, rnd, fits) {
       q = makeChord(role, key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd);
     }
     // 라인 클리셰로 늘이기 (위 clicheFor) — 첫 코드도 클리셰의 첫 코드로 바꿈
-    if (!out[n] && slot.idx === 0 && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
+    const barPulses = slots[slot.bar].reduce((a, sl) => a + sl.len, 0);
+    if (!out[n] && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
       const cl = clicheFor(role, key, o.level, rnd);
       const end = cl && n + cl.items.length - 1;
       const span = cl && end < flat.length ? flat[end].bar - slot.bar + 1 : 99;
-      const startOk = span <= 2 ? [0, 2, 4, 6].includes(slot.bar) : span <= 4 && [0, 4].includes(slot.bar);
-      if (cl && startOk && cl.items.every((_, j) => !out[n + j]) && (span <= 2 || rnd() < CLICHE_LONG)) {
+      // 시작 자리: 한 마디 안이면 1~7마디 어디서든, 2마디면 1·3·5·7마디, 그보다 길면 1·5마디 — 마디 첫 박에서.
+      // 4박 마디에서 2박짜리(1박 코드 둘)는 셋째 박에서도 (사용자 결정 2026-11-13)
+      const pulses = cl ? cl.items.reduce((a, _, j) => a + (flat[n + j]?.len || 99), 0) : 99;
+      const startOk = slot.idx === 0 ? (span === 1 ? slot.bar <= 6 : span === 2 ? [0, 2, 4, 6].includes(slot.bar) : span <= 4 && [0, 4].includes(slot.bar))
+        : span === 1 && pulses === 2 && slot.bar <= 6;
+      if (cl && startOk && cl.items.every((_, j) => !out[n + j]) && rnd() < (span > 2 ? CLICHE_LONG : span === 2 && cl.items.length === 2 ? CLICHE_BAR_EACH : 1)) {
         // 미리 만들어 긴 코드 자리 규칙에 맞는지 (텐션 없이)
         const pre = [];
         const ok = cl.items.every(([id, t, b], j) => {
@@ -780,6 +793,7 @@ function attempt(o, slots, rnd, fits) {
           cl.items.forEach((it, j) => { out[n + j] = { pattern: cl.name, item: it }; });
           used.push(cl.name);
           q = pre[0];
+          if (q.bass) q.why = "pattern";   // 두 번째 코드부터면 첫 코드가 mM7/7
         }
       }
     }
