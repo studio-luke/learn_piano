@@ -247,8 +247,39 @@ test("improv grammar: level 0 = diatonic only, no slash chords, no V7sus4; level
   for (const chance of [3, 4]) assert.ok(chordsOf(await progs({ level: 2, chance }, 400)).every(c => c.q.type !== "dim7"), "개연성 " + chance);
   const three = chordsOf(await progs({ level: 3 }, 600));
   assert.ok(three.some(c => c.q.kind === "dim") && three.every(c => !/add/.test(c.q.type)), "난이도 3: 디미니시드 있음, add 없음");
-  // 난이도 4~6은 아직 3과 같게
+  // 난이도 5~6은 아직 4와 같게
   assert.ok(chordsOf(await progs({ level: 6 }, 200)).some(c => c.q.kind === "dim"));
+});
+
+test("improv grammar: level 3 adds SubV7 (+ related II) and subdominant minor in major keys; level 4 adds modal interchange; minor Vm7; 7alt only from level 4 (2026-11-13)", async () => {
+  const { Engine } = await import("../src/assets/js/core/engine.js");
+  const kindsOf = (ps, minor) => new Set(ps.filter(p => p.key.minor === minor).flatMap(p => p.bars.flat().map(c => c.q.kind)));
+  const lv = async (level, n = 600) => progs({ level, tension: "hard" }, n);
+  const two = await lv(2);
+  assert.ok(chordsOf(two).every(c => !["subv", "sdm", "modal"].includes(c.q.kind) && !c.q.alt), "난이도 2");
+  const three = await lv(3);
+  assert.ok(kindsOf(three, false).has("subv") && kindsOf(three, false).has("sdm") && kindsOf(three, true).has("subv"), "난이도 3");
+  assert.ok(!kindsOf(three, true).has("sdm") && chordsOf(three).every(c => c.q.kind !== "modal" && !c.q.alt), "서브도미넌트 마이너는 장조만, 모달은 4부터, 7alt는 4부터");
+  // SubV7: 목표의 반음 위 도미넌트 7, 그 Related II는 완전5도 위 m7
+  for (const c of chordsOf(three)) if (c.q.kind === "subv") assert.ok(/^dom/.test(c.q.type), c.q.symbol);   // HARD면 9·13 텐션 코드도
+  // 서브도미넌트 마이너 (장조, 으뜸음에서): ♭II 1 · II(♭5) 2 · IVm 5 · ♭VI 8 · ♭VII7 10
+  for (const p of three.filter(p => !p.key.minor)) {
+    const tonic = Engine.pcOf(p.key.l, p.key.a);
+    for (const c of p.bars.flat()) if (c.q.kind === "sdm") assert.ok([1, 2, 5, 8, 10].includes((c.q.rootPc - tonic + 12) % 12), p.key.name + " " + c.q.symbol);
+  }
+  // 다이아토닉 밖 코드 연속은 난이도 3부터 4개까지 (Extended Dominant 사슬)
+  for (const p of three) {
+    let run = 0, max = 0;
+    for (const c of p.bars.flat()) { run = c.q.kind === "dia" || c.q.kind === "surprise" ? 0 : run + 1; max = Math.max(max, run); }
+    assert.ok(max <= 4, "연속 " + max);
+  }
+  const four = await lv(4, 800);
+  assert.ok(kindsOf(four, false).has("modal") && kindsOf(four, true).has("modal"), "난이도 4 모달");
+  // 7alt: 난이도 4부터, 괄호 텐션 없이
+  const alts = chordsOf(await lv(6, 600)).filter(c => c.q.alt);
+  assert.ok(alts.length && alts.every(c => c.q.type === "dom7" && !c.q.items.length), "7alt");
+  // 단조 Vm7 (2026-11-13 사용자 결정)
+  assert.ok(chordsOf(await progs({ level: 1 }, 600)).some(c => c.q.role === "v" && c.q.type === "m7"), "단조 Vm7");
 });
 
 test("improv grammar: slash chords come from the bass line — passing, same chord, cadential 6/4, tonic/dominant pedal; free inversions from level 2; 7th basses fall by step, leading-tone basses rise (2026-11-13)", async () => {
@@ -268,7 +299,7 @@ test("improv grammar: slash chords come from the bass line — passing, same cho
           assert.ok(q.tones.some(t => t.pc === q.bassPc), "베이스는 구성음 " + q.symbol);   // Am7(♭5)/E 같은 버그 (2026-11-13)
           if (/sus/.test(q.type)) assert.notStrictEqual(q.invKind, "3", q.symbol);
           if (q.invKind === "b7") assert.ok(nx.bassPc === q.bassPc || [1, 2].includes(iv(nx.bassPc, q.bassPc)), "7음 베이스는 아래로 " + q.symbol + " → " + nx.symbol);
-          if (q.invKind === "3" && ["dom7", "dom9", "dom13"].includes(q.type)) assert.strictEqual(iv(q.bassPc, nx.bassPc), 1, "이끔음 베이스는 반음 위로 " + q.symbol + " → " + nx.symbol);
+          if (q.invKind === "3" && ["dom7", "dom9", "dom13"].includes(q.type) && !["sdm", "modal"].includes(q.kind)) assert.strictEqual(iv(q.bassPc, nx.bassPc), 1, "이끔음 베이스는 반음 위로 " + q.symbol + " → " + nx.symbol);
         }
         if (q.slash === "hybrid" && level === 1) assert.ok(/\//.test(q.symbol) && q.kind === "dia" && q.role === "Vsus", "난이도 1 하이브리드는 V7sus4 자리의 IV/V만 " + q.symbol);
       });

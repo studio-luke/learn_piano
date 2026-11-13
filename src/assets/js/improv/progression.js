@@ -1,9 +1,9 @@
 // ===== 코드 초견 — 8마디 코드진행 만들기 (순수 함수, tests/improv.test.js) =====
-// 실용음악 입시처럼 8마디 코드진행을 만들어요. 코드를 고르는 문법은 improv/grammar.js(6단계, 2026-11-11 — 지금 난이도 1·2),
+// 실용음악 입시처럼 8마디 코드진행을 만들어요. 코드를 고르는 문법은 improv/grammar.js(6단계, 2026-11-11 — 지금 난이도 0~4),
 // 여기서는 박자표·마디 나누기·기호 표기·긴 코드 자리 등 "악보 모양"을 정해요. 화면은 improv/sheet.js, 출제 설정은 improv/prog-settings.js.
 //
 // 사용자 결정 (chordoven-spec.md "코드 초견"):
-//   - 텐션(옵션 A): 꺼짐 / 최대 1개 / 최대 2개 / HARD(텐션 코드 M9 M13 m9 m11 9 13도 — 텐션 코드는 추가 텐션 1개까지). 7alt는 텐션이 켜져 있을 때만
+//   - 텐션(옵션 A): 꺼짐 / 최대 1개 / 최대 2개 / HARD(텐션 코드 M9 M13 m9 m11 9 13도 — 텐션 코드는 추가 텐션 1개까지). 7alt는 텐션이 켜져 있고 난이도 4부터
 //   - 분수코드(옵션 B): 베이스 진행을 잇는 전위형, V7sus4의 하이브리드 표기(IV/V · IIm7/V) — grammar.js
 //   - 코드 개수(옵션 C): 최소(한 마디에 하나) / 적정(최대 2개) / 최대(최대 4개). 코드는 강박에서만 바뀜
 //   - 박자표(옵션 E): 꺼지면 4/4, 켜면 6/8 · 3/4 · 2/4 · 12/8 · 9/8도 (빈도 순)
@@ -93,7 +93,7 @@ export const isLong = q => !q.error && displayLength(q) >= LONG;
 /**
  * 8마디 코드진행 하나.
  * @param o    출제 설정 { tension: "off"|"1"|"2"|"hard", slash, count: "low"|"mid"|"high", level: 0~6, chance: 1~4, meters }
- *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 분수코드 없음), chance = 코드 개연성 (2026-11-11). 코드 재료는 난이도 0~3까지 — 4~6은 3과 같은 재료에 분수코드 비율만 다름(improv/grammar.js)
+ *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 분수코드 없음), chance = 코드 개연성 (2026-11-11). 코드 재료는 난이도 0~4까지 — 5~6은 4와 같은 재료에 분수코드·텐션 비율만 다름(improv/grammar.js)
  * @param rnd  난수 함수 (테스트에서 고정값)
  * @returns { meter, style, key, bars: [[{ q, start, len, short }] × 8] }
  *   start·len은 펄스 단위, short는 "/B♭"처럼 베이스만 쓸지(같은 마디에서 바로 앞과 위 코드가 같고 베이스만 다름)
@@ -102,7 +102,7 @@ export function generateProgression(o, rnd = Math.random) {
   const meter = o.meters ? pickBy(METERS, m => m.w, rnd) : METERS[0];
   const style = randomStyle(rnd);
   const splits = SPLITS[o.count] || SPLITS.mid;
-  const chance = o.chance || 2, level = Math.min(o.level ?? 2, 6);   // 코드 재료는 난이도 3까지(grammar.js) — 4~6은 하이브리드·낯선 전위 비율만 다름
+  const chance = o.chance || 2, level = Math.min(o.level ?? 2, 6);   // 코드 재료는 난이도 4까지(grammar.js) — 5~6은 하이브리드·낯선 전위·텐션 비율만 다름
   // 마디 나누기 먼저. 화성 리듬 가속(사용자 결정 2026-11-11): 4·8마디는 코드 여러 개로 나누는 쪽에 개연성 1 ×1.6 · 2 ×1.2 · 3·4 없음
   const accel = { 1: 1.6, 2: 1.2 }[chance] || 1;
   const slots = Array.from({ length: BARS }, (_, b) => {
