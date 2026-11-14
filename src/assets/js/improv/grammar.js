@@ -1,4 +1,4 @@
-// ===== 코드 초견 — 8마디 코드진행 문법 (난이도 0~5, 순수 함수, tests/improv.test.js) =====
+// ===== 코드 초견 — 8마디 코드진행 문법 (난이도 0~6, 순수 함수, tests/improv.test.js) =====
 // 규칙 초안: docs/chord-progression-rules.md (사용자 검토 2026-11-11). 요약은 chordoven-spec.md "코드 초견".
 //
 // 만드는 방법 (규칙 기반 확률):
@@ -6,7 +6,7 @@
 //      (3) 디미니시드·SubV7·서브도미넌트 마이너, (4) 모달 인터체인지
 //      난이도 (2026-11-12·13 사용자 결정): 0 다이아토닉만·분수코드 없음·V7sus4 없음 / 1 + V7sus4·분수코드 / 2 + 세컨더리·II-minor, add 코드 없음 /
 //      3 + dim7(단조 VII°7 포함)·SubV7과 그 Related II·Extended Dominant·서브도미넌트 마이너(장조)·유사 5도 / 4 + 모달 인터체인지·7alt /
-//      5 + 다른 키로 전조(keyPlan — 2026-11-14). 6은 아직 — 지금은 5와 같음
+//      5 + 다른 키로 전조(keyPlan — 2026-11-14) / 6 조성 없이 — 화성학적 해석(B)과 음의 움직임(A)을 섞은 점수(attempt6 — 2026-11-14)
 //   2) 1마디 첫 코드부터 한 자리씩: 다음 후보마다 점수 = 기능 화성 점수 × 박 위치 × 그 밖의 규칙, 점수를 "온도"로 확률로 바꿔 하나 고름
 //   3) 코드 개연성(1~3)에 따라 대중적 패턴을 통째로 끼워 넣음
 //   4) 다 만든 뒤 조건 검사(II-V 횟수, 토닉, 반복, 종지 …) — 안 맞으면 처음부터 다시(최대 RETRIES번, 그래도 안 되면 어긴 것이 가장 적은 것)
@@ -711,7 +711,7 @@ function makeEnv(key, o) {
 export function generateGrammar(o, slots, rnd, fits = () => true) {
   let best = null;
   for (let t = 0; t < RETRIES; t++) {
-    const r = attempt(o, slots, rnd, fits);
+    const r = (o.level >= 6 ? attempt6 : attempt)(o, slots, rnd, fits);
     if (!best || r.violations.length < best.violations.length) best = r;
     if (!r.violations.length) break;
   }
@@ -726,7 +726,7 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
   const key = chooseKey(rnd);
   o = { ...o, scale: scaleOf(key) };
   const flat = slots.flatMap((bar, b) => bar.map((sl, i) => ({ ...sl, bar: b, idx: i })));
-  // 난이도 5부터 자리마다 키가 다름 (keyPlan) — 그 자리 키의 코드 목록 안에서 무작위
+  // 난이도 5부터 자리마다 키가 다름 (keyPlan) — 그 자리 키의 코드 목록 안에서 무작위. 6은 코드마다 아무 키
   const plan = keyPlan(key, flat, slots, o, rnd);
   const roleLists = plan.keys.map(k => buildRoles(k, o.level));
   const chords = [];
@@ -734,7 +734,10 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
   for (const bar of slots) {
     const out = [];
     for (const slot of bar) {
-      const roles = roleLists[plan.at[n]], k0 = plan.keys[plan.at[n++]];
+      // 난이도 6: 코드마다 24개 키 중 아무 키
+      const six = o.level >= 6 && allEnvs(o)[Math.floor(rnd() * ALL_KEYS.length)];
+      const roles = six ? six.roles : roleLists[plan.at[n]], k0 = six ? six.key : plan.keys[plan.at[n]];
+      n++;
       let q = null;
       for (let k = 0; k < 40 && !q; k++) {
         // 종류별 비율: 디미니시드는 역할 수가 많아서 하나하나를 낮게(전체에서 가끔만) — 다이아토닉·세컨더리 1, II-minor 0.7, 디미니시드 0.25,
@@ -752,7 +755,7 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
   }
   capTensions(chords.flat(), o, rnd);
   // 분수코드: 용법과 상관없이 코드마다 RANDOM_INV (하이브리드는 realize가 난이도별로)
-  bassLine(chords.flat(), flat, o, rnd, fits, plan.at.map(i => plan.keys[i]), true);
+  bassLine(chords.flat(), flat, o, rnd, fits, chords.flat().map(q => ALL_KEYS.find(k => k.name === q.keyName)), true);
   return { key, keys: plan.keys, chords, violations: [] };
 }
 
@@ -961,6 +964,145 @@ function attempt(o, slots, rnd, fits) {
   return { key: X, keys: plan.keys, chords: bars, violations: check(o, X, flat, chords, used, unconfirmed) };
 }
 
+// ---------- 난이도 6: 조성 없이 (사용자 결정 2026-11-14) ----------
+// 다음 코드의 점수를 두 가지로 따로 내서 섞음 — 키 배치는 정하지 않음, 코드마다 새로 읽음
+//   B (화성학적 해석): 24개 키 × 모든 기능에서 지금 코드와 다음 코드를 함께 읽어 보고, 그 키 문법의 점수(transition) × 두 코드의 기능 흔함(COMMON)
+//      × 키 가까움(지금 코드를 읽은 키에서 — 같은 키 1, 다른 키는 난이도 5의 간격 가중치 / 13 × KEY_MOVE, 반대 조 ×0.25)이 가장 큰 해석
+//   A (음의 움직임, 키·기능 없음): 근음 이동(MOTION) × (0.3 + 보이스리딩) × 경향음(도미넌트 7의 3음 반음 위·7음 반음 아래로 가면 ×2) × 코드 종류 비율(TYPE_PRIOR)
+//      보이스리딩 = 지금 코드의 음마다 다음 코드의 가장 가까운 음까지 — 같은 음 1 · 반음 0.8 · 온음 0.4 — 의 평균
+//   확률 = (1 − λ) × B의 확률 + λ × A의 확률 (둘 다 온도 TEMPERATURE를 거친 뒤), λ = 개연성 1 0.15 · 2 0.35 · 3 0.95 (개연성 3은 거의 A — 사용자 결정)
+//   고른 코드의 철자·텐션·역할은 B에서 가장 좋은 해석의 키로 (B 해석이 없으면 지금 키에서 가장 가까운 키의 그 코드)
+const MIX_A = { 1: 0.15, 2: 0.35, 3: 0.95 };
+const KEY_MOVE = { 1: 0.25, 2: 0.5, 3: 1 };
+const TYPE_PRIOR = { M7: 1, m7: 1, dom7: 1, "6": 0.12, m6: 0.12, m7b5: 0.3, "7sus4": 0.3, dim7: 0.15, maj: 0.04, min: 0.04, mM7: 0.03 };
+const TONE_SET = { ...CHORD, "7sus4": [0, 5, 7, 10], dim7: [0, 3, 6, 9] };
+const ALL_KEYS = [...MAJOR_KEYS.map(([n]) => [n, false]), ...MINOR_KEYS.map(([n]) => [n, true])].map(([n, minor]) => ({ ...parseName(n), minor, name: n + (minor ? "m" : "") }));
+const ENV_CACHE = new Map();
+/** 24개 키의 env (난이도·개연성마다 한 번만 만듦) + 코드("근음pc:종류")별로 그 코드가 되는 역할 목록 */
+function allEnvs(o) {
+  const id = o.level + "|" + o.chance;
+  if (!ENV_CACHE.has(id)) ENV_CACHE.set(id, ALL_KEYS.map(k => {
+    const e = makeEnv(k, o);
+    e.byChord = new Map();
+    for (const r of e.roles) for (const [t, w] of r.types) {
+      if (!TONE_SET[t]) continue;
+      const c = r.root.pc + ":" + t;
+      if (!e.byChord.has(c)) e.byChord.set(c, []);
+      e.byChord.get(c).push([r, w]);
+    }
+    return e;
+  }));
+  return ENV_CACHE.get(id);
+}
+const oddRoot = r => r.root.name === "C♭" || r.root.name === "F♭";
+const commonOf = r => (r.kind === "ii" && r.dominant.startsWith("subv") ? COMMON.subv * COMMON.ii : COMMON[r.kind] || 0);
+/** 키 가까움: 지금 코드를 읽은 키 from → 키 to */
+function closeness(from, to, chance) {
+  if (sameKey(from, to)) return 1;
+  const d = iv(keyPc(from), keyPc(to));
+  return ((KEY_STEP[d] || 6) / 13) * (KEY_MOVE[chance] || 0.5) * (from.minor === to.minor ? 1 : 0.25);
+}
+/** A: 음의 움직임만으로 (p, c = { pc, type }) */
+function aScore(p, c) {
+  if (p.pc === c.pc && p.type === c.type) return 0.05;
+  const at = TONE_SET[p.type].map(x => (p.pc + x) % 12), bt = TONE_SET[c.type].map(x => (c.pc + x) % 12);
+  const W = [1, 0.8, 0.4];
+  const vl = at.reduce((s, x) => s + (W[Math.min(...bt.map(y => Math.min(iv(x, y), iv(y, x))))] || 0), 0) / at.length;
+  let s = MOTION[iv(p.pc, c.pc)] * (0.3 + vl);
+  if (p.type === "dom7" && bt.includes((p.pc + 5) % 12) && bt.includes((p.pc + 9) % 12)) s *= 2;   // 3음 → 반음 위, 7음 → 반음 아래
+  return s * (TYPE_PRIOR[c.type] ?? 0.1);
+}
+
+/** 난이도 6의 진행 하나 (attempt와 같은 모양을 돌려줌) */
+function attempt6(o, slots, rnd, fits) {
+  const envs = allEnvs(o);
+  const X = chooseKey(rnd);
+  o = { ...o, scale: scaleOf(X) };
+  const T = TEMPERATURE[o.chance] || 1, lambda = MIX_A[o.chance] ?? 0.35;
+  const flat = slots.flatMap((bar, b) => bar.map((s, i) => ({ ...s, bar: b, idx: i })));
+  const chords = [];
+  const barOf = n => chords.filter((_, i) => flat[i].bar === flat[n].bar);
+  let prev = null;   // { role, env, pc, type }
+  const cands = [...new Set(envs.flatMap(e => [...e.byChord.keys()]))].map(c => { const [pc, type] = c.split(":"); return { id: c, pc: +pc, type }; });
+  for (let n = 0; n < flat.length; n++) {
+    const slot = flat[n];
+    let pick = null;
+    if (!prev) {
+      // 첫 코드: 처음 키의 토닉 60 · II 15 · IV 15 · VI 10 (다른 난이도와 같음)
+      const e = envs.find(x => sameKey(x.key, X));
+      const firsts = X.minor ? [["i", 60], ["ii", 15], ["iv", 15], ["bVI", 10]] : [["I", 60], ["II", 15], ["IV", 15], ["VI", 10]];
+      const r = pickBy(firsts, f => f[1], rnd)[0];
+      const role = e.byId[r];
+      pick = { role, env: e, type: pickBy(role.types, t => t[1], rnd)[0] };
+    } else {
+      // 후보마다 B(가장 좋은 해석)와 A
+      const scored = cands.map(c => {
+        let best = null;
+        for (const e of envs) {
+          const near = closeness(prev.env.key, e.key, o.chance);
+          const rs = e.byChord.get(c.id);
+          if (!rs) continue;
+          // 지금 코드를 이 키에서 읽기: 같은 키면 지금 역할 그대로, 아니면 이 키의 같은 코드 중 가장 흔한 기능
+          const from = e === prev.env ? [prev.role, 1] : (e.byChord.get(prev.pc + ":" + prev.type) || []).map(([r]) => [r, commonOf(r)]).sort((a, b) => b[1] - a[1])[0];
+          if (!from) continue;
+          for (const [r, w] of rs) {
+            const v = transition(from[0], r, e.roles, e.ctx) * from[1] * commonOf(r) * w * near;
+            // 점수는 가장 좋은 해석의 값, 철자를 정할 해석은 C♭·F♭ 근음을 ×0.02로 덜 고름 (C♭은 아주 드물게 — 사용자 결정)
+            const pv = v * (oddRoot(r) ? 0.02 : 1);
+            if (v > 0 && (!best || pv > best.pv)) best = { v: Math.max(v, best?.v || 0), pv, role: r, env: e };
+            else if (best && v > best.v) best.v = v;
+          }
+        }
+        return { c, best, b: best ? best.v : 0, a: aScore(prev, c) };
+      });
+      // 개연성 1: 4마디 끝 반종지(도미넌트 7 ×6, 나머지 ×0.2). 8마디 끝은 1마디 첫 코드로 매끄럽게 가는 코드 쪽으로 (A 점수로)
+      const last = n === flat.length - 1, halfCad = o.chance === 1 && slot.bar === 3 && slot.idx === slots[3].length - 1;
+      const first = { pc: chords[0].rootPc, type: chords[0].type0 };
+      const sumB = scored.reduce((t, x) => t + Math.pow(x.b, 1 / T), 0) || 1, sumA = scored.reduce((t, x) => t + Math.pow(x.a, 1 / T), 0) || 1;
+      const weighted = scored.map(x => {
+        let w = (1 - lambda) * Math.pow(x.b, 1 / T) / sumB + lambda * Math.pow(x.a, 1 / T) / sumA;
+        const dom = x.c.type === "dom7" || x.c.type === "7sus4";
+        if (slot.strong) w *= dom ? 0.12 : x.c.type === "dim7" ? 0.5 : 1;   // 박 위치 (다른 난이도와 같음)
+        if (halfCad) w *= dom ? 6 : 0.2;
+        if (last) w *= 0.2 + aScore(x.c, first);
+        return [x, w];
+      }).filter(([, w]) => w > 0);
+      // 같은 마디의 바로 앞과 같은 코드는 빼고, 긴 코드 자리에 맞는 것으로 (안 맞으면 다른 후보)
+      for (let k = 0; k < 8 && !pick && weighted.length; k++) {
+        const [x] = pickBy(weighted, y => y[1], rnd);
+        weighted.splice(weighted.findIndex(y => y[0] === x), 1);
+        // 철자·역할: B의 해석, 없으면 지금 키에서 가장 가까운 키의 그 코드
+        const at = x.best || envs.filter(e => e.byChord.has(x.c.id)).map(e => { const role = e.byChord.get(x.c.id)[0][0]; return { env: e, role, v: closeness(prev.env.key, e.key, o.chance) * (oddRoot(role) ? 0.02 : 1) }; }).sort((a, b) => b.v - a.v)[0];
+        pick = { role: at.role, env: at.env, type: x.c.type, why: x.best && (1 - lambda) * x.b / sumB >= lambda * x.a / sumA ? "B" : "A" };
+        const c = makeChord(pick.role, pick.type, null, o, rnd);
+        const before = barOf(n).at(-1);
+        if (!c || !fits(c, slot, barOf(n)) || (before && before.rootPc === c.rootPc && before.type === c.type)) {
+          const plain = c && makeChord(pick.role, pick.type, null, { ...o, tension: "off" }, rnd);
+          if (plain && fits(plain, slot, barOf(n)) && !(before && before.rootPc === plain.rootPc && before.type === plain.type)) pick.q = plain;
+          else pick = null;
+        } else pick.q = c;
+      }
+    }
+    if (!pick) {   // 마지막 수단: 지금 키의 토닉 3화음
+      const e = prev ? prev.env : envs.find(x => sameKey(x.key, X));
+      pick = { role: e.tonic, env: e, type: e.key.minor ? "min" : "maj" };
+      pick.q = makeChord(e.tonic, pick.type, null, { ...o, tension: "off" }, rnd);
+    }
+    // 첫 코드는 하이브리드도 되게 realize로 (종류가 하나인 역할만 — 여러 종류면 고른 종류 그대로)
+    const q = pick.q || realize(pick.role, o, rnd, pick.role.types.length > 1 ? { type: pick.type, bass: null } : null);
+    Object.defineProperty(q, "type0", { value: pick.type, enumerable: false });
+    if (pick.why) Object.defineProperty(q, "scoredBy", { value: pick.why, enumerable: false });
+    tag(q, pick.role, null, pick.env.key);
+    chords.push(q);
+    prev = { role: pick.role, env: pick.env, pc: pick.role.root.pc, type: pick.type };
+  }
+  capTensions(chords, o, rnd);
+  bassLine(chords, flat, o, rnd, fits, chords.map(q => ALL_KEYS.find(k => k.name === q.keyName)));
+  const bars = slots.map(() => []);
+  flat.forEach((s, n) => bars[s.bar].push(chords[n]));
+  return { key: X, keys: [X], chords: bars, violations: check(o, X, flat, chords, []) };
+}
+
 // ---------- 조건 검사 (docs §11, 사용자 결정 2026-11-11) ----------
 /** II-V 개수: II-minor(m7·m7(♭5) 계열) 바로 뒤에 그 완전5도 아래 도미넌트 7(sus 포함) */
 export function countIIV(chords) {
@@ -999,6 +1141,6 @@ function check(o, key, flat, chords, used, unconfirmed = 0) {
   // 다이아토닉 밖 코드 연속: 난이도 2는 최대 2개, 3부터 4개 (Extended Dominant 사슬 최대 4개 — docs §1)
   let run = 0, maxRun = 0;
   for (const c of chords) { run = c.kind === "dia" || c.kind === "surprise" ? 0 : run + 1; maxRun = Math.max(maxRun, run); }
-  if (maxRun > (o.level < 2 ? 0 : o.level < 3 ? 2 : 4)) v.push("non-diatonic run " + maxRun);
+  if (o.level < 6 && maxRun > (o.level < 2 ? 0 : o.level < 3 ? 2 : 4)) v.push("non-diatonic run " + maxRun);
   return v;
 }

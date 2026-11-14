@@ -58,7 +58,6 @@ export function syncProgUI() {
   $("pSlash").checked = S.slash;
   $("pCount").value = S.count; $("pCountText").textContent = t("progCount" + S.count);
   $("pLevel").value = S.level; $("pLevelText").textContent = t("progLevel" + S.level);
-  $("pLevelSoon").hidden = S.level < 6;   // 난이도 6은 아직 5와 같음
   $("pChance").value = S.chance; $("pChanceText").textContent = t("progChance" + S.chance);
   $("pMeters").checked = S.meters;
 }

@@ -157,7 +157,6 @@
 .pg-range { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
 .pg-ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: -2px; }
 .pg-ticks span { flex: 0 0 auto; }
-.pg-soon { font-style: italic; }
 /* 8마디 모드, 폰 가로(악보대에 세운 폰): 악보·[새 코드진행]·박 점·템포가 화면 높이 안에 들어오게 간격을 줄임 */
 @media (orientation: landscape) and (max-height: 520px) {
   .pg-sheet { gap: 0; padding-block: 4px; }

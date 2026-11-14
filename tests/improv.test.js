@@ -323,6 +323,28 @@ test("improv grammar: level 5 modulates — bar 1 and bar 8 in the first key, on
   assert.ok(ways.pivot && ways.dominant && ways.direct, JSON.stringify(ways));
 });
 
+test("improv grammar: level 6 has no fixed key — chance 1·2 mostly scored by harmonic reading (B), chance 3 almost all by voice movement (A); C♭/F♭ roots stay rare (2026-11-14)", async () => {
+  const { generateGrammar, strong } = await import("../src/assets/js/improv/grammar.js");
+  const slots = rnd => Array.from({ length: 8 }, (_, b) => { const lens = rnd() < 0.4 ? [2, 2] : [4]; let st = 0; return lens.map((len, i) => { const s = { len, start: st, strong: strong(lens, i, b) }; st += len; return s; }); });
+  const rnd = (() => { let x = 11; return () => ((x = (x * 16807) % 2147483647) / 2147483647); })();
+  const share = {};
+  for (const chance of [1, 2, 3]) {
+    const by = { A: 0, B: 0 }, keys = new Set();
+    let n = 0, odd = 0, iiv = 0;
+    for (let i = 0; i < 150; i++) {
+      const g = generateGrammar({ tension: "off", slash: false, level: 6, chance }, slots(rnd), rnd);
+      const flat = g.chords.flat();
+      for (const q of flat) { n++; if (q.scoredBy) by[q.scoredBy]++; if (/^(C♭|F♭)/.test(q.symbol)) odd++; keys.add(q.keyName); }
+      // 같은 마디 안에서 같은 이름이 연달아 나오지 않음
+      for (const bar of g.chords) bar.forEach((q, j) => j && assert.notStrictEqual(q.symbol, bar[j - 1].symbol));
+    }
+    share[chance] = by.A / (by.A + by.B);
+    assert.ok(odd / n < 0.015, "C♭·F♭ " + odd + "/" + n);
+    assert.ok(keys.size > 12, "여러 키로 읽힘 " + keys.size);
+  }
+  assert.ok(share[1] < 0.3 && share[1] < share[2] && share[3] > 0.9, JSON.stringify(share));
+});
+
 test("improv grammar: slash chords come from the bass line — passing, same chord, cadential 6/4, tonic/dominant pedal; free inversions from level 2; 7th basses fall by step, leading-tone basses rise (2026-11-13)", async () => {
   const iv = (a, b) => (((b - a) % 12) + 12) % 12;
   const why = {};
