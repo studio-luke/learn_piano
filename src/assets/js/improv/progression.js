@@ -1,5 +1,5 @@
 // ===== 코드 초견 — 8마디 코드진행 만들기 (순수 함수, tests/improv.test.js) =====
-// 실용음악 입시처럼 8마디 코드진행을 만들어요. 코드를 고르는 문법은 improv/grammar.js(6단계, 2026-11-11 — 지금 난이도 0~4),
+// 실용음악 입시처럼 8마디 코드진행을 만들어요. 코드를 고르는 문법은 improv/grammar.js(6단계, 2026-11-11 — 지금 난이도 0~5),
 // 여기서는 박자표·마디 나누기·기호 표기·긴 코드 자리 등 "악보 모양"을 정해요. 화면은 improv/sheet.js, 출제 설정은 improv/prog-settings.js.
 //
 // 사용자 결정 (chordoven-spec.md "코드 초견"):
@@ -93,7 +93,7 @@ export const isLong = q => !q.error && displayLength(q) >= LONG;
 /**
  * 8마디 코드진행 하나.
  * @param o    출제 설정 { tension: "off"|"1"|"2"|"hard", slash, count: "low"|"mid"|"high", level: 0~6, chance: 1~4, meters }
- *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 분수코드 없음), chance = 코드 개연성 (2026-11-11). 코드 재료는 난이도 0~4까지 — 5~6은 4와 같은 재료에 분수코드·텐션 비율만 다름(improv/grammar.js)
+ *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 분수코드 없음), chance = 코드 개연성 (2026-11-11). 난이도 5부터 다른 키로 전조, 6은 아직 5와 같음(improv/grammar.js)
  * @param rnd  난수 함수 (테스트에서 고정값)
  * @returns { meter, style, key, bars: [[{ q, start, len, short }] × 8] }
  *   start·len은 펄스 단위, short는 "/B♭"처럼 베이스만 쓸지(같은 마디에서 바로 앞과 위 코드가 같고 베이스만 다름)
@@ -102,7 +102,7 @@ export function generateProgression(o, rnd = Math.random) {
   const meter = o.meters ? pickBy(METERS, m => m.w, rnd) : METERS[0];
   const style = randomStyle(rnd);
   const splits = SPLITS[o.count] || SPLITS.mid;
-  const chance = o.chance || 2, level = Math.min(o.level ?? 2, 6);   // 코드 재료는 난이도 4까지(grammar.js) — 5~6은 하이브리드·낯선 전위·텐션 비율만 다름
+  const chance = o.chance || 2, level = Math.min(o.level ?? 2, 6);   // 난이도 5부터 전조(grammar.js keyPlan), 6은 아직 5와 같음
   // 마디 나누기 먼저. 화성 리듬 가속(사용자 결정 2026-11-11): 4·8마디는 코드 여러 개로 나누는 쪽에 개연성 1 ×1.6 · 2 ×1.2 · 3·4 없음
   const accel = { 1: 1.6, 2: 1.2 }[chance] || 1;
   const slots = Array.from({ length: BARS }, (_, b) => {

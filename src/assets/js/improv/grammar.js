@@ -1,11 +1,12 @@
-// ===== 코드 초견 — 8마디 코드진행 문법 (난이도 0~4, 순수 함수, tests/improv.test.js) =====
+// ===== 코드 초견 — 8마디 코드진행 문법 (난이도 0~5, 순수 함수, tests/improv.test.js) =====
 // 규칙 초안: docs/chord-progression-rules.md (사용자 검토 2026-11-11). 요약은 chordoven-spec.md "코드 초견".
 //
 // 만드는 방법 (규칙 기반 확률):
 //   1) 조(키)를 고르고, 그 난이도에서 쓸 수 있는 코드를 "역할"(로마숫자)로 펼침 — 다이아토닉, (난이도 2) 세컨더리 도미넌트·II-minor,
 //      (3) 디미니시드·SubV7·서브도미넌트 마이너, (4) 모달 인터체인지
 //      난이도 (2026-11-12·13 사용자 결정): 0 다이아토닉만·분수코드 없음·V7sus4 없음 / 1 + V7sus4·분수코드 / 2 + 세컨더리·II-minor, add 코드 없음 /
-//      3 + dim7(단조 VII°7 포함)·SubV7과 그 Related II·Extended Dominant·서브도미넌트 마이너(장조)·유사 5도 / 4 + 모달 인터체인지·7alt. 5~6은 아직 — 지금은 4와 같음
+//      3 + dim7(단조 VII°7 포함)·SubV7과 그 Related II·Extended Dominant·서브도미넌트 마이너(장조)·유사 5도 / 4 + 모달 인터체인지·7alt /
+//      5 + 다른 키로 전조(keyPlan — 2026-11-14). 6은 아직 — 지금은 5와 같음
 //   2) 1마디 첫 코드부터 한 자리씩: 다음 후보마다 점수 = 기능 화성 점수 × 박 위치 × 그 밖의 규칙, 점수를 "온도"로 확률로 바꿔 하나 고름
 //   3) 코드 개연성(1~3)에 따라 대중적 패턴을 통째로 끼워 넣음
 //   4) 다 만든 뒤 조건 검사(II-V 횟수, 토닉, 반복, 종지 …) — 안 맞으면 처음부터 다시(최대 RETRIES번, 그래도 안 되면 어긴 것이 가장 적은 것)
@@ -556,14 +557,15 @@ function resolves(kind, role, bass, next) {
  * 베이스 라인 단계: 기본형으로 만든 진행에 전위형을 붙임 (위 설명 참고). 같은 마디의 같은 이름 코드(C – C)는 반드시 전위형으로 바꿈.
  * @param chords  [q] 진행 순서대로 (q.roleObj = 역할), 이 함수가 q를 바꿈
  * @param flat    자리 목록 { bar, idx, len … }
+ * @param keys    자리마다 그 키 (페달의 토닉·도미넌트)
  * @param random  개연성 랜덤 — 용법·해결 없이 코드마다 RANDOM_INV
  */
-function bassLine(chords, flat, o, rnd, fits, key, random = false) {
+function bassLine(chords, flat, o, rnd, fits, keys, random = false) {
   if (!o.slash) return;
   const n = chords.length;
-  const tonic = Engine.pcOf(key.l, key.a), dominant = (tonic + 7) % 12;
   const upper = c => c.rootName + c.label;   // 베이스를 뺀 코드 이름
   for (let i = 0; i < n; i++) {
+    const tonic = keyPc(keys[i]), dominant = (tonic + 7) % 12;
     const q = chords[i], role = q.roleObj, prev = chords[i - 1], nextQ = chords[(i + 1) % n];
     const sameBarPrev = prev && flat[i - 1].bar === flat[i].bar ? prev : null;
     const must = !!(sameBarPrev && sameBarPrev.symbol === q.symbol);   // C – C (같은 마디) → 이름이 달라지게
@@ -621,6 +623,82 @@ export function strong(lens, i, bar) {
   return i % 2 === 0;
 }
 
+// ---------- 난이도 5: 다른 키로 전조 (사용자 결정 2026-11-14) ----------
+// 1마디는 처음 키 X, 2~7마디는 다른 키 Y만 또는 Y → Z, 8마디는 다시 X(X 문법으로 1마디에 이어짐). 키가 바뀌는 자리는 정해 두지 않음(keyPlan).
+// 다른 키 고르기: 지금 키 으뜸음에서 위로 잰 반음 → 키 하나의 가중치 — 미디언트(장3도·단3도 위아래) 13 · 완전5도 위아래 11 · 장2도 7 · 단2도 5 · 증4도 4.
+//   장·단조는 같은 조 80% · 반대 조 20% (반대 조가 나란한조면 그 몫도 같은 조로 — 구성음이 같아 전조로 안 들려서).
+//   Z는 Y에서 같은 규칙으로(X·Y와 같은 키는 빼고). Z → X 복귀는 도착 키가 정해져 있어 이 확률을 쓰지 않음
+const KEY_STEP = { 3: 13, 4: 13, 8: 13, 9: 13, 5: 11, 7: 11, 2: 7, 10: 7, 1: 5, 11: 5, 6: 4 };
+const OTHER_MODE = 0.2;
+const TWO_KEYS = 0.5;   // 다른 키가 둘(Y → Z)일 비율
+const keyPc = k => Engine.pcOf(k.l, k.a);
+const sameKey = (a, b) => keyPc(a) === keyPc(b) && a.minor === b.minor;
+/** 으뜸음 pc의 키 — 철자는 조 목록(MAJOR_KEYS·MINOR_KEYS)의 이름 (G♭장조·F♯단조 등) */
+function keyOfPc(pc, minor) {
+  const [name] = (minor ? MINOR_KEYS : MAJOR_KEYS).find(([n]) => { const p = parseName(n); return Engine.pcOf(p.l, p.a) === pc; });
+  return { ...parseName(name), minor, name: name + (minor ? "m" : "") };
+}
+function nextKey(from, avoid, rnd) {
+  const list = [];
+  for (const [step, w] of Object.entries(KEY_STEP)) {
+    const pc = (keyPc(from) + +step) % 12;
+    const relative = +step === (from.minor ? 3 : 9);
+    list.push([keyOfPc(pc, from.minor), w * (relative ? 1 : 1 - OTHER_MODE)]);
+    if (!relative) list.push([keyOfPc(pc, !from.minor), w * OTHER_MODE]);
+  }
+  return pickBy(list.filter(([k]) => !avoid.some(a => sameKey(a, k))), x => x[1], rnd)[0];
+}
+
+// 키가 바뀌는 자리: 2마디 첫 박 ~ 8마디 첫 박 사이의 코드 자리(마디 첫 박은 ×2). 첫 전조는 4마디 첫 박까지, X로 돌아오는 건 6마디 첫 박부터(다른 키가 2마디 이상 들리게).
+// 전조 사이 최소 간격(docs §10.4): 개연성 1 2마디 · 2 1마디 · 3 반 마디 — 그리고 코드 2개 이상
+const MIN_GAP = { 1: 2, 2: 1, 3: 0.5 };
+/** 자리마다 쓸 키: { keys: [X, Y, (Z)], at: [자리마다 keys의 번호] }. 난이도 4까지는 모두 X (난수를 쓰지 않음 — 예전 진행과 똑같이) */
+function keyPlan(X, flat, slots, o, rnd) {
+  const keys = [X];
+  if (o.level < 5) return { keys, at: flat.map(() => 0) };
+  keys.push(nextKey(X, keys, rnd));
+  if (rnd() < TWO_KEYS) keys.push(nextKey(keys[1], keys, rnd));
+  const order = [...keys.keys(), 0];   // X → Y (→ Z) → X
+  const m = order.length - 1;
+  const pos = n => flat[n].bar + flat[n].start / slots[flat[n].bar].reduce((a, s) => a + s.len, 0);
+  const cands = flat.map((_, n) => n).filter(n => pos(n) >= 1 && pos(n) <= 7);
+  const gap = MIN_GAP[o.chance] || 0.5;
+  let pts = null;
+  for (let t = 0; t < 300 && !pts; t++) {
+    const p = Array.from({ length: m }, () => pickBy(cands, n => (flat[n].idx === 0 ? 2 : 1), rnd)).sort((a, b) => a - b);
+    if (pos(p[0]) <= 3 && pos(p[m - 1]) >= 5 && p.every((x, i) => !i || (x - p[i - 1] >= 2 && pos(x) - pos(p[i - 1]) >= gap))) pts = p;
+  }
+  pts = pts || (m === 2 ? [1, 6] : [1, 4, 7]).map(b => flat.findIndex(s => s.bar === b));
+  return { keys, at: flat.map((_, n) => order[pts.filter(p => p <= n).length]) };
+}
+
+// 키가 바뀌는 자리의 코드 (사용자 결정 2026-11-14 "셋 다"): 피벗 · 새 키의 V7이나 II로 들어가기 · 직접 이동(새 키 토닉) 비율 — 개연성 3은 직접 이동을 더 자주
+//   피벗: 앞 키의 문법으로 고른 코드가 새 키에도 있는 코드(근음·코드 종류가 같음)면 새 키의 그 기능으로 다시 읽음 — 점수 × 새 키에서의 기능 흔함(COMMON, docs §10.2)
+//   피벗이 될 코드가 없으면 V7·II로
+const MOD_HOW = { 1: [0.5, 0.4, 0.1], 2: [0.45, 0.35, 0.2], 3: [0.35, 0.3, 0.35] };
+const COMMON = { dia: 1, sec: 0.8, ii: 0.7, sdm: 0.6, subv: 0.5, modal: 0.4, dim: 0.4 };
+// 새 키 확인(docs §10.4): 바뀐 코드부터 3코드 안에 새 키의 토닉·V7(sus)·V7의 II가 나오도록 점수 ×4 — 개연성 1은 반드시(못 하면 다시 만듦) · 2 70% · 3 30%
+const CONFIRM = { 1: 1, 2: 0.7, 3: 0.3 };
+/** 앞 키의 역할 r을 새 키에서 다시 읽기 → [새 키의 역할, 같은 코드 종류, 흔함] (가장 흔한 기능 하나), 없으면 null */
+function reread(r, roles) {
+  let best = null;
+  for (const x of roles) {
+    const t = x.root.pc === r.root.pc && r.types.find(([id]) => x.types.some(([j]) => j === id));
+    const w = x.kind === "ii" && x.dominant.startsWith("subv") ? COMMON.subv * COMMON.ii : COMMON[x.kind] || 0;   // SubV7의 Related II는 0.35
+    if (t && w > (best?.[2] || 0)) best = [x, t[0], w];
+  }
+  return best;
+}
+/** 키 하나에서 쓸 것들: 역할·표·패턴 */
+function makeEnv(key, o) {
+  const roles = buildRoles(key, o.level);
+  const byId = Object.fromEntries(roles.map(r => [r.id, r]));
+  const ctx = { table: key.minor ? TABLE_MINOR : TABLE_MAJOR, rows: rowsFor(key.minor), byId, level: o.level, chance: o.chance, count: f => roles.filter(f).length || 1 };
+  const tonic = byId[key.minor ? "i" : "I"];
+  const iiV = roles.find(r => (r.iiOf || []).includes("V") || (r.kind === "ii" && r.dominant === "V"));
+  return { key, roles, byId, ctx, tonic, iiV, confirms: r => r === tonic || r === byId.V || r === byId.Vsus || r === iiV };
+}
+
 // ---------- 한 진행 만들기 ----------
 /**
  * 난이도 1·2 코드진행.
@@ -647,12 +725,16 @@ export function generateGrammar(o, slots, rnd, fits = () => true) {
 export function generateRandom(o, slots, rnd, fits = () => true) {
   const key = chooseKey(rnd);
   o = { ...o, scale: scaleOf(key) };
-  const roles = buildRoles(key, o.level);
+  const flat = slots.flatMap((bar, b) => bar.map((sl, i) => ({ ...sl, bar: b, idx: i })));
+  // 난이도 5부터 자리마다 키가 다름 (keyPlan) — 그 자리 키의 코드 목록 안에서 무작위
+  const plan = keyPlan(key, flat, slots, o, rnd);
+  const roleLists = plan.keys.map(k => buildRoles(k, o.level));
   const chords = [];
-  let prevBass = null;
+  let prevBass = null, n = 0;
   for (const bar of slots) {
     const out = [];
     for (const slot of bar) {
+      const roles = roleLists[plan.at[n]], k0 = plan.keys[plan.at[n++]];
       let q = null;
       for (let k = 0; k < 40 && !q; k++) {
         // 종류별 비율: 디미니시드는 역할 수가 많아서 하나하나를 낮게(전체에서 가끔만) — 다이아토닉·세컨더리 1, II-minor 0.7, 디미니시드 0.25,
@@ -661,17 +743,17 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
         const c = realize(role, k < 30 ? o : { ...o, tension: "off", slash: false }, rnd);
         // 난이도 1부터: 5마디 첫 코드는 1마디 첫 코드와 다른 코드(이름 전체로 비교, 2026-11-13)
         const sameAsBar1 = o.level >= 1 && chords.length === 4 && !out.length && c && c.symbol === chords[0][0].symbol;
-        if (c && !sameAsBar1 && c.bassPc !== prevBass && fits(c, slot, out)) q = tag(c, role, null);
+        if (c && !sameAsBar1 && c.bassPc !== prevBass && fits(c, slot, out)) q = tag(c, role, null, k0);
       }
-      q = q || tag(makeChord(roles[0], key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd), roles[0], null);
+      q = q || tag(makeChord(roles[0], k0.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd), roles[0], null, k0);
       out.push(q); prevBass = q.bassPc;
     }
     chords.push(out);
   }
   capTensions(chords.flat(), o, rnd);
   // 분수코드: 용법과 상관없이 코드마다 RANDOM_INV (하이브리드는 realize가 난이도별로)
-  bassLine(chords.flat(), slots.flatMap((bar, b) => bar.map((sl, i) => ({ ...sl, bar: b, idx: i }))), o, rnd, fits, key, true);
-  return { key, chords, violations: [] };
+  bassLine(chords.flat(), flat, o, rnd, fits, plan.at.map(i => plan.keys[i]), true);
+  return { key, keys: plan.keys, chords, violations: [] };
 }
 
 /** 조의 음계 pc 집합 (단조는 자연단음계) — 난이도 0·1의 텐션 거르기용 */
@@ -689,9 +771,10 @@ function capTensions(chords, o, rnd) {
   }
 }
 
-/** 코드에 역할 정보를 붙임 (roleObj는 베이스 라인 단계용 — 화면·테스트에 안 보이게 열거 안 됨) */
-function tag(q, role, pattern) {
+/** 코드에 역할 정보를 붙임 (roleObj는 베이스 라인 단계용, keyName은 그 코드를 읽는 키(난이도 5부터 자리마다 다름) — 화면에 안 보이게 열거 안 됨) */
+function tag(q, role, pattern, key) {
   Object.defineProperty(q, "roleObj", { value: role, enumerable: false, writable: true });
+  if (key) Object.defineProperty(q, "keyName", { value: key.name, enumerable: false, writable: true });
   return Object.assign(q, { role: role.id, kind: role.kind, fn: role.fn, pattern });
 }
 
@@ -702,26 +785,29 @@ function chooseKey(rnd) {
 }
 
 function attempt(o, slots, rnd, fits) {
-  const key = chooseKey(rnd);
-  o = { ...o, scale: scaleOf(key) };
-  const roles = buildRoles(key, o.level);
-  const byId = Object.fromEntries(roles.map(r => [r.id, r]));
-  const ctx = { table: key.minor ? TABLE_MINOR : TABLE_MAJOR, rows: rowsFor(key.minor), byId, level: o.level, chance: o.chance, count: f => roles.filter(f).length || 1 };
+  const X = chooseKey(rnd);
+  o = { ...o, scale: scaleOf(X) };
   const T = TEMPERATURE[o.chance] || 1;
   const flat = slots.flatMap((bar, b) => bar.map((s, i) => ({ ...s, bar: b, idx: i })));
+  // 키 계획 (난이도 5부터 다른 키 — 위 keyPlan). envs[plan.at[n]] = n번째 자리의 키
+  const plan = keyPlan(X, flat, slots, o, rnd);
+  const envs = plan.keys.map(k => makeEnv(k, o));
+  const envAt = n => envs[plan.at[n]];
+  const boundaryAt = n => n > 0 && plan.at[n] !== plan.at[n - 1];
   const out = flat.map(() => null);
   const used = [];   // 쓴 패턴 이름
 
-  // 패턴 끼워 넣기: 1마디(그리고 개연성 1·2면 5마디)에서 확률로
+  // 패턴 끼워 넣기: 1마디(그리고 개연성 1·2면 5마디)에서 확률로 — 패턴 전체가 한 키 안에 있고 키가 바뀌는 자리를 지나지 않을 때만
   const patOdds = PATTERN_ODDS[o.chance] || 0;
-  const pats = (key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => (p.level || 0) <= o.level);
   for (const startBar of [0, 4]) {
     if (rnd() >= patOdds) continue;
     const start = flat.findIndex(s => s.bar === startBar);
+    const e = envAt(start);
+    const pats = (e.key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => (p.level || 0) <= o.level);
     const firstId = it => (Array.isArray(it) ? it[0] : it);
-    const pool = pats.filter(p => o.chance === 1 || !used.includes(p.name)).filter(p => start + p.seq.length <= flat.length && p.seq.every((_, j) => !out[start + j]))
+    const pool = pats.filter(p => o.chance === 1 || !used.includes(p.name)).filter(p => start + p.seq.length <= flat.length && p.seq.every((_, j) => !out[start + j] && plan.at[start + j] === plan.at[start] && !boundaryAt(start + j)))
       // 난이도 1부터: 5마디 패턴이 1마디 패턴과 같은 코드(같은 역할·종류·베이스)로 시작하지 않게 — 종류·베이스를 정하지 않은 같은 역할이면 아직 같을 수 있어 뺌
-      .filter(p => !(o.level >= 1 && startBar === 4 && out[0] && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
+      .filter(p => !(o.level >= 1 && startBar === 4 && out[0] && plan.at[start] === 0 && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
     if (!pool.length) continue;
     const p = pool[Math.floor(rnd() * pool.length)];
     used.push(p.name);
@@ -730,11 +816,14 @@ function attempt(o, slots, rnd, fits) {
 
   // 한 자리씩
   const chords = [];
-  let prev = null, pending = null;
+  let prev = null, pending = null, confirm = null, unconfirmed = 0;
   const barOf = n => chords.filter((_, i) => flat[i].bar === flat[n].bar);   // 이 마디에서 이미 고른 코드들
   for (let n = 0; n < flat.length; n++) {
-    const slot = flat[n];
-    let forced = null, cand;
+    const slot = flat[n], env = envAt(n), boundary = boundaryAt(n);
+    const { roles, byId } = env;
+    let forced = null, cand, how = null;
+    const pivots = new Map();   // 피벗 후보: 앞 키의 역할 → [새 키의 역할, 코드 종류, 흔함]
+    if (boundary) pending = null;
     if (out[n] && byId[out[n].item[0]]) {
       // 패턴 자리: 정해진 역할 (코드 종류·베이스가 정해져 있으면 그대로)
       const [id, type, bass] = out[n].item;
@@ -743,21 +832,34 @@ function attempt(o, slots, rnd, fits) {
       cand = [[role, 1]];
     } else if (!prev) {
       // 첫 코드: 토닉 60 · II(ii) 15 · IV(iv) 15 · VI(♭VI) 10 (docs §7)
-      const firsts = key.minor ? [["i", 60], ["ii", 15], ["iv", 15], ["bVI", 10]] : [["I", 60], ["II", 15], ["IV", 15], ["VI", 10]];
+      const firsts = env.key.minor ? [["i", 60], ["ii", 15], ["iv", 15], ["bVI", 10]] : [["I", 60], ["II", 15], ["IV", 15], ["VI", 10]];
       cand = firsts.map(([id, w]) => [byId[id], w]);
+    } else if (boundary) {
+      // 키가 바뀌는 자리 (위 MOD_HOW): 0 피벗 · 1 새 키의 V7·II로 · 2 직접 이동
+      how = pickBy([0, 1, 2], i => MOD_HOW[o.chance][i], rnd);
+      if (how === 0) {
+        const old = envAt(n - 1);
+        for (const r of old.roles) { const x = reread(r, roles); if (x) pivots.set(r, x); }
+        cand = [...pivots].map(([r, x]) => [r, Math.pow(score(r, slot, n, old), 1 / T) * x[2] * beat(r, slot)]).filter(c => c[1] > 0);
+      }
+      if (how === 2) cand = [[env.tonic, 1]];
+      if (!cand?.length) cand = [[byId.V, beat(byId.V, slot)], [env.iiV, 1]].filter(c => c[0]);
     } else {
       // 온도는 화성 점수에만 — 박 위치(도미넌트 약박 80%)는 온도와 상관없이 같은 힘으로 (개연성이 낮아도 박 규칙은 지킴)
-      cand = roles.map(r => [r, score(r, slot, n)]).filter(c => c[1] > 0).map(([r, s]) => [r, Math.pow(s, 1 / T) * beat(r, slot)]);
+      cand = roles.map(r => [r, score(r, slot, n, env)]).filter(c => c[1] > 0).map(([r, s]) => [r, Math.pow(s, 1 / T) * beat(r, slot)]);
     }
     // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드(난이도 3부터)·도미넌트 7 (사용자 결정). 난이도 0은 다이아토닉만이라 없음
-    if (o.chance === 3 && o.level > 0 && !out[n] && prev && rnd() < 0.1) cand = [[surprise(rnd, o.level), 1]];
+    if (o.chance === 3 && o.level > 0 && !out[n] && prev && !boundary && rnd() < 0.1) cand = [[surprise(rnd, o.level), 1]];
 
     // 역할을 고르고 코드로 — 그 자리에 맞지 않으면(긴 코드 자리 등) 텐션·분수코드를 빼 보고, 그래도 안 되면 다른 역할로
     let role = null, q = null;
     for (let k = 0; k < 8 && !q && cand.length; k++) {
       role = pickBy(cand, c => c[1], rnd)[0];
+      // 피벗은 두 키에 같이 있는 코드 종류로, 철자는 새 키를 따라 (다음 코드와 같은 철자 — docs §10.5)
+      const f = pivots.has(role) ? { type: pivots.get(role)[1], bass: null } : forced;
+      const as = pivots.has(role) ? pivots.get(role)[0] : role;
       for (const opt of [o, o, { ...o, tension: "off" }, { ...o, tension: "off", slash: false }]) {
-        const c = realize(role, opt, rnd, forced && opt.slash === false ? { ...forced, bass: null } : forced);
+        const c = realize(as, opt, rnd, f && opt.slash === false ? { ...f, bass: null } : f);
         // 같은 마디에서 바로 앞과 같은 이름(C – C)은 베이스 라인 단계에서 전위형으로 바꿀 수 있을 때만
         const before = barOf(n).at(-1);
         if (c && before && before.symbol === c.symbol && !(o.slash && inversionsOf(c).length)) continue;
@@ -765,14 +867,16 @@ function attempt(o, slots, rnd, fits) {
       }
       if (!q) cand = cand.filter(c => c[0] !== role);
     }
-    if (!q) {   // 마지막 수단: 이 조의 토닉 3화음 (짧아서 어디든 맞음)
-      role = byId[key.minor ? "i" : "I"];
-      q = makeChord(role, key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd);
+    let way = null;
+    if (q && pivots.has(role)) { role = pivots.get(role)[0]; way = "pivot"; }   // 피벗: 이제부터 새 키의 기능으로
+    if (!q) {   // 마지막 수단: 이 키의 토닉 3화음 (짧아서 어디든 맞음)
+      role = env.tonic;
+      q = makeChord(role, env.key.minor ? "min" : "maj", null, { ...o, tension: "off" }, rnd);
     }
-    // 라인 클리셰로 늘이기 (위 clicheFor) — 첫 코드도 클리셰의 첫 코드로 바꿈
+    // 라인 클리셰로 늘이기 (위 clicheFor) — 첫 코드도 클리셰의 첫 코드로 바꿈. 키가 바뀌는 자리에서는 시작하지 않고, 클리셰 전체가 한 키 안에
     const barPulses = slots[slot.bar].reduce((a, sl) => a + sl.len, 0);
-    if (!out[n] && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
-      const cl = clicheFor(role, key, o.level, rnd);
+    if (!out[n] && !boundary && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
+      const cl = clicheFor(role, env.key, o.level, rnd);
       const end = cl && n + cl.items.length - 1;
       const span = cl && end < flat.length ? flat[end].bar - slot.bar + 1 : 99;
       // 시작 자리: 한 마디 안이면 1~7마디 어디서든, 2마디면 1·3·5·7마디, 그보다 길면 1·5마디 — 마디 첫 박에서.
@@ -780,7 +884,8 @@ function attempt(o, slots, rnd, fits) {
       const pulses = cl ? cl.items.reduce((a, _, j) => a + (flat[n + j]?.len || 99), 0) : 99;
       const startOk = slot.idx === 0 ? (span === 1 ? slot.bar <= 6 : span === 2 ? [0, 2, 4, 6].includes(slot.bar) : span <= 4 && [0, 4].includes(slot.bar))
         : span === 1 && pulses === 2 && slot.bar <= 6;
-      if (cl && startOk && cl.items.every((_, j) => !out[n + j]) && rnd() < (span > 2 ? CLICHE_LONG : span === 2 && cl.items.length === 2 ? CLICHE_BAR_EACH : 1)) {
+      const oneKey = cl && cl.items.every((_, j) => n + j < flat.length && plan.at[n + j] === plan.at[n] && (!j || !boundaryAt(n + j)));
+      if (cl && startOk && oneKey && cl.items.every((_, j) => !out[n + j]) && rnd() < (span > 2 ? CLICHE_LONG : span === 2 && cl.items.length === 2 ? CLICHE_BAR_EACH : 1)) {
         // 미리 만들어 긴 코드 자리 규칙에 맞는지 (텐션 없이)
         const pre = [];
         const ok = cl.items.every(([id, t, b], j) => {
@@ -797,13 +902,27 @@ function attempt(o, slots, rnd, fits) {
         }
       }
     }
-    tag(q, role, out[n]?.pattern || null);
+    tag(q, role, out[n]?.pattern || null, env.key);
+    // 키가 바뀐 자리: 실제로 넘어간 방법 (측정·테스트용, 화면에 안 보임)
+    if (boundary) Object.defineProperty(q, "modulation", { value: way || (how === 2 && role === env.tonic ? "direct" : "dominant"), enumerable: false });
     chords.push(q);
+    // 새 키 확인 (위 CONFIRM): 바뀐 코드부터 3코드 안에 새 키의 토닉·V7·II가 나왔는지
+    if (boundary) {
+      if (confirm?.need) unconfirmed++;   // 앞 키를 확인하기 전에 또 바뀜
+      confirm = { env, left: 3, need: rnd() < (CONFIRM[o.chance] ?? 0) };
+    }
+    if (confirm) {
+      const ok = confirm.env === env && env.confirms(role);
+      if (ok || --confirm.left <= 0) { if (!ok && confirm.need) unconfirmed++; confirm = null; }
+    }
     // 지연 해결 기억: 도미넌트 다음에 해결이 아닌 다이아토닉이 왔으면 다음 2코드 안에 원래 목표가 오도록 점수를 올림
     if (prev && isDominant(prev) && role.root.pc !== prev.target && role.kind === "dia" && role.fn !== "D") pending = { pc: prev.target, left: 2 };
     else if (pending && (role.root.pc === pending.pc || --pending.left <= 0)) pending = null;
     prev = role;
   }
+
+  // X로 돌아온 키를 아직 확인 못 했으면 1마디로 이어지는 코드까지 봄 (8마디 → 1마디)
+  if (confirm?.need && !chords.slice(0, confirm.left).some(q => confirm.env.confirms(q.roleObj))) unconfirmed++;
 
   /** 박 위치 점수: 도미넌트 7은 강박에서 ×0.12 (약박 80% 목표 — 측정해서 맞춘 값), 디미니시드는 ×0.5 */
   function beat(r, slot) {
@@ -811,11 +930,12 @@ function attempt(o, slots, rnd, fits) {
     return isDominant(r) ? 0.12 : r.kind === "dim" ? 0.5 : 1;
   }
 
-  /** 다음 역할 r의 점수 (지금 = prev) — 기능 화성 × 개연성 1의 악절·종지 규칙 (박 위치는 beat) */
-  function score(r, slot, n) {
-    let s = transition(prev, r, roles, ctx);
+  /** 다음 역할 r의 점수 (지금 = prev, e = r이 속한 키) — 기능 화성 × 새 키 확인 × 개연성 1의 악절·종지 규칙 (박 위치는 beat) */
+  function score(r, slot, n, e) {
+    let s = transition(prev, r, e.roles, e.ctx);
     if (s <= 0) return 0;
     if (pending && r.root.pc === pending.pc) s *= 5;
+    if (confirm && confirm.need && confirm.env === e && e.confirms(r)) s *= 4;
     if (o.chance === 1 && slot.bar === 4 && slot.idx === 0 && chords[0]) {
       // 평행 악절: 5마디 첫 코드 = 1마디 첫 코드(×4, 난이도 0만) 또는 3도 위아래 대리화음(×2)
       const d = iv(chords[0].rootPc, r.root.pc);
@@ -832,13 +952,13 @@ function attempt(o, slots, rnd, fits) {
   }
 
   capTensions(chords, o, rnd);
-  // 베이스 라인: 화성을 다 정한 뒤 전위형 (위 bassLine)
-  bassLine(chords, flat, o, rnd, fits, key);
+  // 베이스 라인: 화성을 다 정한 뒤 전위형 (위 bassLine) — 페달은 자리마다 그 키의 토닉·도미넌트
+  bassLine(chords, flat, o, rnd, fits, flat.map((_, n) => envAt(n).key));
 
   // 마디별로 다시 묶기
   const bars = slots.map(() => []);
   flat.forEach((s, n) => bars[s.bar].push(chords[n]));
-  return { key, chords: bars, violations: check(o, key, flat, chords, used) };
+  return { key: X, keys: plan.keys, chords: bars, violations: check(o, X, flat, chords, used, unconfirmed) };
 }
 
 // ---------- 조건 검사 (docs §11, 사용자 결정 2026-11-11) ----------
@@ -852,11 +972,12 @@ export function countIIV(chords) {
   return n;
 }
 
-function check(o, key, flat, chords, used) {
+function check(o, key, flat, chords, used, unconfirmed = 0) {
   const v = [];
   const tonicPc = Engine.pcOf(key.l, key.a);
-  // 토닉이 한 번은 (조가 들리게)
-  if (!chords.some(c => c.rootPc === tonicPc && (c.role === "I" || c.role === "i"))) v.push("no tonic");
+  // 토닉이 한 번은 (조가 들리게) — 난이도 4까지. 5부터는 대신 개연성 1에서 바뀐 키마다 확인(CONFIRM)
+  if (o.level < 5 && !chords.some(c => c.rootPc === tonicPc && (c.role === "I" || c.role === "i"))) v.push("no tonic");
+  if (o.chance === 1 && unconfirmed) v.push("key not confirmed");
   // II-V 최소: 개연성 1 → 2번, 2 → 1번. 라인 클리셰가 2마디 이상을 차지하면 하나 줄임 (남은 마디가 적어서 — 사용자 결정 2026-11-13, 4마디 → 2마디는 클리셰 비율을 맞추며 Claude가 바꿈)
   const clicheBars = new Set(flat.filter((s, n) => /^cliche/.test(chords[n].pattern || "")).map(s => s.bar)).size;
   const need = Math.max(0, ({ 1: 2, 2: 1 }[o.chance] || 0) - (clicheBars >= 2 ? 1 : 0));

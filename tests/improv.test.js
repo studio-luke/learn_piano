@@ -282,6 +282,47 @@ test("improv grammar: level 3 adds SubV7 (+ related II) and subdominant minor in
   assert.ok(chordsOf(await progs({ level: 1 }, 600)).some(c => c.q.role === "v" && c.q.type === "m7"), "단조 Vm7");
 });
 
+test("improv grammar: level 5 modulates — bar 1 and bar 8 in the first key, one or two other keys in between, never to the relative key, by pivot / new V7·II / direct (2026-11-14)", async () => {
+  const { generateGrammar, strong } = await import("../src/assets/js/improv/grammar.js");
+  const { Engine } = await import("../src/assets/js/core/engine.js");
+  const slots = rnd => Array.from({ length: 8 }, (_, b) => { const lens = rnd() < 0.4 ? [2, 2] : [4]; let st = 0; return lens.map((len, i) => { const s = { len, start: st, strong: strong(lens, i, b) }; st += len; return s; }); });
+  const rnd = (() => { let x = 7; return () => ((x = (x * 16807) % 2147483647) / 2147483647); })();
+  const pc = k => Engine.pcOf(k.l, k.a);
+  const run = (level, chance, n) => Array.from({ length: n }, () => generateGrammar({ tension: "off", slash: false, level, chance }, slots(rnd), rnd));
+  // 난이도 4까지는 키 하나
+  assert.ok(run(4, 2, 100).every(g => g.keys.length === 1 && g.chords.flat().every(q => q.keyName === g.key.name)), "난이도 4");
+  const steps = {}, ways = {};
+  let two = 0;
+  for (const chance of [1, 2, 3]) for (const g of run(5, chance, 300)) {
+    const flat = g.chords.map((b, bar) => b.map(q => ({ q, bar }))).flat();
+    assert.ok([2, 3].includes(g.keys.length), "키 수");
+    if (g.keys.length === 3) two++;
+    // 1마디·8마디는 처음 키, 첫 전조는 2~4마디, 돌아오는 건 6~8마디
+    assert.ok(flat.every(x => (x.bar !== 0 && x.bar !== 7) || x.q.keyName === g.key.name), "1·8마디 " + g.key.name);
+    const first = flat.find(x => x.q.keyName !== g.key.name);
+    assert.ok(first && first.bar >= 1 && first.bar <= 3, "첫 전조 " + first?.bar);
+    for (let k = 1; k < g.keys.length; k++) {
+      const a = g.keys[k - 1], b = g.keys[k], d = (pc(b) - pc(a) + 12) % 12;
+      assert.ok(d !== 0 || a.minor !== b.minor, "같은 키");
+      assert.ok(!(a.minor !== b.minor && d === (a.minor ? 3 : 9)), "나란한조 " + a.name + " → " + b.name);
+      steps[d] = (steps[d] || 0) + 1;
+    }
+    if (g.keys.length === 3) assert.ok(!g.keys.slice(0, 2).some(k => pc(k) === pc(g.keys[2]) && k.minor === g.keys[2].minor), "Z는 X·Y와 다른 키");
+    for (const x of flat) if (x.q.modulation) ways[x.q.modulation] = (ways[x.q.modulation] || 0) + 1;
+    // 개연성 1: 키가 바뀐 코드부터 3코드 안에 새 키의 토닉·V7·II (검사를 통과한 진행만, X 복귀는 1마디까지 봄)
+    if (chance === 1 && !g.violations.length) flat.forEach((x, n) => {
+      if (!x.q.modulation) return;
+      const win = [...flat, ...flat].slice(n, n + 3).filter(y => y.q.keyName === x.q.keyName);   // 8마디 → 1마디로 이어짐
+      assert.ok(win.some(y => ["I", "i", "V", "Vsus", "II", "ii"].includes(y.q.role)), "새 키 확인 " + x.q.keyName);
+    });
+  }
+  assert.ok(two > 300 && two < 600, "다른 키 둘 " + two + "/900");
+  // 미디언트(±3·±4)가 키 하나당 가장 자주, 증4도가 가장 드물게
+  const per = d => (steps[d] || 0);
+  assert.ok(Math.min(per(3), per(4), per(8), per(9)) > per(6) && per(6) < Math.min(per(5), per(7)), JSON.stringify(steps));
+  assert.ok(ways.pivot && ways.dominant && ways.direct, JSON.stringify(ways));
+});
+
 test("improv grammar: slash chords come from the bass line — passing, same chord, cadential 6/4, tonic/dominant pedal; free inversions from level 2; 7th basses fall by step, leading-tone basses rise (2026-11-13)", async () => {
   const iv = (a, b) => (((b - a) % 12) + 12) % 12;
   const why = {};
