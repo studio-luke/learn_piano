@@ -345,6 +345,17 @@ test("improv grammar: level 6 has no fixed key — chance 1·2 mostly scored by 
   assert.ok(share[1] < 0.3 && share[1] < share[2] && share[3] > 0.9, JSON.stringify(share));
 });
 
+test("improv grammar: 7(♭13) alone becomes aug7 about 30% with tensions on; ♯5·♭5 only on HARD dominants (2026-11-15)", async () => {
+  const count = ps => { const c = { aug7: 0, b13: 0, alt5: 0 }; for (const x of chordsOf(ps)) { if (x.q.type === "aug7") c.aug7++; if (x.q.type === "dom7" && x.q.tens.join() === "b13") c.b13++; if (x.q.tens.some(t => t === "#5" || t === "b5")) c.alt5++; } return c; };
+  const one = count(await progs({ level: 4, tension: "1" }, 2500));   // ♭13 하나짜리는 드물어서 넉넉히
+  const share = one.aug7 / (one.aug7 + one.b13);
+  assert.ok(share > 0.15 && share < 0.45 && one.alt5 === 0, JSON.stringify(one));
+  const hard = await progs({ level: 4, tension: "hard" }, 800);
+  assert.ok(count(hard).alt5 > 0, "HARD ♯5·♭5");
+  for (const x of chordsOf(hard)) if (x.q.tens.some(t => t === "#5" || t === "b5")) assert.ok(/^dom/.test(x.q.type) && !(x.q.tens.includes("#5") && x.q.tens.includes("b5")), x.q.symbol);
+  assert.ok(chordsOf(await progs({ level: 4, tension: "off" }, 300)).every(x => x.q.type !== "aug7"), "텐션 꺼짐이면 aug7 없음");
+});
+
 test("improv grammar: slash chords come from the bass line — passing, same chord, cadential 6/4, tonic/dominant pedal; free inversions from level 2; 7th basses fall by step, leading-tone basses rise (2026-11-13)", async () => {
   const iv = (a, b) => (((b - a) % 12) + 12) % 12;
   const why = {};

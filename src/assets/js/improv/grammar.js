@@ -461,6 +461,8 @@ const TEN_ODDS = { 0: 0.1, 1: 0.1, 2: 0.1, 3: 0.15, 4: 0.2, 5: 0.4, 6: 0.6 };
 const TWO_ODDS = { 3: 0.1, 4: 0.2, 5: 0.3, 6: 0.47 };
 const HARD_ODDS = { 3: 0.05, 4: 0.1, 5: 0.2, 6: 0.5 };
 const ALT_ODDS = { 4: 0.1, 5: 0.3, 6: 0.5 };
+const AUG7_ODDS = 0.3;    // 7(♭13) → aug7
+const FLAT5_ODDS = 0.3;   // HARD: ♭13 → ♯5, ♯11 → ♭5
 
 /**
  * 역할 + 코드 종류 → 엔진 코드 (q). 텐션은 위 규칙대로, 베이스("3" 등)가 있으면 분수코드.
@@ -496,6 +498,16 @@ function makeChord(role, typeId, bass, o, rnd) {
       // 7alt (2026-11-13 사용자 결정): 난이도 4부터, 텐션이 alt 조건(♭9·♯9·♭13 중 하나 이상, 9·13 없음)이면 4 10% · 5 30% · 6 50% (HARD면 +10%)
       const altOk = type.id === "dom7" && tens.some(t => ["b9", "#9", "b13"].includes(t)) && !tens.some(t => ["9", "13"].includes(t));
       if (altOk && level >= 4 && rnd() < ALT_ODDS[Math.min(level, 6)] + (o.tension === "hard" ? 0.1 : 0)) { alt = true; tens = []; }
+      // aug7 (2026-11-15 사용자 결정): 도미넌트 7에 ♭13 하나만 붙었으면 30%로 aug7(진행의 기호 표기에 따라 aug7 또는 +7) — 텐션 옵션이 켜져 있으면 난이도 상관없이
+      if (!alt && type.id === "dom7" && tens.length === 1 && tens[0] === "b13" && rnd() < AUG7_ODDS) { type = Engine.BY_ID.aug7; tens = []; }
+      // HARD에서만 ♯5·♭5 표기 (2026-11-15 사용자 결정): 도미넌트 계열(7·9·13)에 ♭13·♯11 중 하나만 있으면 30%로 ♭13 → ♯5, ♯11 → ♭5 (둘 다 있으면 그대로)
+      if (!alt && o.tension === "hard" && type.dominant) {
+        const swaps = [["b13", "#5"], ["#11", "b5"]].filter(([a]) => tens.includes(a));
+        if (swaps.length === 1 && rnd() < FLAT5_ODDS) {
+          tens = tens.map(t => (t === swaps[0][0] ? swaps[0][1] : t));
+          tens.sort((p, q) => Engine.TEN_ORDER.indexOf(p) - Engine.TEN_ORDER.indexOf(q));
+        }
+      }
     }
   }
   const m = type.std[0].match(/^(.*)\((.*)\)$/);
@@ -1109,7 +1121,7 @@ export function countIIV(chords) {
   let n = 0;
   for (let i = 1; i < chords.length; i++) {
     const a = chords[i - 1], b = chords[i];
-    if (/^(m7|m7b5|m9|m11)$/.test(a.type) && /^(dom7|7sus4|dom9|dom13)$/.test(b.type) && !b.bass && iv(b.rootPc, a.rootPc) === 7) n++;
+    if (/^(m7|m7b5|m9|m11)$/.test(a.type) && /^(dom7|7sus4|dom9|dom13|aug7)$/.test(b.type) && !b.bass && iv(b.rootPc, a.rootPc) === 7) n++;
   }
   return n;
 }
