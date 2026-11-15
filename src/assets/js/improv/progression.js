@@ -5,7 +5,7 @@
 // 사용자 결정 (chordoven-spec.md "코드 초견"):
 //   - 텐션(옵션 A): 꺼짐 / 최대 1개 / 최대 2개 / HARD(텐션 코드 M9 M13 m9 m11 9 13도 — 텐션 코드는 추가 텐션 1개까지). 7alt는 텐션이 켜져 있고 난이도 4부터
 //   - 분수코드(옵션 B): 베이스 진행을 잇는 전위형, V7sus4의 하이브리드 표기(IV/V · IIm7/V) — grammar.js
-//   - 코드 개수(옵션 C): 최소(한 마디에 하나) / 적정(최대 2개) / 최대(최대 4개). 코드는 강박에서만 바뀜
+//   - (한 마디 당) 코드 개수(옵션 C): 1개 / 1~2개 / 2개(항상 — 2026-11-15) / 1~4개. 코드는 강박에서만 바뀜
 //   - 박자표(옵션 E): 꺼지면 4/4, 켜면 6/8 · 3/4 · 2/4 · 12/8 · 9/8도 (빈도 순)
 //   - 코드 진행 난이도 1~6 · 코드 개연성 1~4 (2026-11-11) — grammar.js
 //   - 기호 표기: 진행마다 M·m·dim·aug를 글자/기호 중 하나로 정해 8마디 내내 같게. ø는 쓰지 않음, 텐션의 ♯·♭을 +·-로 쓰지 않음
@@ -32,6 +32,8 @@ const SPLITS = {
   low: { 2: [[[2], 1]], 3: [[[3], 1]], 4: [[[4], 1]] },
   // 적정: 최대 2개 — 마디의 약 40%를 반으로 (3박 마디는 2+1)
   mid: { 2: [[[2], 0.6], [[1, 1], 0.4]], 3: [[[3], 0.6], [[2, 1], 0.4]], 4: [[[4], 0.6], [[2, 2], 0.4]] },
+  // 2개: 한 마디에 항상 2개 (사용자 결정 2026-11-15) — 4펄스 2+2, 3펄스 2+1, 2펄스 1+1
+  two: { 2: [[[1, 1], 1]], 3: [[[2, 1], 1]], 4: [[[2, 2], 1]] },
   // 최대: 최대 4개 (사용자 결정 2026-11-10)
   //   4펄스 마디(4/4·12/8): 하나 25.8% · 코드 둘 58.2%(그 안에서 2+2 91% · 3+1 8% · 1+3 1%) · 2+1+1 10% · 1+1+2 4% · 1+1+1+1 2%
   //   3펄스 마디(3/4·9/8): 1+1+1은 1%, 나머지 99%는 예전 비율대로(하나 · 2+1 · 1+2)
@@ -92,8 +94,8 @@ export const isLong = q => !q.error && displayLength(q) >= LONG;
 
 /**
  * 8마디 코드진행 하나.
- * @param o    출제 설정 { tension: "off"|"1"|"2"|"hard", slash, count: "low"|"mid"|"high", level: 0~6, chance: 1~4, meters }
- *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 분수코드 없음), chance = 코드 개연성 (2026-11-11). 난이도 5부터 다른 키로 전조, 6은 조성 없이(improv/grammar.js)
+ * @param o    출제 설정 { tension: "off"|"1"|"2"|"hard", slash, count: "low"|"mid"|"two"|"high", level: 0~6, chance: 1~4, meters }
+ *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 2026-11-15부터 분수코드도), chance = 코드 개연성 (2026-11-11). 난이도 5부터 다른 키로 전조, 6은 조성 없이(improv/grammar.js)
  * @param rnd  난수 함수 (테스트에서 고정값)
  * @returns { meter, style, key, bars: [[{ q, start, len, short }] × 8] }
  *   start·len은 펄스 단위, short는 "/B♭"처럼 베이스만 쓸지(같은 마디에서 바로 앞과 위 코드가 같고 베이스만 다름)
@@ -115,7 +117,7 @@ export function generateProgression(o, rnd = Math.random) {
   // 생성기가 코드를 고를 때 이 검사로 거름 (기호 표기를 바꾼 뒤의 길이로 판단 — dim7보다 °7이 짧음)
   const longIn = q => isLong(restyle(q, style));
   const fits = (q, slot, barChords) => !longIn(q) || (slot.len * 2 >= meter.pulses && !barChords.some(longIn));
-  const g = (chance === 4 ? generateRandom : generateGrammar)({ tension: o.tension, slash: !!o.slash && level > 0, level, chance }, slots, rnd, fits);
+  const g = (chance === 4 ? generateRandom : generateGrammar)({ tension: o.tension, slash: !!o.slash, level, chance }, slots, rnd, fits);
   const bars = slots.map((bar, b) => bar.map((sl, i) => ({ raw: g.chords[b][i], start: sl.start, len: sl.len })));
   // dim·aug가 하나라도 1박짜리 자리에 오면 이 악보에서는 반드시 기호(°·+)로 (사용자 결정 2026-11-10 — 1박 자리는 좁아서).
   // 기호로 바꾸면 이름이 짧아지기만 하므로 위의 긴 코드 자리 규칙은 그대로 지켜짐

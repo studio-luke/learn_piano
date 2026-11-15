@@ -337,6 +337,9 @@ function enter(a, b, roles, ctx) {
 }
 
 const SELF = 0.5;   // 자기 자신 (2026-11-13 사용자 조정 0.4 → 0.5)
+// 난이도 0·1, 분수코드 허용: C – C/E처럼 같은 코드에서 베이스만 바뀌는 진행을 진행의 약 10%에 한 번 (사용자 결정 2026-11-15 — 전에는 1~16%로 들쭉날쭉).
+// 진행마다 REPEAT_ODDS로 마디 안 두 번째 이후 자리 하나를 골라 앞 코드를 그대로 두고(베이스 라인 단계가 전위형으로 바꿈), 그 밖의 같은 마디 반복은 막음
+const REPEAT_ODDS = 0.1;
 
 // ---------- 패턴 (대중적 진행 — 개연성 1·2에서 통째로) ----------
 // 항목: 역할 id, 또는 [역할 id, 코드 종류(없으면 보통대로), 베이스("3"·"5"·"b7"·"7"·"6", 분수코드 허용일 때만)]
@@ -362,6 +365,8 @@ const PATTERNS = {
     // 난이도 4: 믹솔리디안 · 에올리안 종지
     { name: "mixolydian", seq: ["I", "bVIIM7", "IV", "I"], level: 4 },
     { name: "aeolian", seq: ["I", "bVI", "bVII7", "I"], level: 4 },
+    // 난이도 0·1의 머니코드 (사용자 결정 2026-11-15) — 위 목록에 없는 것만, 난이도 2부터는 안 씀
+    ...["4-3-2-1", "1-5-6-3", "4-1-2-5", "6-2-5-1", "2-5-1-6", "2-4-6-5", "6-3-4-1", "4-2-6-5", "6-4-2-5"].map(n => byDegrees(n, "major")),
   ],
   minor: [
     { name: "andalusian", seq: ["i", "bVII", "bVI", "V"] },
@@ -370,8 +375,16 @@ const PATTERNS = {
     { name: "4-5-1", seq: ["iv", "V", "i"] },
     { name: "minor-2-subV-1", seq: ["ii", "subv/i", "i"], level: 3 },
     { name: "picardy", seq: ["iv", "V", "PicI"], level: 4 },
+    // 난이도 1의 단조 머니코드 (사용자 결정 2026-11-15) — "5m"은 Vm7
+    ...["1-3-4-5", "1-4-7-1", "6-7-1-5m", "4-7-1-5m"].map(n => byDegrees(n, "minor")),
   ],
 };
+// 난이도 1: 장조 머니코드(난이도 0·1에 쓰는 장조 패턴 전부)를 단조에서도 같은 도수로 — 1 i · 2 ii · 3 ♭III · 4 iv · 5 V · 6 ♭VI (사용자 결정 2026-11-15)
+PATTERNS.minor.push(...PATTERNS.major.filter(p => !p.level).map(p => ({ name: p.name + "(m)", seq: p.seq.map(id => DEG_ID.minor[DEG_ID.major.indexOf(id)]), maxLevel: 1 })));
+/** "6-2-5-1" → 머니코드 패턴 (난이도 0·1만) */
+function byDegrees(name, mode) {
+  return { name, seq: name.split("-").map(d => (d === "5m" ? "v" : DEG_ID[mode][+d])), maxLevel: 1 };
+}
 
 // ---------- 라인 클리셰 (사용자 결정 2026-11-13) ----------
 // 패턴과 따로: 진행 중에 아래 코드가 뽑히면 그 자리에서 클리셰로 늘어날 수 있음 (마디 첫 박에서 시작).
@@ -412,6 +425,7 @@ function clicheFor(role, key, level, rnd) {
 }
 const CLICHE_SECOND = 0.3;   // 두 번째 코드(mM7·augM7)부터 시작 (사용자 결정 2026-11-13)
 const PATTERN_ODDS = { 1: 0.7, 2: 0.4, 3: 0.15 };   // 개연성별로 패턴을 통째로 쓸 확률 (docs §5)
+const MONEY_ODDS = { 1: 1, 2: 0.6, 3: 0.3 };   // 난이도 0·1은 머니코드 중심 (사용자 결정 2026-11-15)
 const TEMPERATURE = { 1: 0.6, 2: 0.9, 3: 1.3 };
 
 // ---------- 코드 만들기 ----------
@@ -597,6 +611,7 @@ function bassLine(chords, flat, o, rnd, fits, keys, random = false) {
       for (const x of opts) {
         if (prevBass != null && step(prevBass, x.pc) && step(prevBass, x.pc) === step(x.pc, next)) uses.push({ ...x, why: "passing" });
         else if (prev && upper(prev) === upper(q)) uses.push({ ...x, why: "same" });   // 같은 코드 안의 전위 (C – C/G)
+        else if (o.level === 0) continue;   // 난이도 0: 순차 베이스와 같은 코드 안의 전위만 (2026-11-15)
         else if (x.kind === "5" && /^(I|i)$/.test(q.role) && isDominant(nextQ.roleObj || {}) && nextQ.rootPc === x.pc) uses.push({ ...x, why: "cad64" });
         // 페달: 토닉 베이스를 유지(C – F/C), 또는 도미넌트 베이스를 유지하고 다음도 그 베이스(G – C/G – G7)
         else if (prevBass === x.pc && (x.pc === tonic || (x.pc === dominant && next === dominant))) uses.push({ ...x, why: "pedal" });
@@ -735,7 +750,7 @@ export function generateGrammar(o, slots, rnd, fits = () => true) {
  * 바로 앞과 같은 맨 아래 음만 피하고, 긴 코드 자리(fits)는 지킴. 인자와 돌려주는 값은 generateGrammar와 같음
  */
 export function generateRandom(o, slots, rnd, fits = () => true) {
-  const key = chooseKey(rnd);
+  const key = chooseKey(rnd, o.level);
   o = { ...o, scale: scaleOf(key) };
   const flat = slots.flatMap((bar, b) => bar.map((sl, i) => ({ ...sl, bar: b, idx: i })));
   // 난이도 5부터 자리마다 키가 다름 (keyPlan) — 그 자리 키의 코드 목록 안에서 무작위. 6은 코드마다 아무 키
@@ -767,7 +782,7 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
   }
   capTensions(chords.flat(), o, rnd);
   // 분수코드: 용법과 상관없이 코드마다 RANDOM_INV (하이브리드는 realize가 난이도별로)
-  bassLine(chords.flat(), flat, o, rnd, fits, chords.flat().map(q => ALL_KEYS.find(k => k.name === q.keyName)), true);
+  bassLine(chords.flat(), flat, o, rnd, fits, chords.flat().map(q => ALL_KEYS.find(k => k.name === q.keyName)), o.level > 0);   // 난이도 0은 랜덤에서도 용법대로
   return { key, keys: plan.keys, chords, violations: [] };
 }
 
@@ -793,14 +808,14 @@ function tag(q, role, pattern, key) {
   return Object.assign(q, { role: role.id, kind: role.kind, fn: role.fn, pattern });
 }
 
-function chooseKey(rnd) {
-  const minor = rnd() < 0.5;   // 장·단조 반반 (사용자 결정 19)
+function chooseKey(rnd, level) {
+  const minor = level >= 1 && rnd() < 0.5;   // 장·단조 반반 (사용자 결정 19) — 난이도 0은 장조만 (2026-11-15)
   const [name] = pickBy(minor ? MINOR_KEYS : MAJOR_KEYS, k => k[1], rnd);
   return { ...parseName(name), minor, name: name + (minor ? "m" : "") };
 }
 
 function attempt(o, slots, rnd, fits) {
-  const X = chooseKey(rnd);
+  const X = chooseKey(rnd, o.level);
   o = { ...o, scale: scaleOf(X) };
   const T = TEMPERATURE[o.chance] || 1;
   const flat = slots.flatMap((bar, b) => bar.map((s, i) => ({ ...s, bar: b, idx: i })));
@@ -812,22 +827,32 @@ function attempt(o, slots, rnd, fits) {
   const out = flat.map(() => null);
   const used = [];   // 쓴 패턴 이름
 
-  // 패턴 끼워 넣기: 1마디(그리고 개연성 1·2면 5마디)에서 확률로 — 패턴 전체가 한 키 안에 있고 키가 바뀌는 자리를 지나지 않을 때만
-  const patOdds = PATTERN_ODDS[o.chance] || 0;
+  // 패턴 끼워 넣기: 1마디(그리고 개연성 1·2면 5마디)에서 확률로 — 패턴 전체가 한 키 안에 있고 키가 바뀌는 자리를 지나지 않을 때만.
+  // 난이도 0·1(머니코드 중심, 2026-11-15): 도미넌트가 모두 약박에 오도록 시작 자리를 그 마디 첫 박부터 다음 마디 첫 박까지 옮겨 봄 — 맞는 자리가 없으면 그 패턴은 안 씀
+  const low = o.level <= 1;
+  const patOdds = (low ? MONEY_ODDS : PATTERN_ODDS)[o.chance] || 0;
   for (const startBar of [0, 4]) {
     if (rnd() >= patOdds) continue;
-    const start = flat.findIndex(s => s.bar === startBar);
-    const e = envAt(start);
-    const pats = (e.key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => (p.level || 0) <= o.level);
+    const first = flat.findIndex(s => s.bar === startBar);
+    const e = envAt(first);
+    const pats = (e.key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => (p.level || 0) <= o.level && o.level <= (p.maxLevel ?? 6));
     const firstId = it => (Array.isArray(it) ? it[0] : it);
-    const pool = pats.filter(p => o.chance === 1 || !used.includes(p.name)).filter(p => start + p.seq.length <= flat.length && p.seq.every((_, j) => !out[start + j] && plan.at[start + j] === plan.at[start] && !boundaryAt(start + j)))
+    const starts = low ? flat.map((_, i) => i).filter(i => i >= first && (flat[i].bar === startBar || (flat[i].bar === startBar + 1 && flat[i].idx === 0))) : [first];
+    const fitsAt = (p, start) => start + p.seq.length <= flat.length && p.seq.every((it, j) => !out[start + j] && plan.at[start + j] === plan.at[start] && !boundaryAt(start + j) &&
+      !(low && flat[start + j].strong && e.byId[firstId(it)] && isDominant(e.byId[firstId(it)])));
+    const pool = pats.filter(p => o.chance === 1 || !used.includes(p.name)).map(p => [p, starts.find(st => fitsAt(p, st))]).filter(([, st]) => st !== undefined)
       // 난이도 1부터: 5마디 패턴이 1마디 패턴과 같은 코드(같은 역할·종류·베이스)로 시작하지 않게 — 종류·베이스를 정하지 않은 같은 역할이면 아직 같을 수 있어 뺌
-      .filter(p => !(o.level >= 1 && startBar === 4 && out[0] && plan.at[start] === 0 && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
+      .filter(([p, st]) => !(o.level >= 1 && startBar === 4 && st === first && out[0] && plan.at[st] === 0 && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
     if (!pool.length) continue;
-    const p = pool[Math.floor(rnd() * pool.length)];
+    const [p, start] = pool[Math.floor(rnd() * pool.length)];
     used.push(p.name);
     p.seq.forEach((it, j) => { out[start + j] = { pattern: p.name, item: Array.isArray(it) ? it : [it] }; });
   }
+
+  // 같은 코드 반복 자리 (위 REPEAT_ODDS) — 패턴이 정하지 않은 자리 중에서
+  const repeatOk = o.slash && o.level <= 1;
+  const spots = repeatOk ? flat.map((_, i) => i).filter(i => flat[i].idx > 0 && !out[i]) : [];
+  const repeatAt = spots.length && rnd() < REPEAT_ODDS ? spots[Math.floor(rnd() * spots.length)] : -1;
 
   // 한 자리씩
   const chords = [];
@@ -868,6 +893,9 @@ function attempt(o, slots, rnd, fits) {
 
     // 역할을 고르고 코드로 — 그 자리에 맞지 않으면(긴 코드 자리 등) 텐션·분수코드를 빼 보고, 그래도 안 되면 다른 역할로
     let role = null, q = null;
+    const last = chords[n - 1];
+    const repeat = n === repeatAt && last && !boundary && !last.bass && !/^cliche/.test(last.pattern || "") && inversionsOf(last).length > 0;
+    if (repeat) { role = prev; q = { ...last }; }
     for (let k = 0; k < 8 && !q && cand.length; k++) {
       role = pickBy(cand, c => c[1], rnd)[0];
       // 피벗은 두 키에 같이 있는 코드 종류로, 철자는 새 키를 따라 (다음 코드와 같은 철자 — docs §10.5)
@@ -890,7 +918,7 @@ function attempt(o, slots, rnd, fits) {
     }
     // 라인 클리셰로 늘이기 (위 clicheFor) — 첫 코드도 클리셰의 첫 코드로 바꿈. 키가 바뀌는 자리에서는 시작하지 않고, 클리셰 전체가 한 키 안에
     const barPulses = slots[slot.bar].reduce((a, sl) => a + sl.len, 0);
-    if (!out[n] && !boundary && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
+    if (!out[n] && !boundary && !repeat && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
       const cl = clicheFor(role, env.key, o.level, rnd);
       const end = cl && n + cl.items.length - 1;
       const span = cl && end < flat.length ? flat[end].bar - slot.bar + 1 : 99;
@@ -950,6 +978,7 @@ function attempt(o, slots, rnd, fits) {
     let s = transition(prev, r, e.roles, e.ctx);
     if (s <= 0) return 0;
     if (pending && r.root.pc === pending.pc) s *= 5;
+    if (r === prev && slot.idx > 0 && repeatOk) return 0;   // 같은 마디의 같은 코드는 아래 repeatAt 자리에서만
     if (confirm && confirm.need && confirm.env === e && e.confirms(r)) s *= 4;
     if (o.chance === 1 && slot.bar === 4 && slot.idx === 0 && chords[0]) {
       // 평행 악절: 5마디 첫 코드 = 1마디 첫 코드(×4, 난이도 0만) 또는 3도 위아래 대리화음(×2)
@@ -1028,7 +1057,7 @@ function aScore(p, c) {
 /** 난이도 6의 진행 하나 (attempt와 같은 모양을 돌려줌) */
 function attempt6(o, slots, rnd, fits) {
   const envs = allEnvs(o);
-  const X = chooseKey(rnd);
+  const X = chooseKey(rnd, o.level);
   o = { ...o, scale: scaleOf(X) };
   const T = TEMPERATURE[o.chance] || 1, lambda = MIX_A[o.chance] ?? 0.35;
   const flat = slots.flatMap((bar, b) => bar.map((s, i) => ({ ...s, bar: b, idx: i })));

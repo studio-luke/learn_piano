@@ -162,12 +162,14 @@ const progs = async (o, n = 300) => {
 const chordsOf = ps => ps.flatMap(p => p.bars.flat());
 
 test("improv prog: 8 bars, chord lengths fill each bar on strong beats, splits follow the chord-count option", async () => {
-  for (const [count, maxPer] of [["low", 1], ["mid", 2], ["high", 4]]) {
+  for (const [count, maxPer] of [["low", 1], ["mid", 2], ["two", 2], ["high", 4]]) {
     const ps = await progs({ count, meters: true });
     for (const p of ps) {
       assert.strictEqual(p.bars.length, 8);
       for (const bar of p.bars) {
         assert.ok(bar.length >= 1 && bar.length <= maxPer, count + " " + bar.length);
+        // 2개: 항상 둘 — 4펄스 2+2 · 3펄스 2+1 · 2펄스 1+1 (2026-11-15)
+        if (count === "two") assert.strictEqual(bar.map(c => c.len).join("+"), { 2: "1+1", 3: "2+1", 4: "2+2" }[p.meter.pulses]);
         assert.strictEqual(bar.reduce((a, c) => a + c.len, 0), p.meter.pulses);
         let s = 0; for (const c of bar) { assert.strictEqual(c.start, s); s += c.len; }
       }
@@ -217,19 +219,20 @@ test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-on
 });
 
 // ---------- 코드진행 문법 (improv/grammar.js, 6단계 난이도 1·2 — 2026-11-11) ----------
-test("improv grammar: level 0 = diatonic only, no slash chords, no V7sus4; level 1 adds V7sus4 + slash; add chords only on 0·1; dim7 from level 3; ImM7 only in the line cliché (2026-11-12)", async () => {
+test("improv grammar: level 0 = major diatonic only, slash only passing/same-chord, no V7sus4; level 1 adds minor + V7sus4; add chords only on 0·1; dim7 from level 3; ImM7 only in the line cliché (2026-11-12, 2026-11-15)", async () => {
   const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10, 11];   // 단조는 V7의 이끔음 포함
   const { Engine } = await import("../src/assets/js/core/engine.js");
   for (const level of [0, 1]) {
     for (const chance of [1, 2, 3]) {
-      for (const p of await progs({ level, chance, slash: level === 0 }, 300)) {   // 난이도 0은 분수코드를 켜도 없음
+      for (const p of await progs({ level, chance }, 300)) {
+        if (level === 0) assert.ok(!p.key.minor, "난이도 0은 장조만 " + p.key.name);
         const tonic = Engine.pcOf(p.key.l, p.key.a), sc = p.key.minor ? MINOR : MAJOR;
         for (const c of p.bars.flat()) {
           if (level === 1 && c.q.kind === "surprise") continue;   // 개연성 3의 뜬금 도미넌트
           assert.strictEqual(c.q.kind, "dia", c.q.symbol);
           assert.ok(sc.includes((c.q.rootPc - tonic + 12) % 12), p.key.name + " " + c.q.symbol);
           assert.ok(!["sus4", "sus2", "dim7"].includes(c.q.type), c.q.symbol);
-          if (level === 0) assert.ok(!c.q.bass && c.q.type !== "7sus4", "난이도 0 " + c.q.symbol);
+          if (level === 0) assert.ok(c.q.type !== "7sus4" && (!c.q.bass || ["passing", "same"].includes(c.q.why)), "난이도 0 " + c.q.symbol + " " + c.q.why);
           if (c.q.type === "mM7") assert.ok(/^cliche/.test(c.q.pattern), "ImM7은 클리셰로만 " + c.q.symbol);
         }
       }
@@ -553,4 +556,35 @@ test("improv grammar: line clichés — minor (Im·IVm in minor, IIm·VIm in maj
   }
   for (const k of ["m:i", "m:iv", "M:II", "M:VI", "M:I", "M:IV", "m:bIII", "m:bVI"]) assert.ok(seen[k], k);
   for (const f of ["min mM7 m7", "mM7 m7", "mM7 m6", "mM7 m7 m6", "augM7 6", "M7 augM7 6 dom7"]) assert.ok(forms.has(f), f);
+});
+
+// ---------- 난이도 0·1: 머니코드 중심 · C – C/E (사용자 결정 2026-11-15) ----------
+test("improv grammar: levels 0·1 use money-chord patterns with dominants on weak beats; minor money chords on level 1; C – C/E in about 10% of progressions", async () => {
+  const { generateGrammar, strong } = await import("../src/assets/js/improv/grammar.js");
+  const shapes = [[4], [2, 2], [2, 2], [4]];
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const names = new Set(), minorNames = new Set();
+  let dominants = 0;
+  for (let i = 0; i < 1500; i++) {
+    const level = i % 2, chance = 1 + (i % 3);
+    const slots = Array.from({ length: 8 }, (_, b) => { const lens = shapes[(i + b) % 4]; let st = 0; return lens.map((len, k) => { const s = { len, start: st, strong: strong(lens, k, b) }; st += len; return s; }); });
+    const g = generateGrammar({ tension: "off", slash: true, level, chance }, slots, rnd);
+    g.chords.forEach((bar, b) => bar.forEach((q, k) => {
+      if (!q.pattern || /^cliche/.test(q.pattern)) return;
+      (g.key.minor ? minorNames : names).add(q.pattern);
+      if (q.fn === "D" && q.role !== "v") { dominants++; assert.ok(!slots[b][k].strong, "패턴의 도미넌트는 약박 " + q.pattern + " " + q.symbol); }
+    }));
+  }
+  assert.ok(dominants > 500);
+  for (const n of ["6-2-5-1", "4-3-2-1", "2-5-1-6"]) assert.ok(names.has(n), n);
+  for (const n of ["1-4-7-1", "6-7-1-5m", "6-2-5-1(m)"]) assert.ok(minorNames.has(n), n);
+  // 난이도 2부터는 새 머니코드 없음
+  assert.ok(!chordsOf(await progs({ level: 2, chance: 1 }, 300)).some(c => ["6-2-5-1", "4-3-2-1"].includes(c.q.pattern)));
+  // C – C/E: 같은 마디에서 위 코드가 같고 베이스만 다름 — 진행의 약 10%
+  const upper = x => x.q.rootName + x.q.label;
+  for (const level of [0, 1]) {
+    const ps = await progs({ level, chance: 2, count: "two" }, 2000);
+    const rate = ps.filter(p => p.bars.some(b => b.some((x, k) => k && upper(x) === upper(b[k - 1]) && x.q.symbol !== b[k - 1].q.symbol && !/^cliche/.test(x.q.pattern || "")))).length / ps.length;
+    assert.ok(rate > 0.06 && rate < 0.15, "난이도 " + level + " C – C/E " + (100 * rate).toFixed(1) + "%");
+  }
 });

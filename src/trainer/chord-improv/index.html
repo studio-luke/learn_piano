@@ -166,12 +166,11 @@
 
         <hr class="divider">
 
-        <!-- 코드 개수: 3칸 슬라이더 (Low·Mid·High 글자는 화면에 안 보임 — 칸 이름과 그 아래 설명만) -->
+        <!-- (한 마디 당) 코드 개수: 4칸 슬라이더 1개 · 1~2개 · 2개 · 1~4개 (2026-11-15 "2개" 추가, 설명 줄은 없앰) -->
         <div class="opt">
-          <h3 id="pCountH" data-i18n="progCountH">코드 개수</h3>
-          <input class="pg-range" type="range" id="pCount" min="0" max="2" step="1" aria-labelledby="pCountH">
-          <div class="pg-ticks three" aria-hidden="true"><span data-i18n="progCountT0">최소</span><span data-i18n="progCountT1">적정</span><span data-i18n="progCountT2">최대</span></div>
-          <p class="note" id="pCountText"></p>
+          <h3 id="pCountH" data-i18n="progCountH">(한 마디 당) 코드 개수</h3>
+          <input class="pg-range" type="range" id="pCount" min="0" max="3" step="1" aria-labelledby="pCountH">
+          <div class="pg-ticks" aria-hidden="true"><span data-i18n="progCountT0">1개</span><span data-i18n="progCountT1">1~2개</span><span data-i18n="progCountT2">2개</span><span data-i18n="progCountT3">1~4개</span></div>
         </div>
 
         <!-- 코드 진행 난이도: 7칸 슬라이더 0~6 (2026-11-11 6칸, 2026-11-12 난이도 0 추가) -->
