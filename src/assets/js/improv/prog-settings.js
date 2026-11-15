@@ -60,6 +60,6 @@ export function syncProgUI() {
   $("pSlash").checked = S.slash;
   $("pCount").value = S.count;
   $("pLevel").value = S.level; $("pLevelText").textContent = t("progLevel" + S.level);
-  $("pChance").value = S.chance; $("pChanceText").textContent = t("progChance" + S.chance);
+  $("pChance").value = S.chance;
   $("pMeters").checked = S.meters;
 }
