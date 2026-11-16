@@ -743,6 +743,9 @@ const MOD_ODDS = 0.16;
 //   (3번째 ×0.4 · 4번째 ×0.16 · 5번째 ×0.064 …). 묶음을 넘어서도 이어서 셈.
 //   패턴도: 패턴 안에서 가장 길게 이어지는 다이아토닉 L개(묶음 첫 자리면 앞에서 이어진 수까지 더함)마다 0.4^(L−2)의 확률로만 넣음 — 1-6-2-5 16% · 2-5-1 40% · 하행 베이스 0.4%
 const DIA_DECAY = 0.4;
+// 디미니시드·SubV7 비중 (사용자 결정 2026-11-16 — 목표 SubV7 약 7.5% · 디미니시드 약 5%, 개연성마다 같게): 패턴이 정하지 않은 자리마다 아래 확률로
+//   그 자리에 올 수 있는(점수가 있는) 디미니시드 / SubV7 중에서 점수 비율대로 고름. 저절로 나오는 몫을 빼고 측정해서 맞춘 값. 화성 범위에 들어 있을 때만
+const PICK_ODDS = { dim: { 1: 0.155, 2: 0.065, 3: 0.025 }, subv: { 1: 0.045, 2: 0.035, 3: 0.045 } };
 /** 화성 범위로 역할 거르기 (SubV7 단계는 SDM·디미니시드 없이, SDM 단계는 디미니시드 없이) */
 function stageRoles(roles, stage) {
   if (stage == null || stage === 1 || stage === 0 || stage >= STAGE_DIM) return roles;
@@ -958,6 +961,15 @@ function attempt(o, slots, rnd, fits) {
     } else {
       // 온도는 화성 점수에만 — 박 위치(도미넌트 약박 80%)는 온도와 상관없이 같은 힘으로 (개연성이 낮아도 박 규칙은 지킴)
       cand = roles.map(r => [r, score(r, slot, n, env)]).filter(c => c[1] > 0).map(([r, s]) => [r, Math.pow(s, 1 / T) * beat(r, slot)]);
+    }
+    if (o.stream && !out[n] && prev && !boundary) {   // 화성 모드: 디미니시드·SubV7을 확률로 (위 PICK_ODDS)
+      const pick = kind => {
+        if (rnd() >= (PICK_ODDS[kind][o.chance] || 0)) return false;
+        const c = roles.filter(r => r.kind === kind).map(r => [r, score(r, slot, n, env)]).filter(x => x[1] > 0).map(([r, sc]) => [r, Math.pow(sc, 1 / T) * beat(r, slot)]).filter(x => x[1] > 0);
+        if (c.length) cand = c;
+        return c.length > 0;
+      };
+      if (!(o.stage >= STAGE_DIM && pick("dim")) && o.stage >= 2) pick("subv");
     }
     if (o.stream && o.stage >= 1 && !out[n] && diaRun >= 2) cand = cand.map(([r, w]) => [r, r.kind === "dia" ? w * DIA_DECAY ** (diaRun - 1) : w]);
     // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드(난이도 3부터)·도미넌트 7 (사용자 결정). 난이도 0은 다이아토닉만이라 없음
