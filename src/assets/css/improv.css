@@ -179,13 +179,7 @@
 
 /* 8마디 모드: 박 점 없음 (2026-11-10 사용자 요청 — 그 자리에 폰 세로 안내와 알약). 카운트인 숫자와 박자표로 충분 */
 .im-card.is-prog .im-beats { display: none; }
-/* 무작위 코드 모드의 화성 옵션 (2026-11-16): 키 고정 스위치 · 키 드롭다운 · Major/minor 버튼 · 화성 범위 6칸 */
-.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
-.switch { appearance: none; -webkit-appearance: none; position: relative; flex: 0 0 auto; width: 44px; height: 26px; margin: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background 150ms; }
-.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 150ms; }
-.switch:checked { background: var(--accent); }
-.switch:checked::after { transform: translateX(18px); }
-.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 무작위 코드 모드의 화성 옵션 (2026-11-16): 키 드롭다운 · Major/minor 버튼 · 화성 범위 6칸 */
 .sub.key-pick { flex-direction: row; align-items: center; gap: 8px; margin: 8px 0 0; }
 .key-pick select, .mode-btn { font-size: 15px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); cursor: pointer; }
 .mode-btn { min-width: 76px; font-weight: 600; }

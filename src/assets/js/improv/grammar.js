@@ -484,6 +484,11 @@ const HARD_ODDS = { 3: 0.05, 4: 0.1, 5: 0.2, 6: 0.5 };
 const ALT_ODDS = { 4: 0.1, 5: 0.3, 6: 0.5 };
 const AUG7_ODDS = 0.3;    // 7(♭13) → aug7
 const FLAT5_ODDS = 0.3;   // HARD: ♭13 → ♯5, ♯11 → ♭5
+// 화성 모드(무작위 코드 모드, o.stage)는 화성 범위와 상관없이 (사용자 결정 2026-11-16 — 무작위 코드라 8마디보다 자주):
+//   텐션이 붙는 비율 35% · 그중 괄호 안 2개 40%('최대 2개'·HARD) · HARD 텐션 코드 25%(다이아토닉부터)
+//   HARD 7alt(SubV7부터): 마이너로 해결하는 도미넌트 7(SubV7·모달 도미넌트 제외)은 텐션 대신 바로 25%, 그 밖에는 alt 조건이 맞으면 35%
+//   다이아토닉 범위(난이도 1)는 지금처럼 조의 음계 음인 텐션만
+const H_TEN = 0.35, H_TWO = 0.4, H_HARD = 0.25, H_ALT = 0.35, H_ALT_MINOR = 0.25;
 
 /**
  * 역할 + 코드 종류 → 엔진 코드 (q). 텐션은 위 규칙대로, 베이스("3" 등)가 있으면 분수코드.
@@ -495,10 +500,13 @@ function makeChord(role, typeId, bass, o, rnd) {
   let tens = [], alt = false;
   const level = o.level ?? 6;
   // 텐션 (7화음만). 마이너로 해결하는 도미넌트는 ♭9·♯9·♭13, 메이저로 해결하면 9·13·♯11·♭9
-  const twoOk = level >= 3 && (o.tension === "2" || o.tension === "hard");
-  const two = twoOk && rnd() < (TWO_ODDS[level] || 0);   // 이 코드는 괄호 안 2개까지
+  const H = o.stage != null;   // 화성 모드 (위 H_TEN 등)
+  const twoOk = (H || level >= 3) && (o.tension === "2" || o.tension === "hard");
+  const two = twoOk && rnd() < (H ? H_TWO : TWO_ODDS[level] || 0);   // 이 코드는 괄호 안 2개까지
   const canTen = type.seventh && !role.sus && typeId !== "dim7" && typeId !== "mM7" && (typeId !== "m7b5" || two);
-  if (o.tension !== "off" && canTen && rnd() < (TEN_ODDS[level] ?? 0.6)) {
+  // 화성 모드 HARD: 마이너로 해결하는 도미넌트 7은 텐션 대신 바로 7alt (위 H_ALT_MINOR)
+  if (H && o.tension === "hard" && o.stage >= 2 && typeId === "dom7" && !role.sus && !role.lyd && role.targetMinor && rnd() < H_ALT_MINOR) alt = true;
+  else if (o.tension !== "off" && canTen && rnd() < (H ? H_TEN : TEN_ODDS[level] ?? 0.6)) {
     {
       let pool = type.ten.slice();
       // SubV7·모달 도미넌트 7은 리디안 도미넌트(9·♯11·13)
@@ -511,14 +519,14 @@ function makeChord(role, typeId, bass, o, rnd) {
       }
       tens.sort((p, q) => Engine.TEN_ORDER.indexOf(p) - Engine.TEN_ORDER.indexOf(q));
       // HARD: 9·13·11을 텐션 코드 이름으로 (M7+9 → M9, 7+13 → 13, m7+11 → m11 …), 텐션 코드는 추가 텐션 1개까지 (사용자 결정)
-      if (o.tension === "hard" && level >= 3 && rnd() < (HARD_ODDS[level] || 0)) {
+      if (o.tension === "hard" && (H || level >= 3) && rnd() < (H ? H_HARD : HARD_ODDS[level] || 0)) {
         const conv = { M7: [["13", "M13"], ["9", "M9"]], m7: [["11", "m11"], ["9", "m9"]], dom7: [["13", "dom13"], ["9", "dom9"]] }[typeId] || [];
         const hit = conv.find(([t]) => tens.includes(t));
         if (hit) { type = Engine.BY_ID[hit[1]]; tens = tens.filter(t => t !== hit[0] && (hit[0] !== "13" || t !== "9")).slice(0, 1); }
       }
       // 7alt (2026-11-13 사용자 결정): 난이도 4부터, 텐션이 alt 조건(♭9·♯9·♭13 중 하나 이상, 9·13 없음)이면 4 10% · 5 30% · 6 50% (HARD면 +10%)
       const altOk = type.id === "dom7" && tens.some(t => ["b9", "#9", "b13"].includes(t)) && !tens.some(t => ["9", "13"].includes(t));
-      if (altOk && level >= 4 && rnd() < ALT_ODDS[Math.min(level, 6)] + (o.tension === "hard" ? 0.1 : 0)) { alt = true; tens = []; }
+      if (altOk && (H && o.tension === "hard" ? o.stage >= 2 && rnd() < H_ALT : level >= 4 && rnd() < ALT_ODDS[Math.min(level, 6)] + (o.tension === "hard" ? 0.1 : 0))) { alt = true; tens = []; }
       // aug7 (2026-11-15 사용자 결정): 도미넌트 7에 ♭13 하나만 붙었으면 30%로 aug7(진행의 기호 표기에 따라 aug7 또는 +7) — 텐션 옵션이 켜져 있으면 난이도 상관없이
       if (!alt && type.id === "dom7" && tens.length === 1 && tens[0] === "b13" && rnd() < AUG7_ODDS) { type = Engine.BY_ID.aug7; tens = []; }
       // HARD에서만 ♯5·♭5 표기 (2026-11-15 사용자 결정): 도미넌트 계열(7·9·13)에 ♭13·♯11 중 하나만 있으면 30%로 ♭13 → ♯5, ♯11 → ♭5 (둘 다 있으면 그대로)

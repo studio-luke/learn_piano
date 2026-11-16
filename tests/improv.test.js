@@ -647,3 +647,23 @@ test("improv harmony mode: no line clichés, mM7·augM7 from SDM next to their p
   }
   assert.ok(run(4, G.keyNamed("C", false), true).some(q => q.symbol === "A♭dim7/G"), "A♭°7/G");
 });
+
+test("improv harmony mode: tension odds don't depend on the range (35%, 2 tensions, HARD tension chords from diatonic, 7alt from SubV7)", async () => {
+  const G = await import("../src/assets/js/improv/grammar.js");
+  let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const run = (stage, tension, key) => { const st = {}; return Array.from({ length: 500 }, () => G.harmonyPhrase({ stage, chance: 2, tension, slash: true, key }, st, rnd)).flat(); };
+  const C = G.keyNamed("C", false), Am = G.keyNamed("A", true);
+  const share = (qs, f) => qs.filter(f).length / qs.length;
+  const tenChord = q => /^(M9|M13|m9|m11|dom9|dom13)$/.test(q.type);
+  for (const stage of [0, 1, 3, 5]) {
+    const qs = run(stage, "1", C);
+    const r = share(qs, q => q.tens?.length || q.alt);
+    assert.ok(r > 0.2 && r < 0.4, stage + " 텐션 " + r);
+  }
+  assert.ok(share(run(0, "2", C), q => q.tens?.length >= 2) > 0.05, "다이아토닉부터 2개");
+  const dia = run(0, "hard", Am);
+  assert.ok(dia.some(tenChord) && !dia.some(q => q.alt), "HARD 텐션 코드는 다이아토닉부터, 7alt는 아님");
+  assert.ok(!run(1, "hard", Am).some(q => q.alt), "세컨더리 범위에는 7alt 없음");
+  const alt = share(run(2, "hard", Am), q => q.alt);
+  assert.ok(alt > 0.015, "SubV7부터 7alt " + alt);
+});
