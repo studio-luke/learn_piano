@@ -97,7 +97,8 @@ export const isLong = q => !q.error && displayLength(q) >= LONG;
  * @param o    출제 설정 { tension: "off"|"1"|"2"|"hard", slash, count: "low"|"mid"|"two"|"high", level: 0~6, chance: 1~4, meters }
  *             level = 코드 진행 난이도(0은 2026-11-12 추가 — 2026-11-15부터 분수코드도), chance = 코드 개연성 (2026-11-11). 난이도 5부터 다른 키로 전조, 6은 조성 없이(improv/grammar.js)
  * @param rnd  난수 함수 (테스트에서 고정값)
- * @returns { meter, style, key, bars: [[{ q, start, len, short }] × 8] }
+ * @returns { meter, style, key, sig, bars: [[{ q, start, len, short }] × 8] }
+ *   sig = 악보에 그릴 조표의 키 이름(난이도 0만 — 장조 한 키라서, 2026-11-16 사용자 결정), 그 밖에는 null
  *   start·len은 펄스 단위, short는 "/B♭"처럼 베이스만 쓸지(같은 마디에서 바로 앞과 위 코드가 같고 베이스만 다름)
  */
 export function generateProgression(o, rnd = Math.random) {
@@ -135,5 +136,5 @@ export function generateProgression(o, rnd = Math.random) {
       delete x.raw;
     });
   }
-  return { meter, style: restyled, key: g.key, bars };
+  return { meter, style: restyled, key: g.key, sig: level === 0 ? g.key.name : null, bars };
 }

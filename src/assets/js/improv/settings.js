@@ -201,6 +201,7 @@ export function syncSettingsUI() {
   $("rHSlash").checked = S.hSlash;
   $("rHTen").checked = S.hTen; $("rHTenBox").hidden = !S.hTen;
   for (const v of ["1", "2", "hard"]) $("rHTen" + v).checked = S.hTenMax === v;
+  $("rHTenHardSub").hidden = S.hTenMax !== "hard";   // HARD 설명은 HARD를 골랐을 때만
   $("rHChance").value = S.hChance;
   $("rHMoreToggle").setAttribute("aria-expanded", String(S.hMore)); $("rHMoreBox").hidden = !S.hMore;
   // 비중 높이기: 허용이 꺼져 있으면 회색으로 비활성 (체크 상태는 기억)

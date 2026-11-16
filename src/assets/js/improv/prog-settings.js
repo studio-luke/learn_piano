@@ -62,6 +62,7 @@ export function applyProgPreset(p) { Object.assign(S, p); changed(); }
 export function syncProgUI() {
   $("pTen").checked = S.ten; $("pTenBox").hidden = !S.ten;
   for (const v of ["1", "2", "hard"]) $("pTen" + v).checked = S.tenMax === v;
+  $("pTenHardSub").hidden = S.tenMax !== "hard";   // HARD 설명은 HARD를 골랐을 때만
   $("pSlash").checked = S.slash;
   $("pCount").value = S.count;
   $("pLevel").value = S.level; $("pLevelText").textContent = t("progLevel" + S.level);

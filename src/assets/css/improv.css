@@ -147,6 +147,8 @@
 .pg-thick { stroke: currentColor; stroke-width: 4; }
 .pg-fill { fill: currentColor; }
 .pg-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 46px; fill: currentColor; }
+.pg-acc { stroke: currentColor; stroke-width: 1.1; fill: none; }
+.pg-acc-bar { stroke: currentColor; stroke-width: 2.2; fill: none; }
 .pg-meter { font-family: var(--font-display); font-size: 21px; font-weight: 700; text-anchor: middle; fill: currentColor; }
 /* 카운트인: 악보 가운데에 겹쳐 (배경을 살짝 깔아 악보 위에서도 읽히게) */
 .pg-wrap .im-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--surface) 70%, transparent); border-radius: 8px; }

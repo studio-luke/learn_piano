@@ -161,6 +161,13 @@ const progs = async (o, n = 300) => {
 };
 const chordsOf = ps => ps.flatMap(p => p.bars.flat());
 
+test("improv prog: key signature only at level 0 (its one major key)", async () => {
+  for (const chance of [2, 4]) {
+    for (const p of await progs({ level: 0, chance }, 50)) assert.strictEqual(p.sig, p.key.name);
+    for (const p of await progs({ level: 1, chance }, 50)) assert.strictEqual(p.sig, null);
+  }
+});
+
 test("improv prog: 8 bars, chord lengths fill each bar on strong beats, splits follow the chord-count option", async () => {
   for (const [count, maxPer] of [["low", 1], ["mid", 2], ["two", 2], ["high", 4]]) {
     const ps = await progs({ count, meters: true });

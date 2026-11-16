@@ -178,6 +178,8 @@
                 <label class="chip"><input type="radio" name="rHTenMax" id="rHTen2" value="2"><span data-i18n="max2">최대 2개</span></label>
                 <label class="chip"><input type="radio" name="rHTenMax" id="rHTenhard" value="hard"><span>HARD</span></label>
               </div>
+              <!-- HARD를 골랐을 때만 (2026-11-17 사용자 결정 — settings.js syncUI, 8마디 초견 pTenHardSub와 같은 글) -->
+              <small class="note" id="rHTenHardSub" data-i18n="progTenHardSub" hidden>M9, m11, alt 등</small>
             </div>
           </div>
           <button class="more-toggle" id="rHMoreToggle" type="button" aria-expanded="false" aria-controls="rHMoreBox"><span data-i18n="hMore">더보기</span><span class="chev" aria-hidden="true">▾</span></button>
@@ -202,13 +204,15 @@
         <p class="note" data-i18n="progApplyNew">바꾼 설정은 [새 코드진행]을 누르면 적용돼요.</p>
 
         <div class="opt">
-          <label class="check"><input type="checkbox" id="pTen"><span><span data-i18n="progTen">텐션 허용</span><small data-i18n="progTenSub"></small></span></label>
+          <label class="check"><input type="checkbox" id="pTen"><span><span data-i18n="progTen">텐션 허용</span></span></label>
           <div class="sub" id="pTenBox" hidden>
             <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
               <label class="chip"><input type="radio" name="pTenMax" id="pTen1" value="1"><span data-i18n="max1">최대 1개</span></label>
               <label class="chip"><input type="radio" name="pTenMax" id="pTen2" value="2"><span data-i18n="max2">최대 2개</span></label>
               <label class="chip"><input type="radio" name="pTenMax" id="pTenhard" value="hard"><span>HARD</span></label>
             </div>
+            <!-- HARD를 골랐을 때만 (2026-11-16 사용자 결정 — prog-settings.js syncProgUI) -->
+            <small class="note" id="pTenHardSub" data-i18n="progTenHardSub" hidden>M9, m11, alt 등</small>
           </div>
           <label class="check"><input type="checkbox" id="pSlash"><span><span data-i18n="progSlash">분수코드 출제 허용</span><small data-i18n="progSlashSub"></small></span></label>
         </div>
