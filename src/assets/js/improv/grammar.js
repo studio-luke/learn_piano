@@ -739,6 +739,10 @@ const STAGE_LEVEL = [1, 2, 3, 3, 3, 4];
 const STAGE_DIM = 4;
 const MOD_MIN = 2;
 const MOD_ODDS = 0.16;
+// 다이아토닉 연속 줄이기 (사용자 결정 2026-11-16, 화성 범위가 세컨더리 이상일 때): 다이아토닉이 2개 이어진 뒤부터 다음 다이아토닉 점수를 하나마다 ×0.4
+//   (3번째 ×0.4 · 4번째 ×0.16 · 5번째 ×0.064 …). 묶음을 넘어서도 이어서 셈.
+//   패턴도: 패턴 안에서 가장 길게 이어지는 다이아토닉 L개(묶음 첫 자리면 앞에서 이어진 수까지 더함)마다 0.4^(L−2)의 확률로만 넣음 — 1-6-2-5 16% · 2-5-1 40% · 하행 베이스 0.4%
+const DIA_DECAY = 0.4;
 /** 화성 범위로 역할 거르기 (SubV7 단계는 SDM·디미니시드 없이, SDM 단계는 디미니시드 없이) */
 function stageRoles(roles, stage) {
   if (stage == null || stage === 1 || stage === 0 || stage >= STAGE_DIM) return roles;
@@ -775,10 +779,12 @@ export function harmonyPhrase(h, state, rnd = Math.random) {
   }
   const count = state.count || 0;
   const slots = Array.from({ length: N }, (_, n) => [{ len: 4, start: 0, strong: (count + n) % 2 === 0 }]);
-  const o = { tension: h.tension, slash: h.slash, level: STAGE_LEVEL[h.stage], stage: h.stage, chance: h.chance, stream: { keys, at, before: state.before || null } };
+  const o = { tension: h.tension, slash: h.slash, level: STAGE_LEVEL[h.stage], stage: h.stage, chance: h.chance, stream: { keys, at, before: state.before || null, diaRun: state.diaRun || 0 } };
   const g = generateGrammar(o, slots, rnd);
   const chords = g.chords.flat();
-  Object.assign(state, { key: keys[at[N - 1]], since, before: chords[N - 1], count: count + N });
+  let diaRun = state.diaRun || 0;
+  for (const q of chords) diaRun = q.kind === "dia" ? diaRun + 1 : 0;
+  Object.assign(state, { key: keys[at[N - 1]], since, before: chords[N - 1], count: count + N, diaRun });
   return chords;
 }
 
@@ -903,6 +909,11 @@ function attempt(o, slots, rnd, fits) {
       .filter(([p, st]) => !(o.level >= 1 && startBar === 4 && st === first && out[0] && plan.at[st] === 0 && firstId(p.seq[0]) === out[0].item[0] && !Array.isArray(p.seq[0]) && out[0].item.length === 1));
     if (!pool.length) continue;
     const [p, start] = pool[Math.floor(rnd() * pool.length)];
+    if (o.stream && o.stage >= 1) {   // 화성 모드: 다이아토닉 연속 줄이기 (위 DIA_DECAY)
+      let run = start === 0 ? o.stream.diaRun || 0 : 0, longest = 0;
+      for (const it of p.seq) { run = e.byId[firstId(it)]?.kind === "dia" ? run + 1 : 0; longest = Math.max(longest, run); }
+      if (longest > 2 && rnd() >= DIA_DECAY ** (longest - 2)) continue;
+    }
     used.push(p.name);
     p.seq.forEach((it, j) => { out[start + j] = { pattern: p.name, item: Array.isArray(it) ? it : [it] }; });
   }
@@ -916,6 +927,7 @@ function attempt(o, slots, rnd, fits) {
   const chords = [];
   // 화성 모드: 앞 묶음의 마지막 코드에서 이어짐 (첫 코드 규칙 대신 그 코드에서의 점수로)
   let prev = (o.stream?.before && envAt(0).byId[o.stream.before.role]) || null, pending = null, confirm = null, unconfirmed = 0;
+  let diaRun = o.stream?.diaRun || 0;   // 화성 모드: 지금까지 이어진 다이아토닉 수 (DIA_DECAY)
   const barOf = n => chords.filter((_, i) => flat[i].bar === flat[n].bar);   // 이 마디에서 이미 고른 코드들
   for (let n = 0; n < flat.length; n++) {
     const slot = flat[n], env = envAt(n), boundary = boundaryAt(n);
@@ -947,6 +959,7 @@ function attempt(o, slots, rnd, fits) {
       // 온도는 화성 점수에만 — 박 위치(도미넌트 약박 80%)는 온도와 상관없이 같은 힘으로 (개연성이 낮아도 박 규칙은 지킴)
       cand = roles.map(r => [r, score(r, slot, n, env)]).filter(c => c[1] > 0).map(([r, s]) => [r, Math.pow(s, 1 / T) * beat(r, slot)]);
     }
+    if (o.stream && o.stage >= 1 && !out[n] && diaRun >= 2) cand = cand.map(([r, w]) => [r, r.kind === "dia" ? w * DIA_DECAY ** (diaRun - 1) : w]);
     // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드(난이도 3부터)·도미넌트 7 (사용자 결정). 난이도 0은 다이아토닉만이라 없음
     if (o.chance === 3 && o.level > 0 && !out[n] && prev && !boundary && rnd() < 0.1) cand = [[surprise(rnd, o.stage != null && o.stage < STAGE_DIM ? 2 : o.level), 1]];
 
@@ -1021,6 +1034,7 @@ function attempt(o, slots, rnd, fits) {
     if (prev && isDominant(prev) && role.root.pc !== prev.target && role.kind === "dia" && role.fn !== "D") pending = { pc: prev.target, left: 2 };
     else if (pending && (role.root.pc === pending.pc || --pending.left <= 0)) pending = null;
     prev = role;
+    diaRun = q.kind === "dia" ? diaRun + 1 : 0;
   }
 
   // X로 돌아온 키를 아직 확인 못 했으면 1마디로 이어지는 코드까지 봄 (8마디 → 1마디)
