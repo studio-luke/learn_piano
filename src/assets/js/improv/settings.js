@@ -170,6 +170,8 @@ export function applyPreset(p) {
   Object.assign(S, rest);
   S.bars = barsHalf ? "0.5" : barsTwo ? "2" : "1";
   if (S.optD || S.optE) S.adv = true;   // [심화] 옵션이 켜져 있으면 펼쳐서 보여 줌 (랜덤 코드 연습과 같음)
+  // 화성 진행 연습 링크: 키 이름이 그 조에 없는 철자면(장조 D♭ → 단조) 같은 근음의 그 조 철자로
+  if (!KEY_NAMES[S.hMinor ? "minor" : "major"].includes(S.hRoot)) S.hRoot = sameRoot(S.hRoot, !!S.hMinor);
   changed();
 }
 

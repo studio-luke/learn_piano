@@ -201,5 +201,5 @@
 /* 비활성 체크박스 (화성 모드 [더보기]의 비중 높이기 — 허용 옵션이 꺼져 있을 때) */
 .check:has(input:disabled) { opacity: 0.45; cursor: default; }
 .check:has(input:disabled) input { cursor: default; }
-/* 화성 진행 연습 탭: 출제 설정 공유 링크 버튼은 아직 무작위 코드에서만 (2026-11-16 사용자 결정 — 나중에) */
-#sheetRandom.is-harmony .preset-btn { display: none; }
+/* 출제 설정 공유 링크 버튼: 무작위 코드와 화성 진행 연습이 같은 카드라 탭에 맞는 것만 (2026-11-16) */
+#sheetRandom.is-harmony #presetBtn, #sheetRandom:not(.is-harmony) #presetBtnH { display: none; }

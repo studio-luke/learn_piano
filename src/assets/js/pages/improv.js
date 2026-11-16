@@ -25,7 +25,8 @@ import { ROUTES } from "../common/sitemap.js";
 import * as Random from "../improv/random.js";
 import { generateProgression } from "../improv/progression.js";
 import { drawSheet, fitLabels, setPerLine } from "../improv/sheet.js";
-import { initProgSettings, syncProgUI, progOptions } from "../improv/prog-settings.js";
+import { initProgSettings, syncProgUI, progOptions, applyProgPreset, S as ProgS, HAD_SAVED as PROG_SAVED } from "../improv/prog-settings.js";
+import { encodeHarmony, decodeHarmony, sameHarmony, encodeProg, decodeProg, sameProg } from "../common/preset.js";
 
 startPage({ title: "navImprov" });
 
@@ -382,6 +383,24 @@ initPresetLink({
     applyPreset(p);
   },
   hasPrior: () => HAD_SAVED,   // 이 페이지 설정은 이 기기에만 저장(계정에 안 올림)
+});
+// 화성 진행 연습·8마디 초견 링크 (2026-11-16 사용자 요청): 탭마다 형식이 달라 따로(common/preset.js) — 주소에 ?mode도 담아 그 탭으로 열림
+const IMPROV_SPEC = { route: ROUTES.improv, types: [], flags: [] };
+initPresetLink({
+  spec: { ...IMPROV_SPEC, query: "mode=harmony" },
+  codec: { param: "hpreset", encode: encodeHarmony, decode: decodeHarmony, same: sameHarmony },
+  btnId: "presetBtnH",
+  S: presetSource,
+  apply(p) { if (mode !== "harmony") TABS.harmony.click(); applyPreset(p); },
+  hasPrior: () => HAD_SAVED,
+});
+initPresetLink({
+  spec: { ...IMPROV_SPEC, query: "mode=prog" },
+  codec: { param: "ppreset", encode: encodeProg, decode: decodeProg, same: sameProg },
+  btnId: "presetBtnP",
+  S: ProgS,
+  apply(p) { if (mode !== "prog") TABS.prog.click(); applyProgPreset(p); if (!metro.running) newProgression(); },   // 받은 설정으로 바로 새 악보
+  hasPrior: () => PROG_SAVED,
 });
 
 onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); syncProgUI(); scrollTip.show(mode); if (metro.running) Random.render(); });

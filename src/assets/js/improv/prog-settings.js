@@ -17,9 +17,11 @@ import { store } from "../common/storage.js";
 const KEY = "improvProg.v1";
 export const DEFAULTS = { ten: false, tenMax: "1", slash: true, count: 1, level: 2, chance: 1, meters: false, v: 3 };
 export const S = { ...DEFAULTS };
+const saved = store.getJSON(KEY);
+/** 이 기기에 저장된 8마디 설정이 있었는지 (공유 링크를 열었을 때 묻지 않고 바로 적용할지 — common/share-settings.js) */
+export const HAD_SAVED = !!(saved && typeof saved === "object");
 {
-  const saved = store.getJSON(KEY);
-  if (saved && typeof saved === "object") {
+  if (HAD_SAVED) {
     Object.assign(S, saved);
     if (!(saved.v >= 2)) S.level = (Math.round(+saved.level) || 0) + 1;   // 난이도 0 추가 전에 저장한 값
     if (!(saved.v >= 3) && +saved.count === 2) S.count = 3;   // "2개" 추가 전의 "최대"
@@ -52,6 +54,9 @@ export function initProgSettings() {
 }
 
 function changed() { syncProgUI(); save(); }
+
+/** 공유 링크(?mode=prog&ppreset=…, common/preset.js decodeProg)의 설정을 넣고 화면·저장 */
+export function applyProgPreset(p) { Object.assign(S, p); changed(); }
 
 /** S에 맞게 체크·슬라이더·안내 문구를 다시 그림 (언어를 바꿀 때도) */
 export function syncProgUI() {

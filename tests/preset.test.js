@@ -112,3 +112,22 @@ test("preset: samePreset — same settings are recognized, hidden differences (b
   const q = decodePreset(encodePreset(settings(["M7"]), PLAY), PLAY);
   assert.ok(samePreset(q, off, PLAY));
 });
+
+test("preset: chord sight-reading harmony / 8-bar tabs — own formats, round trip, bad values rejected, hidden differences ignored", async () => {
+  const P = await import("../src/assets/js/common/preset.js");
+  const h = { hStage: 4, hRoot: "F♯", hMinor: true, hKeyFix: true, hSlash: true, hSlashUp: true, hTen: true, hTenMax: "hard", hTenUp: false, hChance: 2, barsHalf: true, barsTwo: false };
+  const hv = P.encodeHarmony(h);
+  assert.strictEqual(hv, "1-4-Fs-h-2-KMSTVH");
+  const hd = P.decodeHarmony(hv);
+  assert.ok(P.sameHarmony(hd, h));
+  assert.strictEqual(hd.hRoot, "F♯");
+  assert.ok(!P.sameHarmony(hd, { ...h, hStage: 3 }));
+  assert.ok(P.sameHarmony({ ...hd, hKeyFix: false, hRoot: "C" }, { ...h, hKeyFix: false }), "키 고정이 꺼져 있으면 키는 비교 안 함");
+  for (const bad of ["1-6-C-1-1-", "1-3-H-1-1-", "1-3-C-3-1-", "1-3-C-1-1-k", "2-3-C-1-1-", "1-3-C-1-1"]) assert.strictEqual(P.decodeHarmony(bad), null, bad);
+  const p = { count: 2, level: 5, chance: 0, ten: true, tenMax: "2", slash: false, meters: true };
+  const pv = P.encodeProg(p);
+  assert.strictEqual(pv, "1-2-5-0-2-TM");
+  assert.ok(P.sameProg(P.decodeProg(pv), p));
+  assert.ok(P.sameProg(P.decodeProg("1-2-5-0-1-M"), { ...p, ten: false }), "텐션이 꺼져 있으면 개수는 비교 안 함");
+  for (const bad of ["1-4-5-0-2-T", "1-2-7-0-2-T", "1-2-5-4-2-T", "1-2-5-0-x-T"]) assert.strictEqual(P.decodeProg(bad), null, bad);
+});

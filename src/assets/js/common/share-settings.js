@@ -11,6 +11,8 @@
 //                코드 초견 무작위 코드 모드: S(분수코드 허용) H(한 코드당 ½마디) L(2마디) — H·L이 없으면 1마디 (2026-11-10)
 //   - 주소는 언어 없는 입구(/trainer/chords/)로 만듦 → 받는 사람 기기의 언어로 열림. 입구가 ?preset을 넘겨줌(build.js entryPage)
 //   - 글자는 영문·숫자·.·-만 → 메신저에서 잘리거나 바뀌지 않음
+//   - 코드 초견의 화성 진행 연습·8마디 초견(2026-11-16)은 탭마다 다른 형식·주소 이름(hpreset·ppreset)과 ?mode — preset.js 아래쪽.
+//     한 페이지에 링크 버튼이 여럿이면 initPresetLink를 여러 번(버튼 id·codec이 다름)
 //
 // 공유하는 것: 코드 종류, 옵션 B와 베이스, 옵션 C와 텐션 개수, D·E(랜덤 코드 연습), E·자리바꿈(코드 추론하기).
 // 공유하지 않는 것: 키보드로 건반 입력·MIDI(기기별), 소리·건반 음이름 표시·[심화] 펼침(보는 사람 취향), 타이머(설정이 아니라 켜고 끄는 상태 — 사용자 결정).
@@ -22,8 +24,11 @@ import { t } from "../i18n/index.js";
 import { $, esc, toast } from "./dom.js";
 import { PRESET_PARAM, encodePreset, decodePreset, samePreset } from "./preset.js";
 
-/** 공유 링크 주소 (언어 없는 입구 주소) */
-export const presetUrl = (S, spec) => `${ROOT}${spec.route}?${PRESET_PARAM}=${encodePreset(S, spec)}`;
+/** 기본 형식(코드 종류를 고르는 페이지) — 다른 형식은 initPresetLink의 codec으로 */
+const DEFAULT_CODEC = { param: PRESET_PARAM, encode: encodePreset, decode: decodePreset, same: samePreset };
+
+/** 공유 링크 주소 (언어 없는 입구 주소). spec.query가 있으면 앞에 붙임 (예: "mode=harmony" — 그 탭으로 열림) */
+export const presetUrl = (S, spec, codec = DEFAULT_CODEC) => `${ROOT}${spec.route}?${spec.query ? spec.query + "&" : ""}${codec.param}=${codec.encode(S, spec)}`;
 
 /**
  * 로그인 확인이 끝나면 fn을 한 번 부름: 로그인 안 함 → 바로, 로그인함 → 계정 프로필(과 페이지의 계정 설정 받기)이 끝난 뒤.
@@ -74,7 +79,9 @@ async function copyLink(url) {
 
 /**
  * 공유 링크 연결: 버튼(관리자만 보임)과, 이 페이지를 ?preset 주소로 열었을 때의 확인 창.
- * @param spec    PresetSpec
+ * @param spec    PresetSpec (+ query: 주소에 같이 담을 값, 예 "mode=harmony")
+ * @param codec   { param, encode, decode, same } — 링크 형식 (없으면 코드 종류 형식 ?preset)
+ * @param btnId   링크 만들기 버튼 id (없으면 "presetBtn")
  * @param S       그 페이지의 출제 설정 객체(읽기만 — 링크 만들 때), 또는 그런 객체를 돌려주는 함수
  *                (코드 초견처럼 링크에 담기 전에 값을 바꿔야 할 때 — 마디수 "0.5" → barsHalf)
  * @param apply   (설정 일부) => void  [바꾸기]를 눌렀을 때 페이지가 S에 넣고 화면·저장(기기+계정)·새 문제까지 처리
@@ -86,12 +93,12 @@ async function copyLink(url) {
  *             로그인한 학생은 페이지를 열 때마다 계정 설정이 기기 설정을 덮어써서(Account "profile"),
  *             true면 페이지가 계정 설정을 받는 대신 지금 설정을 계정에 올려야 링크 설정이 되돌아가지 않음
  */
-export function initPresetLink({ spec, S, apply, hasPrior = () => true }) {
+export function initPresetLink({ spec, S, apply, hasPrior = () => true, codec = DEFAULT_CODEC, btnId = "presetBtn" }) {
   // 버튼: 관리자에게만 (선생님 역할이 생기면 여기 조건에 추가)
-  const btn = $("presetBtn");
+  const btn = $(btnId);
   const showBtn = () => { btn.hidden = !Account.isAdmin(); };
   Account.on("change", showBtn); showBtn();
-  btn.onclick = () => copyLink(presetUrl(typeof S === "function" ? S() : S, spec));
+  btn.onclick = () => copyLink(presetUrl(typeof S === "function" ? S() : S, spec, codec));
 
   // 주소에 ?preset이 있으면: 주소창에서 먼저 지우고(새로고침해도 다시 묻지 않게), 로그인 확인이 끝난 뒤 정함 (2026-11-10 사용자 요청):
   //   - 지금 설정과 같음 → 아무것도 안 함
@@ -99,18 +106,18 @@ export function initPresetLink({ spec, S, apply, hasPrior = () => true }) {
   //   - 그 밖 → "이 설정으로 바꿀까요?" 창
   // 로그인 확인을 기다리는 이유: 로그인한 학생은 계정 설정이 페이지를 열 때 기기 설정을 덮어써서, 그 뒤의 설정과 비교해야 맞음
   const params = new URLSearchParams(location.search);
-  const raw = params.get(PRESET_PARAM);
+  const raw = params.get(codec.param);
   const state = { pending: raw != null, applied: false };
   if (raw != null) {
-    params.delete(PRESET_PARAM);
+    params.delete(codec.param);
     params.delete("review");   // ?review=1과 함께 왔으면 다시 풀기는 시작하지 않으므로(pending) 새로고침 때 시작되지 않게 같이 지움
     const q = params.toString();
     history.replaceState(history.state, "", location.pathname + (q ? "?" + q : "") + location.hash);
-    const preset = decodePreset(raw, spec);
+    const preset = codec.decode(raw, spec);
     if (!preset) toast(t("presetBad"));
     else whenSettled(() => {
       const cur = typeof S === "function" ? S() : S;
-      if (samePreset(preset, cur, spec)) return;
+      if (codec.same(preset, cur, spec)) return;
       const applyNow = () => {
         // 이미 로그인 정보를 받은 뒤면 apply의 save()가 계정에도 바로 저장함 → consume()이 할 일 없음
         state.applied = !Account.active();
