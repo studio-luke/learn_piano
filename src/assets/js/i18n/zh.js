@@ -390,6 +390,8 @@ export default {
   hKeyFix: "固定调",
   hKey: "调",
   hMore: "更多",
+  hTenUp: "提高延伸音比例",
+  hSlashUp: "提高分数和弦比例",
   improvSlash: "允许分数和弦",
   improvSlashSub: "大约每 4 个和弦中有 1 个是转位（C/E、Cm7/B♭）或混合和弦（B♭/C、D/C）。",
   improvRotateTip: "把手机横过来，和弦会显示得更大。",

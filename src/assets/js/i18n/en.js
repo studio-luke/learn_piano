@@ -390,6 +390,8 @@ export default {
   hKeyFix: "Fixed key",
   hKey: "Key",
   hMore: "More",
+  hTenUp: "More tensions",
+  hSlashUp: "More slash chords",
   improvSlash: "Allow slash chords",
   improvSlashSub: "About one chord in four becomes an inversion (C/E, Cm7/B♭) or a hybrid chord (B♭/C, D/C).",
   improvRotateTip: "Turn your phone sideways to see the chords bigger.",

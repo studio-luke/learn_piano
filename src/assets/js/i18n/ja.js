@@ -390,6 +390,8 @@ export default {
   hKeyFix: "キー固定",
   hKey: "キー",
   hMore: "もっと見る",
+  hTenUp: "テンションを多めに",
+  hSlashUp: "分数コードを多めに",
   improvSlash: "分数コードを許可",
   improvSlashSub: "転回形（C/E、Cm7/B♭）とハイブリッドコード（B♭/C、D/C）が約4つに1つの割合で出ます。",
   improvRotateTip: "スマホを横にすると、コードを大きく表示できます。",

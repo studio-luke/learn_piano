@@ -391,6 +391,8 @@ export default {
   hKeyFix: "키 고정",
   hKey: "키",
   hMore: "더보기",
+  hTenUp: "텐션 비중 높이기",
+  hSlashUp: "분수코드 비중 높이기",
   improvSlash: "분수코드 허용",
   improvSlashSub: "전위형(C/E, Cm7/B♭)과 하이브리드 코드(B♭/C, D/C)가 약 4개 중 1개꼴로 나와요.",
   improvRotateTip: "폰을 가로로 돌리면 코드를 더 크게 볼 수 있어요.",

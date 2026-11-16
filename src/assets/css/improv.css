@@ -201,3 +201,6 @@
 .more-toggle::before, .more-toggle::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
 .more-toggle .chev { transition: transform 150ms; }
 .more-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+/* 비활성 체크박스 (화성 모드 [더보기]의 비중 높이기 — 허용 옵션이 꺼져 있을 때) */
+.check:has(input:disabled) { opacity: 0.45; cursor: default; }
+.check:has(input:disabled) input { cursor: default; }

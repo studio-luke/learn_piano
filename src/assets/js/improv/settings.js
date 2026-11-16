@@ -15,6 +15,7 @@
 //   hKeyFix 키 고정 (기본 꺼짐 — 2026-11-16 사용자 결정)   hRoot 키 이름(grammar.js KEY_NAMES 철자, 기본 "C")   hMinor 단조 (기본 장조)
 //   hSlash  분수코드 출제 허용 (기본 켜짐)   hTen 텐션 허용 (기본 꺼짐)   hTenMax "1" | "2" | "hard"
 //   hChance 코드 개연성 0 높음 · 1 중간 · 2 낮음 (기본 중간, [더보기] 안)   hMore [더보기] 펼침
+//   hTenUp 텐션 비중 높이기 · hSlashUp 분수코드 비중 높이기 (기본 꺼짐, [더보기] 안 — 텐션·분수코드 허용이 켜져 있을 때만 효과, grammar.js H_TEN 등)
 import { Engine } from "../core/engine.js";
 import { KEY_NAMES } from "./grammar.js";
 import { applyI18n, t } from "../i18n/index.js";
@@ -32,7 +33,7 @@ export const DEFAULTS = {
   },
   optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
   bars: "1", slash: true, adv: false,
-  gen: "random", hStage: 3, hKeyFix: false, hRoot: "C", hMinor: false, hSlash: true, hTen: false, hTenMax: "1", hChance: 1, hMore: false,
+  gen: "random", hStage: 3, hKeyFix: false, hRoot: "C", hMinor: false, hSlash: true, hTen: false, hTenMax: "1", hChance: 1, hMore: false, hTenUp: false, hSlashUp: false,
 };
 
 /**
@@ -73,6 +74,7 @@ export const version = () => ver;
 /** 화성 모드 옵션 → grammar.js harmonyPhrase */
 export const harmonyOptions = () => ({
   stage: S.hStage, chance: S.hChance + 1, tension: S.hTen ? S.hTenMax : "off", slash: S.hSlash,
+  tenUp: S.hTen && S.hTenUp, slashUp: S.hSlash && S.hSlashUp,
   key: S.hKeyFix ? { ...parseKeyName(S.hRoot), minor: S.hMinor, name: S.hRoot + (S.hMinor ? "m" : "") } : null,
 });
 const LETTERS = "CDEFGAB", NATURAL = [0, 2, 4, 5, 7, 9, 11];
@@ -143,6 +145,8 @@ export function initSettings() {
   for (const v of ["1", "2", "hard"]) $("rHTen" + v).onchange = () => { S.hTenMax = v; changed(); };
   $("rHChance").oninput = e => { S.hChance = +e.target.value; changed(); };
   $("rHMoreToggle").onclick = () => { S.hMore = !S.hMore; changed(); };
+  $("rHTenUp").onchange = e => { S.hTenUp = e.target.checked; changed(); };
+  $("rHSlashUp").onchange = e => { S.hSlashUp = e.target.checked; changed(); };
   syncSettingsUI();
 }
 
@@ -194,6 +198,9 @@ export function syncSettingsUI() {
   for (const v of ["1", "2", "hard"]) $("rHTen" + v).checked = S.hTenMax === v;
   $("rHChance").value = S.hChance;
   $("rHMoreToggle").setAttribute("aria-expanded", String(S.hMore)); $("rHMoreBox").hidden = !S.hMore;
+  // 비중 높이기: 허용이 꺼져 있으면 회색으로 비활성 (체크 상태는 기억)
+  $("rHTenUp").checked = S.hTenUp; $("rHTenUp").disabled = !S.hTen;
+  $("rHSlashUp").checked = S.hSlashUp; $("rHSlashUp").disabled = !S.hSlash;
   // 출제할 수 없는 설정이면 경고 (랜덤 코드 연습과 같은 문구)
   const has7 = Engine.TYPES.some(x => x.seventh && S.types[x.id]);
   const err = !Engine.TYPES.some(x => S.types[x.id]) ? "noTypes" : S.optB && !S.bases.some(Boolean) ? "noBases" : S.optC && !has7 ? "warnC" : "";

@@ -667,3 +667,14 @@ test("improv harmony mode: tension odds don't depend on the range (35%, 2 tensio
   const alt = share(run(2, "hard", Am), q => q.alt);
   assert.ok(alt > 0.015, "SubV7부터 7alt " + alt);
 });
+
+test("improv harmony mode: 'more tensions' and 'more slash chords' raise their shares well above the default", async () => {
+  const G = await import("../src/assets/js/improv/grammar.js");
+  let seed = 4; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const C = G.keyNamed("C", false);
+  const share = (h, f) => { const st = {}; const qs = Array.from({ length: 400 }, () => G.harmonyPhrase({ stage: 3, chance: 2, tension: "1", slash: true, key: C, ...h }, st, rnd)).flat(); return qs.filter(f).length / qs.length; };
+  const ten = q => q.tens.length || q.alt, slash = q => q.bass;
+  const t0 = share({}, ten), t1 = share({ tenUp: true }, ten), s0 = share({}, slash), s1 = share({ slashUp: true }, slash);
+  assert.ok(t1 > 0.5 && t1 > t0 * 1.7, `텐션 ${t0} → ${t1}`);
+  assert.ok(s1 > 0.35 && s1 > s0 * 1.7, `분수코드 ${s0} → ${s1}`);
+});

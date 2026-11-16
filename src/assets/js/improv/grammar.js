@@ -470,6 +470,8 @@ function makeHybrid(role, shapes, o, rnd) {
 const USE_ODDS = { 1: 0.7, 2: 0.5, 3: 0.35 };
 const FREE_ODDS = { 2: 0.03, 3: 0.06, 4: 0.08, 5: 0.1, 6: 0.12 };
 const RANDOM_INV = 0.2;   // 개연성 랜덤: 용법·해결과 상관없이 코드마다 20%
+// 화성 모드 [더보기]의 분수코드 비중 높이기(o.slashUp, 사용자 결정 2026-11-16): 용법 있는 전위형 95% · 용법 없는 전위형 25%(세컨더리부터) · 하이브리드로 바꾸는 확률 60%(SDM부터)
+const UP_USE = 0.95, UP_FREE = 0.25, UP_SWAP = 0.6;
 const hasMinor7 = typeId => /^(dom7|dom9|dom13|m7|m9|m11|m7b5|7sus4)$/.test(typeId);
 
 // 텐션 (사용자 결정 2026-11-13) — 출제 설정의 텐션 옵션을 켰을 때만, 코드 진행 난이도에 따라:
@@ -488,7 +490,9 @@ const FLAT5_ODDS = 0.3;   // HARD: ♭13 → ♯5, ♯11 → ♭5
 //   텐션이 붙는 비율 35% · 그중 괄호 안 2개 40%('최대 2개'·HARD) · HARD 텐션 코드 25%(다이아토닉부터)
 //   HARD 7alt(SubV7부터): 마이너로 해결하는 도미넌트 7(SubV7·모달 도미넌트 제외)은 텐션 대신 바로 25%, 그 밖에는 alt 조건이 맞으면 35%
 //   다이아토닉 범위(난이도 1)는 지금처럼 조의 음계 음인 텐션만
+//   [더보기]의 텐션 비중 높이기(o.tenUp): 텐션 75% · HARD 텐션 코드 35% · 마이너로 해결하는 도미넌트 7의 7alt 50% (2개·그 밖 7alt는 같음)
 const H_TEN = 0.35, H_TWO = 0.4, H_HARD = 0.25, H_ALT = 0.35, H_ALT_MINOR = 0.25;
+const UP_TEN = 0.75, UP_HARD = 0.35, UP_ALT_MINOR = 0.5;
 
 /**
  * 역할 + 코드 종류 → 엔진 코드 (q). 텐션은 위 규칙대로, 베이스("3" 등)가 있으면 분수코드.
@@ -505,8 +509,8 @@ function makeChord(role, typeId, bass, o, rnd) {
   const two = twoOk && rnd() < (H ? H_TWO : TWO_ODDS[level] || 0);   // 이 코드는 괄호 안 2개까지
   const canTen = type.seventh && !role.sus && typeId !== "dim7" && typeId !== "mM7" && (typeId !== "m7b5" || two);
   // 화성 모드 HARD: 마이너로 해결하는 도미넌트 7은 텐션 대신 바로 7alt (위 H_ALT_MINOR)
-  if (H && o.tension === "hard" && o.stage >= 2 && typeId === "dom7" && !role.sus && !role.lyd && role.targetMinor && rnd() < H_ALT_MINOR) alt = true;
-  else if (o.tension !== "off" && canTen && rnd() < (H ? H_TEN : TEN_ODDS[level] ?? 0.6)) {
+  if (H && o.tension === "hard" && o.stage >= 2 && typeId === "dom7" && !role.sus && !role.lyd && role.targetMinor && rnd() < (o.tenUp ? UP_ALT_MINOR : H_ALT_MINOR)) alt = true;
+  else if (o.tension !== "off" && canTen && rnd() < (H ? (o.tenUp ? UP_TEN : H_TEN) : TEN_ODDS[level] ?? 0.6)) {
     {
       let pool = type.ten.slice();
       // SubV7·모달 도미넌트 7은 리디안 도미넌트(9·♯11·13)
@@ -519,7 +523,7 @@ function makeChord(role, typeId, bass, o, rnd) {
       }
       tens.sort((p, q) => Engine.TEN_ORDER.indexOf(p) - Engine.TEN_ORDER.indexOf(q));
       // HARD: 9·13·11을 텐션 코드 이름으로 (M7+9 → M9, 7+13 → 13, m7+11 → m11 …), 텐션 코드는 추가 텐션 1개까지 (사용자 결정)
-      if (o.tension === "hard" && (H || level >= 3) && rnd() < (H ? H_HARD : HARD_ODDS[level] || 0)) {
+      if (o.tension === "hard" && (H || level >= 3) && rnd() < (H ? (o.tenUp ? UP_HARD : H_HARD) : HARD_ODDS[level] || 0)) {
         const conv = { M7: [["13", "M13"], ["9", "M9"]], m7: [["11", "m11"], ["9", "m9"]], dom7: [["13", "dom13"], ["9", "dom9"]] }[typeId] || [];
         const hit = conv.find(([t]) => tens.includes(t));
         if (hit) { type = Engine.BY_ID[hit[1]]; tens = tens.filter(t => t !== hit[0] && (hit[0] !== "13" || t !== "9")).slice(0, 1); }
@@ -564,7 +568,7 @@ function realize(role, o, rnd, forced) {
   if (!forced && o.slash) {
     if (role.sus && rnd() < (SUS_HYBRID_ODDS[o.level] ?? 0.2)) return makeHybrid(role, susHybrids(o.level), o, rnd);
     const harmony = o.stage != null, dims = harmony && o.stage >= STAGE_DIM;   // 화성 모드 (위 HARMONY_SWAP)
-    const swap = harmony ? (o.stage >= 3 ? HARMONY_SWAP : 0) : SWAP_ODDS[o.level] || 0;
+    const swap = harmony ? (o.stage >= 3 ? (o.slashUp ? UP_SWAP : HARMONY_SWAP) : 0) : SWAP_ODDS[o.level] || 0;
     if (swap && rnd() < swap) {
       if (isDominant(role) && !role.sus && (role.id === "V" || role.kind === "sec")) return makeHybrid(role, dims ? [...susHybrids(o.level), ...DOM_DIM] : susHybrids(o.level), o, rnd);
       if (role.kind === "dia" && ["I", "i", "IV", "iv"].includes(role.id)) return makeHybrid(role, harmony && !dims ? PEDAL_HYBRIDS.filter(h => h[2] !== "dim7") : PEDAL_HYBRIDS, o, rnd);
@@ -635,8 +639,8 @@ function bassLine(chords, flat, o, rnd, fits, keys, random = false) {
         else if (prevBass === x.pc && (x.pc === tonic || (x.pc === dominant && next === dominant))) uses.push({ ...x, why: "pedal" });
       }
       if (must && opts.length) pick = (uses.length ? uses : opts.map(x => ({ ...x, why: "same" })))[Math.floor(rnd() * (uses.length || opts.length))];
-      else if (uses.length && rnd() < (USE_ODDS[o.chance] || 0)) pick = uses[Math.floor(rnd() * uses.length)];
-      else if (opts.length && rnd() < (FREE_ODDS[o.level] || 0)) pick = { ...opts[Math.floor(rnd() * opts.length)], why: "free" };
+      else if (uses.length && rnd() < (o.slashUp ? UP_USE : USE_ODDS[o.chance] || 0)) pick = uses[Math.floor(rnd() * uses.length)];
+      else if (opts.length && rnd() < (o.slashUp && o.stage >= 1 ? UP_FREE : FREE_ODDS[o.level] || 0)) pick = { ...opts[Math.floor(rnd() * opts.length)], why: "free" };
     }
     if (!pick) continue;
     const b = spell(role.root, pick.semi, pick.deg);
@@ -815,7 +819,7 @@ export const KEY_NAMES = { major: MAJOR_KEYS.map(k => k[0]), minor: MINOR_KEYS.m
 
 /**
  * 화성 모드의 코드 8개 (한 묶음).
- * @param h      { stage 0~5, chance 1~3, tension, slash, key: 고정 키(없으면 키 고정 Off) }
+ * @param h      { stage 0~5, chance 1~3, tension, slash, tenUp·slashUp(비중 높이기), key: 고정 키(없으면 키 고정 Off) }
  * @param state  이어 가기 상태 { key, since(이 키에서 지난 코드 수), before(앞 묶음의 마지막 코드), count(지금까지 낸 코드 수) } — 이 함수가 바꿈. 처음엔 {}
  * @returns [q × 8]
  */
@@ -831,7 +835,7 @@ export function harmonyPhrase(h, state, rnd = Math.random) {
   }
   const count = state.count || 0;
   const slots = Array.from({ length: N }, (_, n) => [{ len: 4, start: 0, strong: (count + n) % 2 === 0 }]);
-  const o = { tension: h.tension, slash: h.slash, level: STAGE_LEVEL[h.stage], stage: h.stage, chance: h.chance, stream: { keys, at, before: state.before || null, diaRun: state.diaRun || 0 } };
+  const o = { tension: h.tension, slash: h.slash, tenUp: !!h.tenUp, slashUp: !!h.slashUp, level: STAGE_LEVEL[h.stage], stage: h.stage, chance: h.chance, stream: { keys, at, before: state.before || null, diaRun: state.diaRun || 0 } };
   const g = generateGrammar(o, slots, rnd);
   const chords = g.chords.flat();
   let diaRun = state.diaRun || 0;
