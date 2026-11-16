@@ -10,7 +10,8 @@
 //   bars    한 코드당 마디수 "0.5" | "1" | "2" (기본 "1")
 //   slash   분수코드 허용 (기본 켜짐 — 전위형·하이브리드 코드를 약 25%, improv/slash.js)
 //   adv     [심화] 묶음 펼침
-//   gen     코드 생성 방식 "random" | "harmony" (기본 랜덤 — 2026-11-16). 화성이면 아래 h… 옵션만 보임(코드 종류·출제 범위·[심화]는 숨김)
+//   gen     "random" | "harmony" — 지금 탭(무작위 코드 / 화성 진행 연습, pages/improv.js setGen이 정함 — 2026-11-16 옵션에서 탭으로).
+//           화성이면 아래 h… 옵션만 보임(코드 종류·출제 범위·[심화]는 숨김)
 //   hStage  화성 범위 0 다이아토닉 · 1 세컨더리 도미넌트 · 2 SubV7 · 3 SDM · 4 Diminished · 5 모달 인터체인지 (누적, 기본 3) — grammar.js harmonyPhrase
 //   hKeyFix 키 고정 (기본 꺼짐 — 2026-11-16 사용자 결정)   hRoot 키 이름(grammar.js KEY_NAMES 철자, 기본 "C")   hMinor 단조 (기본 장조)
 //   hSlash  분수코드 출제 허용 (기본 켜짐)   hTen 텐션 허용 (기본 꺼짐)   hTenMax "1" | "2" | "hard"
@@ -134,7 +135,6 @@ export function initSettings() {
   $("rAdvToggle").onclick = () => { S.adv = !S.adv; changed(); };
 
   // 코드 생성 방식 · 화성 모드 옵션
-  for (const v of ["random", "harmony"]) $("rGen" + v).onchange = () => { S.gen = v; changed(); };
   $("rStage").oninput = e => { S.hStage = +e.target.value; changed(); };
   [...$("rStageLabels").children].forEach((el, i) => { el.onclick = () => { S.hStage = i; changed(); }; });
   $("rKeyFix").onchange = e => { S.hKeyFix = e.target.checked; changed(); };
@@ -151,6 +151,9 @@ export function initSettings() {
 }
 
 function changed() { ver++; syncSettingsUI(); save(); }
+
+/** 탭을 바꿀 때 (pages/improv.js): 무작위 코드 "random" / 화성 진행 연습 "harmony" */
+export function setGen(g) { if (S.gen !== g) { S.gen = g; changed(); } }
 
 /**
  * 출제 설정 공유 링크(common/share-settings.js)에 담을 값: S에 마디수를 켜짐/꺼짐 두 개로 더한 것
@@ -182,10 +185,10 @@ export function syncSettingsUI() {
   $("rOptD").checked = S.optD; $("rOptE").checked = S.optE;
   $("rOptSlash").checked = S.slash;
   $("rAdvToggle").setAttribute("aria-expanded", String(S.adv)); $("rAdvBox").hidden = !S.adv;
-  // 코드 생성 방식: 탭처럼 아래 옵션 묶음을 바꿈
+  // 무작위 코드 / 화성 진행 연습 탭: 아래 옵션 묶음을 바꿈 (공유 링크 버튼은 무작위 코드에서만 — 화성 진행 링크는 나중에)
   const harmony = S.gen === "harmony";
-  for (const v of ["random", "harmony"]) $("rGen" + v).checked = S.gen === v;
   $("rRandomBox").hidden = harmony; $("rHarmonyBox").hidden = !harmony;
+  $("sheetRandom").classList.toggle("is-harmony", harmony);
   $("rStage").value = S.hStage;
   $("rStage").style.setProperty("--p", `calc(10px + (100% - 20px) * ${S.hStage / 5})`);   // 손잡이 가운데까지 채움 (--thumb 20px)
   [...$("rStageLabels").children].forEach((el, i) => { el.classList.toggle("on", i === S.hStage); el.classList.toggle("in", i <= S.hStage); });

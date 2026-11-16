@@ -31,10 +31,11 @@
   <header class="top" id="siteHeader"></header>
 
   <main class="improv">
-    <!-- 모드 탭: 고른 모드는 주소 ?mode=prog로 남김 (새로고침·링크 공유 때 그대로, pages/improv.js) -->
+    <!-- 모드 탭: 고른 모드는 주소 ?mode=harmony · ?mode=prog로 남김 (화성 진행 연습은 무작위 코드와 같은 화면·출제 설정 카드를 씀) (새로고침·링크 공유 때 그대로, pages/improv.js) -->
     <div class="im-modes" role="tablist" aria-label="모드 고르기" data-i18n-aria="improvModesAria">
       <button type="button" role="tab" class="im-mode" id="tabRandom" data-mode="random" aria-controls="panelRandom" aria-selected="true" data-i18n="improvModeRandom">무작위 코드</button>
-      <button type="button" role="tab" class="im-mode" id="tabProg" data-mode="prog" aria-controls="panelProg" aria-selected="false" data-i18n="improvModeProg">8마디 코드진행</button>
+      <button type="button" role="tab" class="im-mode" id="tabHarmony" data-mode="harmony" aria-controls="panelRandom" aria-selected="false" data-i18n="improvModeHarmony">화성 진행 연습</button>
+      <button type="button" role="tab" class="im-mode" id="tabProg" data-mode="prog" aria-controls="panelProg" aria-selected="false" data-i18n="improvModeProg">8마디 초견</button>
     </div>
 
     <!-- 88건반 (컴퓨터에서만 — 폰은 악보대에 세워 두고 다른 피아노로 연주하니 건반이 필요 없음, 2026-11-10 사용자 결정).
@@ -99,7 +100,8 @@
         <div class="scroll-tip" id="scrollTip" hidden><button class="scroll-tip-go" id="scrollTipGo" type="button"><span class="scroll-tip-arrow" aria-hidden="true">▼</span><span id="scrollTipText">아래로 내리면 등장할 코드를 고를 수 있어요</span></button><button class="scroll-tip-x" id="scrollTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></div>
       </div>
 
-      <!-- 무작위 코드 모드의 출제 설정 (코드 종류 칩은 improv/settings.js가 그림). 모양은 랜덤 코드 연습과 같음 -->
+      <!-- 무작위 코드 모드·화성 진행 연습의 출제 설정 (코드 종류 칩은 improv/settings.js가 그림). 모양은 랜덤 코드 연습과 같음.
+           한 코드당 마디수는 같이 쓰고, 그 아래는 모드에 따라 #rRandomBox / #rHarmonyBox (2026-11-16 화성 모드를 탭으로 뺌) -->
       <aside class="sheet" id="sheetRandom" aria-label="출제 설정" data-i18n-aria="settings">
         <!-- 제목 줄: 오른쪽에 출제 설정 공유 링크 버튼(관리자에게만 보임, common/share-settings.js — 랜덤 코드 연습과 같음) -->
         <div class="sheet-head"><h2 data-i18n="settings">출제 설정</h2><button class="linkbtn preset-btn" id="presetBtn" type="button" hidden data-i18n="presetMake">🔗 이 설정으로 링크 만들기</button></div>
@@ -111,15 +113,6 @@
             <label class="chip"><input type="radio" name="rBars" id="rBars05" value="0.5"><span data-i18n="improvBarsHalf">½마디</span></label>
             <label class="chip"><input type="radio" name="rBars" id="rBars1" value="1" checked><span data-i18n="improvBars1">1마디</span></label>
             <label class="chip"><input type="radio" name="rBars" id="rBars2" value="2"><span data-i18n="improvBars2">2마디</span></label>
-          </div>
-        </div>
-
-        <!-- 코드 생성 방식 (2026-11-16): 랜덤(아래 코드 종류·출제 범위 옵션) / 화성(키·기능 문법 — 화성 범위·키 고정 옵션). 탭처럼 아래 옵션이 바뀜 -->
-        <div class="opt">
-          <h3 data-i18n="improvGen">코드 생성 방식</h3>
-          <div class="chips radios" role="radiogroup" aria-label="코드 생성 방식" data-i18n-aria="improvGen">
-            <label class="chip"><input type="radio" name="rGen" id="rGenrandom" value="random"><span data-i18n="improvGenRandom">랜덤</span></label>
-            <label class="chip"><input type="radio" name="rGen" id="rGenharmony" value="harmony"><span data-i18n="improvGenHarmony">화성</span></label>
           </div>
         </div>
 
@@ -157,7 +150,7 @@
           <p class="warnbox" id="rSettingsWarn"></p>
         </div>
 
-        <!-- 화성: 화성 범위(누적, 처음 SDM) · 키 고정(처음 켜짐, C Major) · 분수코드 · 텐션 · [더보기] 코드 개연성(처음 중간) — improv/settings.js -->
+        <!-- 화성 진행 연습: 화성 범위(누적, 처음 SDM) · 키 고정(처음 꺼짐, C Major) · 분수코드 · 텐션 · [더보기] 코드 개연성(처음 중간) — improv/settings.js -->
         <div class="group" id="rHarmonyBox" style="gap: 16px" hidden>
           <hr class="divider">
           <div class="opt">

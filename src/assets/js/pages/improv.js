@@ -1,7 +1,8 @@
 // ===== 코드 초견 (trainer/chord-improv/index.html) — 시작점 =====
-// 메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 연습. 한 페이지에 모드 탭 두 개:
+// 메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 연습. 한 페이지에 모드 탭 세 개:
 //   "random"  무작위 코드 — 이전·현재·다음 코드, 한 코드당 ½·1·2마디 (주소에 mode 없음)
-//   "prog"    8마디 코드진행 — 입시형 코드진행 악보 (주소 ?mode=prog, 5단계부터)
+//   "harmony" 화성 진행 연습 — 무작위 코드와 같은 화면, 키·기능 문법으로 이어지는 코드 (주소 ?mode=harmony, 2026-11-16 출제 옵션에서 탭으로)
+//   "prog"    8마디 초견 — 입시형 코드진행 악보 (주소 ?mode=prog, 5단계부터)
 // 각 부분을 만들고 서로 연결해요:
 //   improv/metronome.js  메트로놈(클릭 예약·카운트인)     improv/keys.js      88건반(컴퓨터만, 누르는 동안만 선택)
 //   improv/random.js     무작위 코드 모드(코드 넘기기)    improv/settings.js  무작위 코드 모드의 출제 설정
@@ -17,7 +18,7 @@ import { Sound } from "../practice/audio.js";
 import { Midi } from "../input/midi.js";
 import { createMetronome, clampBpm, BPM_MIN, BPM_MAX } from "../improv/metronome.js";
 import { initKeys, press } from "../improv/keys.js";
-import { initSettings, syncSettingsUI, presetSource, applyPreset, HAD_SAVED } from "../improv/settings.js";
+import { initSettings, syncSettingsUI, presetSource, applyPreset, HAD_SAVED, setGen } from "../improv/settings.js";
 import { initPresetLink } from "../common/share-settings.js";
 import { Engine } from "../core/engine.js";
 import { ROUTES } from "../common/sitemap.js";
@@ -41,14 +42,17 @@ let bpm = clampBpm(store.get("improvBpm") ?? undefined);
 let midiSound = store.get("improvMidiSound") !== "off";
 
 // ---------- 모드 탭 ----------
-const MODES = ["random", "prog"];
-const TABS = { random: $("tabRandom"), prog: $("tabProg") };
-const PANELS = { random: $("panelRandom"), prog: $("panelProg") };
-const SHEETS = { random: $("sheetRandom"), prog: $("sheetProg") };   // 모드별 출제 설정
+const MODES = ["random", "harmony", "prog"];
+const TABS = { random: $("tabRandom"), harmony: $("tabHarmony"), prog: $("tabProg") };
+// 화성 진행 연습은 무작위 코드의 화면·출제 설정 카드를 같이 씀 (설정 카드 안의 옵션 묶음만 다름 — settings.js setGen)
+const PANELS = { random: $("panelRandom"), harmony: $("panelRandom"), prog: $("panelProg") };
+const SHEETS = { random: $("sheetRandom"), harmony: $("sheetRandom"), prog: $("sheetProg") };   // 모드별 출제 설정
 let mode = "random";
+/** 이전·현재·다음 코드 화면(improv/random.js)을 쓰는 모드인지 */
+const chordMode = m => m !== "prog";
 
 /** 주소의 ?mode → 지금 모드. 모르는 값이나 없으면 무작위 코드 */
-const modeFromUrl = () => (new URLSearchParams(location.search).get("mode") === "prog" ? "prog" : "random");
+const modeFromUrl = () => { const m = new URLSearchParams(location.search).get("mode"); return MODES.includes(m) ? m : "random"; };
 
 /**
  * 고른 모드를 주소에 남김. 방문 기록을 새로 쌓지 않고 지금 주소만 바꿔요(replaceState) —
@@ -63,11 +67,12 @@ function setModeInUrl(m) {
 /** 모드 화면 바꾸기: 고른 탭만 선택 표시, 그 모드의 내용·출제 설정만 보임 (출제 설정이 없으면 연습 카드가 전체 폭) */
 function showMode(m) {
   mode = m;
+  if (chordMode(m)) setGen(m);   // 무작위 코드 / 화성 진행 연습: 출제 방식과 설정 묶음
   for (const x of MODES) {
     TABS[x].setAttribute("aria-selected", String(x === m));
     TABS[x].tabIndex = x === m ? 0 : -1;   // 탭 줄 안에서는 ← → 로 옮겨 다님 (아래 keydown)
-    PANELS[x].hidden = x !== m;
-    if (SHEETS[x]) SHEETS[x].hidden = x !== m;
+    PANELS[x].hidden = PANELS[x] !== PANELS[m];
+    if (SHEETS[x]) SHEETS[x].hidden = SHEETS[x] !== SHEETS[m];
   }
   document.querySelector(".im-layout").classList.toggle("no-sheet", !SHEETS[m]);
   // 모드별 모양 (improv.css): 8마디 모드는 박 점 없음, 폰 가로 간격 줄이기 등
@@ -84,7 +89,7 @@ function showMode(m) {
   const between = document.querySelector(".im-between");
   if (m === "prog") $("beatDots").after(between);
   else document.querySelector(".im-layout .im-card").after(between);
-  $("rotateRandom").hidden = m !== "random"; $("rotateProg").hidden = m !== "prog";   // "코드를 더 크게" / "악보를 더 크게"
+  $("rotateRandom").hidden = !chordMode(m); $("rotateProg").hidden = m !== "prog";   // "코드를 더 크게" / "악보를 더 크게"
   scrollTip.show(m);   // showMode는 아래 scrollTip을 만든 뒤에만 불림
   if (m === "prog") fitLabels();   // 숨겨져 있을 때 그린 악보는 폭을 잴 수 없어서, 보일 때 코드 기호 크기를 다시 맞춤
   renderDots(null);
@@ -124,7 +129,7 @@ function renderDots(d) {
 const metro = createMetronome({
   getContext: Sound.context,
   onBeat: info => {
-    if (mode === "random") { renderDots(Random.beat(info)); return; }
+    if (chordMode(mode)) { renderDots(Random.beat(info)); return; }
     // 8마디 모드 (지금은 메트로놈만 — 악보 강조는 나중에)
     const c = $("countIn");
     if (info.countIn) {
@@ -163,7 +168,7 @@ function renderPlay() {
 function togglePlay() {
   if (metro.running) { metro.stop(); return; }
   // 무작위 코드 모드: 첫 코드를 뽑을 수 없는 설정이면(코드 종류·베이스 0개) 시작하지 않고 이유를 알림
-  if (mode === "random") { const err = Random.start(); if (err) { toast(t(err)); return; } }
+  if (chordMode(mode)) { const err = Random.start(); if (err) { toast(t(err)); return; } }
   metro.start({ bpm, beats: mode === "prog" ? prog.meter.pulses : 4, countIn: true });   // 소리를 낼 수 없어도 소리 없이 진행 (onSilent)
   renderPlay();
 }
@@ -348,6 +353,7 @@ const scrollTip = (() => {
     x.seen = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) done(m); }, { rootMargin: "0px 0px -60% 0px" });
     x.seen.observe(document.querySelector("#" + x.sheet + " h2"));
   }
+  TIPS.harmony = TIPS.random;   // 화성 진행 연습은 무작위 코드와 같은 출제 설정 카드라 알약도 같이 (위 반복 뒤에 붙여 두 번 관찰하지 않게)
   function done(m) {
     const x = TIPS[m];
     x.active = false; store.set(x.key, "seen");
@@ -372,7 +378,7 @@ initPresetLink({
   spec: { route: ROUTES.improv, types: Engine.TYPES.map(x => x.id), flags: ["B", "C", "D", "E", "S", "H", "L"] },
   S: presetSource,
   apply(p) {
-    if (mode !== "random") TABS.random.click();   // 8마디 모드를 보고 있었으면 무작위 코드 모드로
+    if (mode !== "random") TABS.random.click();   // 화성 진행·8마디 모드를 보고 있었으면 무작위 코드 모드로
     applyPreset(p);
   },
   hasPrior: () => HAD_SAVED,   // 이 페이지 설정은 이 기기에만 저장(계정에 안 올림)

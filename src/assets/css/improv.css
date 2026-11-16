@@ -1,5 +1,5 @@
 /* ===== 코드 초견 (trainer/chord-improv/) =====
-   한 페이지에 모드 탭 두 개(무작위 코드 / 8마디 코드진행). 색은 base.css 토큰만 씀.
+   한 페이지에 모드 탭 세 개(무작위 코드 / 화성 진행 연습 / 8마디 초견). 색은 base.css 토큰만 씀.
    건반(.keyboard/.key)은 practice.css를 그대로 씀. practice.css의 폰 레이아웃 규칙(.desk .prompt .actions …)이
    끼어들지 않게 이 페이지는 그 클래스 이름을 쓰지 않음(카드는 .im-card).
    폰 레이아웃을 바꾸면 폰 크기별로 다시 확인할 것. */
@@ -11,7 +11,8 @@
 .im-mode { border: none; background: none; color: var(--muted); font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 9px; white-space: nowrap; }
 .im-mode:hover { color: var(--ink); }
 .im-mode[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40,20,10,.15); }
-@media (max-width: 420px) { .im-modes { width: 100%; } .im-mode { flex: 1; padding-inline: 6px; } }
+/* 폰: 탭 셋이 한 줄에 — 넘치면 탭 안에서 두 줄로 (영어 등 긴 이름, 2026-11-16 탭 셋) */
+@media (max-width: 420px) { .im-modes { width: 100%; } .im-mode { flex: 1 1 auto; min-width: 0; padding-inline: 6px; white-space: normal; line-height: 1.25; } }
 
 /* ---------- 카드 (랜덤 코드 연습의 연습 카드와 같은 모양) ---------- */
 .im-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 24px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
@@ -204,3 +205,5 @@
 /* 비활성 체크박스 (화성 모드 [더보기]의 비중 높이기 — 허용 옵션이 꺼져 있을 때) */
 .check:has(input:disabled) { opacity: 0.45; cursor: default; }
 .check:has(input:disabled) input { cursor: default; }
+/* 화성 진행 연습 탭: 출제 설정 공유 링크 버튼은 아직 무작위 코드에서만 (2026-11-16 사용자 결정 — 나중에) */
+#sheetRandom.is-harmony .preset-btn { display: none; }
