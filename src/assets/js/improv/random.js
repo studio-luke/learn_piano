@@ -4,10 +4,14 @@
 // 연주하는 사람이 미리 준비할 수 있게 "다음 코드"를 늘 보여줘요. 카운트인 동안에는 현재 자리에 3·2·1·GO, 다음 자리에 첫 코드.
 // 설정을 바꾸면 이미 보이는 다음 코드는 그대로, 그다음에 새로 뽑는 코드부터 적용 (사용자 결정 2026-11-10).
 // "한 코드당 마디수"도 마찬가지로 코드가 현재 자리에 올 때의 값으로 그 코드의 길이를 정함.
+// 코드 생성 방식 [화성](2026-11-16): 키·기능 문법(improv/grammar.js harmonyPhrase)으로 코드 8개씩 만들어 두고 하나씩 꺼냄.
+//   설정을 바꾸면 만들어 둔 코드(아직 안 보인 것)를 버리고, 마지막으로 보인 코드에서 이어 새로 만듦 — 랜덤과 같이 "다음 코드" 다음부터 적용
 import * as Slash from "./slash.js";
+import { harmonyPhrase, keyNamed } from "./grammar.js";
+import { randomStyle, restyle } from "./progression.js";
 import { t } from "../i18n/index.js";
 import { $, symbolHTML } from "../common/dom.js";
-import { S, WEIGHTS } from "./settings.js";
+import { S, WEIGHTS, version, harmonyOptions } from "./settings.js";
 import { BEATS, spanBeats } from "./timing.js";
 
 let prev = null, cur = null, next = null;   // 엔진이 만든 코드(q) 또는 { error: 문구 키 } 또는 null(빈칸)
@@ -19,13 +23,33 @@ let n = 0, chordStart = 0, span = BEATS;    // 본 연주의 박 번호, 지금 
  * 새 코드 하나 — 앞 코드(현재 자리에 올 코드)와 같은 맨 아래 음은 피함. 가중치는 코드 초견 전용(settings.js WEIGHTS).
  * "분수코드 허용"이면 약 25%가 분수코드 (improv/slash.js)
  */
-const draw = after => Slash.generate({ ...S, weights: WEIGHTS }, Math.random, after && !after.error ? after : null);
+const draw = after => (S.gen === "harmony" ? drawHarmony(after) : Slash.generate({ ...S, weights: WEIGHTS }, Math.random, after && !after.error ? after : null));
+
+// 화성 모드: 만들어 둔 코드 · 이어 가기 상태(grammar.js harmonyPhrase) · 기호 표기(시작할 때 하나 — 8마디 모드처럼 진행마다 무작위) · 만들 때의 설정 번호
+let queue = [], hState = {}, style = null, madeAt = -1, drawn = 0;
+function drawHarmony(after) {
+  if (madeAt !== version()) {
+    // 설정이 바뀜(또는 처음): 아직 안 보인 코드를 버리고 마지막으로 보인 코드(after)에서 이어서
+    const raw = after && after.raw;
+    hState = raw ? { key: raw.keyName ? keyOf(raw.keyName) : null, since: 2, before: raw, count: drawn } : { count: drawn };
+    queue = []; madeAt = version();
+  }
+  if (!queue.length) {
+    style = style || randomStyle(Math.random);
+    queue = harmonyPhrase(harmonyOptions(), hState).map(q => Object.defineProperty(restyle(q, style), "raw", { value: q, enumerable: false }));
+  }
+  drawn++;
+  return queue.shift();
+}
+/** "C♯m" → 키 */
+const keyOf = name => keyNamed(name.replace(/m$/, ""), /m$/.test(name));
 
 /**
  * 시작: 첫 코드를 미리 뽑아 "다음" 자리에 둠 (카운트인 동안 보고 준비하게).
  * @returns 출제할 수 없으면 그 이유(문구 키), 아니면 null
  */
 export function start() {
+  queue = []; hState = {}; style = null; madeAt = -1; drawn = 0;   // 화성 모드: 새 흐름으로
   const first = draw(null);
   if (first.error) return first.error;
   prev = cur = null; next = first;

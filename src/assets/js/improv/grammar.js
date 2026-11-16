@@ -592,15 +592,16 @@ function bassLine(chords, flat, o, rnd, fits, keys, random = false) {
   const upper = c => c.rootName + c.label;   // 베이스를 뺀 코드 이름
   for (let i = 0; i < n; i++) {
     const tonic = keyPc(keys[i]), dominant = (tonic + 7) % 12;
-    const q = chords[i], role = q.roleObj, prev = chords[i - 1], nextQ = chords[(i + 1) % n];
-    const sameBarPrev = prev && flat[i - 1].bar === flat[i].bar ? prev : null;
+    // 화성 모드(o.stream): 첫 코드의 앞은 앞 묶음의 마지막 코드, 마지막 코드의 뒤는 아직 모름(한 바퀴 돌지 않음)
+    const q = chords[i], role = q.roleObj, prev = i ? chords[i - 1] : o.stream?.before || undefined, nextQ = o.stream && i === n - 1 ? { bassPc: NaN } : chords[(i + 1) % n];
+    const sameBarPrev = i && flat[i - 1].bar === flat[i].bar ? prev : null;
     const must = !!(sameBarPrev && sameBarPrev.symbol === q.symbol);   // C – C (같은 마디) → 이름이 달라지게
     if (q.bass || !role || /^cliche/.test(q.pattern || "")) continue;   // 하이브리드·라인 클리셰는 그대로
     const prevBass = prev ? prev.bassPc : null, next = nextQ.bassPc;
     // 앞 코드의 전위가 이 코드의 베이스에 기대고 있으면(7음·이끔음 해결, 경과 베이스의 방향) 그걸 깨는 전위는 안 됨
-    const before2 = chords[i - 2];
+    const before2 = i >= 2 ? chords[i - 2] : null;
     const prevNeeds = b => !prev || prev.slash !== "inv" || random ||
-      (resolves(prev.invKind, prev.roleObj, prev.bassPc, b) && (prev.why !== "passing" || step(before2.bassPc, prev.bassPc) === step(prev.bassPc, b)));
+      (resolves(prev.invKind, prev.roleObj, prev.bassPc, b) && (prev.why !== "passing" || (before2 && step(before2.bassPc, prev.bassPc) === step(prev.bassPc, b))));
     const opts = inversionsOf(q).map(([kind, semi, deg]) => ({ kind, semi, deg, pc: (q.rootPc + semi) % 12 }))
       .filter(x => q.tones.some(t => t.pc === x.pc) && prevNeeds(x.pc) && (random || resolves(x.kind, role, x.pc, next)));
     let pick = null;
@@ -718,12 +719,67 @@ function reread(r, roles) {
 }
 /** 키 하나에서 쓸 것들: 역할·표·패턴 */
 function makeEnv(key, o) {
-  const roles = buildRoles(key, o.level);
+  const roles = stageRoles(buildRoles(key, o.level), o.stage);
   const byId = Object.fromEntries(roles.map(r => [r.id, r]));
   const ctx = { table: key.minor ? TABLE_MINOR : TABLE_MAJOR, rows: rowsFor(key.minor), byId, level: o.level, chance: o.chance, count: f => roles.filter(f).length || 1 };
   const tonic = byId[key.minor ? "i" : "I"];
   const iiV = roles.find(r => (r.iiOf || []).includes("V") || (r.kind === "ii" && r.dominant === "V"));
   return { key, roles, byId, ctx, tonic, iiV, confirms: r => r === tonic || r === byId.V || r === byId.Vsus || r === iiV };
+}
+
+// ---------- 무작위 코드 모드의 화성 모드 (사용자 결정 2026-11-16) ----------
+// 코드 생성 방식 [화성]: 코드 종류·베이스를 고르지 않고 키·기능 문법(난이도 1~4)으로 끝없이.
+// 화성 범위(누적) 0 다이아토닉 · 1 세컨더리 도미넌트 · 2 SubV7 · 3 SDM · 4 Diminished · 5 모달 인터체인지 (처음 3)
+//   다이아토닉 = 난이도 1(장·단조, V7sus4, 머니코드) · 세컨더리 = 2(+ Related II, Extended) · SubV7·SDM·Diminished = 난이도 3을 셋으로 나눔 · 모달 = 4(+ 7alt)
+// 코드 8개를 한 묶음으로 만들고(4번째 반종지 · 8번째 종지 — 개연성 1), 다음 묶음은 앞 묶음의 마지막 코드에서 이어짐. 강약은 코드 순서대로 번갈아.
+// 키 고정 Off: 어느 코드에서나 전조할 수 있음 — 한 키에 최소 MOD_MIN코드 머문 뒤, 코드마다 MOD_ODDS (평균 약 8코드마다 한 번 — 측정해서 맞춘 값).
+//   키 고르기·넘어가는 방법·새 키 확인은 난이도 5와 같음(nextKey · MOD_HOW · CONFIRM). 묶음의 첫 코드에서는 바뀌지 않음(앞 묶음과 이어지는 자리라서)
+export const STAGES = ["dia", "sec", "subv", "sdm", "dim", "modal"];
+const STAGE_LEVEL = [1, 2, 3, 3, 3, 4];
+const STAGE_DIM = 4;
+const MOD_MIN = 2;
+const MOD_ODDS = 0.16;
+/** 화성 범위로 역할 거르기 (SubV7 단계는 SDM·디미니시드 없이, SDM 단계는 디미니시드 없이) */
+function stageRoles(roles, stage) {
+  if (stage == null || stage === 1 || stage === 0 || stage >= STAGE_DIM) return roles;
+  return roles.filter(r => r.kind !== "dim" && r.id !== "viio" && (stage >= 3 || r.kind !== "sdm"));
+}
+const STREAM_ENVS = new Map();
+/** 화성 모드의 키 env — 묶음이 바뀌어도 같은 역할 객체를 쓰게(앞 묶음의 마지막 코드에서 이어 가려고) 캐시 */
+function streamEnv(key, o) {
+  const id = key.name + "|" + o.stage + "|" + o.chance;
+  if (!STREAM_ENVS.has(id)) STREAM_ENVS.set(id, makeEnv(key, o));
+  return STREAM_ENVS.get(id);
+}
+/** 키 이름(MAJOR_KEYS·MINOR_KEYS의 철자)으로 키 */
+export function keyNamed(name, minor) {
+  return { ...parseName(name), minor, name: name + (minor ? "m" : "") };
+}
+export const KEY_NAMES = { major: MAJOR_KEYS.map(k => k[0]), minor: MINOR_KEYS.map(k => k[0]) };
+
+/**
+ * 화성 모드의 코드 8개 (한 묶음).
+ * @param h      { stage 0~5, chance 1~3, tension, slash, key: 고정 키(없으면 키 고정 Off) }
+ * @param state  이어 가기 상태 { key, since(이 키에서 지난 코드 수), before(앞 묶음의 마지막 코드), count(지금까지 낸 코드 수) } — 이 함수가 바꿈. 처음엔 {}
+ * @returns [q × 8]
+ */
+export function harmonyPhrase(h, state, rnd = Math.random) {
+  const N = 8;
+  if (h.key) state.key = h.key;
+  if (!state.key || (h.key && !sameKey(state.key, h.key))) { state.key = h.key || chooseKey(rnd, 1); state.since = 0; state.before = null; }
+  const keys = [state.key], at = [];
+  let since = state.since || 0;
+  for (let n = 0; n < N; n++) {
+    if (!h.key && n > 0 && since >= MOD_MIN && rnd() < MOD_ODDS) { keys.push(nextKey(keys.at(-1), [keys.at(-1)], rnd)); since = 0; }
+    at.push(keys.length - 1); since++;
+  }
+  const count = state.count || 0;
+  const slots = Array.from({ length: N }, (_, n) => [{ len: 4, start: 0, strong: (count + n) % 2 === 0 }]);
+  const o = { tension: h.tension, slash: h.slash, level: STAGE_LEVEL[h.stage], stage: h.stage, chance: h.chance, stream: { keys, at, before: state.before || null } };
+  const g = generateGrammar(o, slots, rnd);
+  const chords = g.chords.flat();
+  Object.assign(state, { key: keys[at[N - 1]], since, before: chords[N - 1], count: count + N });
+  return chords;
 }
 
 // ---------- 한 진행 만들기 ----------
@@ -815,13 +871,13 @@ function chooseKey(rnd, level) {
 }
 
 function attempt(o, slots, rnd, fits) {
-  const X = chooseKey(rnd, o.level);
+  const X = o.stream ? o.stream.keys[0] : chooseKey(rnd, o.level);
   o = { ...o, scale: scaleOf(X) };
   const T = TEMPERATURE[o.chance] || 1;
   const flat = slots.flatMap((bar, b) => bar.map((s, i) => ({ ...s, bar: b, idx: i })));
   // 키 계획 (난이도 5부터 다른 키 — 위 keyPlan). envs[plan.at[n]] = n번째 자리의 키
-  const plan = keyPlan(X, flat, slots, o, rnd);
-  const envs = plan.keys.map(k => makeEnv(k, o));
+  const plan = o.stream || keyPlan(X, flat, slots, o, rnd);
+  const envs = plan.keys.map(k => (o.stream ? streamEnv(k, o) : makeEnv(k, o)));
   const envAt = n => envs[plan.at[n]];
   const boundaryAt = n => n > 0 && plan.at[n] !== plan.at[n - 1];
   const out = flat.map(() => null);
@@ -835,8 +891,10 @@ function attempt(o, slots, rnd, fits) {
     if (rnd() >= patOdds) continue;
     const first = flat.findIndex(s => s.bar === startBar);
     const e = envAt(first);
-    const pats = (e.key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => (p.level || 0) <= o.level && o.level <= (p.maxLevel ?? 6));
     const firstId = it => (Array.isArray(it) ? it[0] : it);
+    // 화성 모드(무작위 코드 모드, o.stage)는 그 범위에 있는 코드만으로 된 패턴 (Extended는 세컨더리부터, 백도어·플라갈 마이너는 SDM부터)
+    const pats = (e.key.minor ? PATTERNS.minor : PATTERNS.major).filter(p => o.level <= (p.maxLevel ?? 6) &&
+      (o.stage == null ? (p.level || 0) <= o.level : p.seq.every(it => e.byId[firstId(it)])));
     const starts = low ? flat.map((_, i) => i).filter(i => i >= first && (flat[i].bar === startBar || (flat[i].bar === startBar + 1 && flat[i].idx === 0))) : [first];
     const fitsAt = (p, start) => start + p.seq.length <= flat.length && p.seq.every((it, j) => !out[start + j] && plan.at[start + j] === plan.at[start] && !boundaryAt(start + j) &&
       !(low && flat[start + j].strong && e.byId[firstId(it)] && isDominant(e.byId[firstId(it)])));
@@ -856,7 +914,8 @@ function attempt(o, slots, rnd, fits) {
 
   // 한 자리씩
   const chords = [];
-  let prev = null, pending = null, confirm = null, unconfirmed = 0;
+  // 화성 모드: 앞 묶음의 마지막 코드에서 이어짐 (첫 코드 규칙 대신 그 코드에서의 점수로)
+  let prev = (o.stream?.before && envAt(0).byId[o.stream.before.role]) || null, pending = null, confirm = null, unconfirmed = 0;
   const barOf = n => chords.filter((_, i) => flat[i].bar === flat[n].bar);   // 이 마디에서 이미 고른 코드들
   for (let n = 0; n < flat.length; n++) {
     const slot = flat[n], env = envAt(n), boundary = boundaryAt(n);
@@ -889,7 +948,7 @@ function attempt(o, slots, rnd, fits) {
       cand = roles.map(r => [r, score(r, slot, n, env)]).filter(c => c[1] > 0).map(([r, s]) => [r, Math.pow(s, 1 / T) * beat(r, slot)]);
     }
     // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드(난이도 3부터)·도미넌트 7 (사용자 결정). 난이도 0은 다이아토닉만이라 없음
-    if (o.chance === 3 && o.level > 0 && !out[n] && prev && !boundary && rnd() < 0.1) cand = [[surprise(rnd, o.level), 1]];
+    if (o.chance === 3 && o.level > 0 && !out[n] && prev && !boundary && rnd() < 0.1) cand = [[surprise(rnd, o.stage != null && o.stage < STAGE_DIM ? 2 : o.level), 1]];
 
     // 역할을 고르고 코드로 — 그 자리에 맞지 않으면(긴 코드 자리 등) 텐션·분수코드를 빼 보고, 그래도 안 되면 다른 역할로
     let role = null, q = null;
@@ -1159,7 +1218,7 @@ function check(o, key, flat, chords, used, unconfirmed = 0) {
   const v = [];
   const tonicPc = Engine.pcOf(key.l, key.a);
   // 토닉이 한 번은 (조가 들리게) — 난이도 4까지. 5부터는 대신 개연성 1에서 바뀐 키마다 확인(CONFIRM)
-  if (o.level < 5 && !chords.some(c => c.rootPc === tonicPc && (c.role === "I" || c.role === "i"))) v.push("no tonic");
+  if (o.level < 5 && !(o.stream && o.stream.keys.length > 1) && !chords.some(c => c.rootPc === tonicPc && (c.role === "I" || c.role === "i"))) v.push("no tonic");
   if (o.chance === 1 && unconfirmed) v.push("key not confirmed");
   // II-V 최소: 개연성 1 → 2번, 2 → 1번. 라인 클리셰가 2마디 이상을 차지하면 하나 줄임 (남은 마디가 적어서 — 사용자 결정 2026-11-13, 4마디 → 2마디는 클리셰 비율을 맞추며 Claude가 바꿈)
   const clicheBars = new Set(flat.filter((s, n) => /^cliche/.test(chords[n].pattern || "")).map(s => s.bar)).size;
@@ -1182,6 +1241,7 @@ function check(o, key, flat, chords, used, unconfirmed = 0) {
   // 다이아토닉 밖 코드 연속: 난이도 2는 최대 2개, 3부터 4개 (Extended Dominant 사슬 최대 4개 — docs §1)
   let run = 0, maxRun = 0;
   for (const c of chords) { run = c.kind === "dia" || c.kind === "surprise" ? 0 : run + 1; maxRun = Math.max(maxRun, run); }
-  if (o.level < 6 && maxRun > (o.level < 2 ? 0 : o.level < 3 ? 2 : 4)) v.push("non-diatonic run " + maxRun);
+  const runMax = o.stage != null ? (o.stage ? 4 : 0) : o.level < 2 ? 0 : o.level < 3 ? 2 : 4;   // 화성 모드는 세컨더리부터 Extended(4개)
+  if (o.level < 6 && maxRun > runMax) v.push("non-diatonic run " + maxRun);
   return v;
 }

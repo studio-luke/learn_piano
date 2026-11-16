@@ -179,3 +179,31 @@
 
 /* 8마디 모드: 박 점 없음 (2026-11-10 사용자 요청 — 그 자리에 폰 세로 안내와 알약). 카운트인 숫자와 박자표로 충분 */
 .im-card.is-prog .im-beats { display: none; }
+/* 무작위 코드 모드의 화성 옵션 (2026-11-16): 키 고정 스위치 · 키 드롭다운 · Major/minor 버튼 · 화성 범위 6칸 */
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.switch { appearance: none; -webkit-appearance: none; position: relative; flex: 0 0 auto; width: 44px; height: 26px; margin: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background 150ms; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 150ms; }
+.switch:checked { background: var(--accent); }
+.switch:checked::after { transform: translateX(18px); }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sub.key-pick { flex-direction: row; align-items: center; gap: 8px; margin: 8px 0 0; }
+.key-pick select, .mode-btn { font-size: 15px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); cursor: pointer; }
+.mode-btn { min-width: 76px; font-weight: 600; }
+/* 화성 범위: 손잡이 크기를 정해 두고(--thumb) 글자를 멈추는 자리 가운데에 — 고른 칸까지 막대를 채움(--p, settings.js) */
+.pg-range.stops { --thumb: 20px; -webkit-appearance: none; appearance: none; height: 24px; background: transparent; cursor: pointer; }
+.pg-range.stops::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line) var(--p, 0%)); }
+.pg-range.stops::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line) var(--p, 0%)); }
+.pg-range.stops::-webkit-slider-thumb { -webkit-appearance: none; box-sizing: border-box; width: var(--thumb); height: var(--thumb); margin-top: -7px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+.pg-range.stops::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+.stop-labels { position: relative; height: 42px; margin: 2px 10px 0; }
+.stop-labels span { position: absolute; top: 0; transform: translateX(-50%); padding-top: 10px; font-size: 12px; line-height: 1.25; text-align: center; color: var(--muted); white-space: pre-line; width: max-content; cursor: pointer; }   /* 긴 이름은 문구에서 두 줄로(다이아\n토닉) */
+.stop-labels span::before { content: ""; position: absolute; top: 0; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--line); }
+.stop-labels span:nth-child(1) { left: 0; } .stop-labels span:nth-child(2) { left: 20%; } .stop-labels span:nth-child(3) { left: 40%; }
+.stop-labels span:nth-child(4) { left: 60%; } .stop-labels span:nth-child(5) { left: 80%; } .stop-labels span:nth-child(6) { left: 100%; }
+.stop-labels span.in::before { background: var(--accent); }
+.stop-labels span.on { color: var(--ink); font-weight: 700; }
+/* 화성 옵션의 [더보기]: 버튼 모양 대신 구분선 가운데 글자 (2026-11-16 사용자 요청) */
+.more-toggle { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: none; padding: 4px 0; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.more-toggle::before, .more-toggle::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.more-toggle .chev { transition: transform 150ms; }
+.more-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }

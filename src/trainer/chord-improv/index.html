@@ -114,37 +114,87 @@
           </div>
         </div>
 
-        <hr class="divider">
-
-        <div id="rTypeGroups" class="group" style="gap: 16px"></div>
-
-        <hr class="divider">
-
+        <!-- 코드 생성 방식 (2026-11-16): 랜덤(아래 코드 종류·출제 범위 옵션) / 화성(키·기능 문법 — 화성 범위·키 고정 옵션). 탭처럼 아래 옵션이 바뀜 -->
         <div class="opt">
-          <h3 data-i18n="rangeH">출제 범위</h3>
-          <label class="check"><input type="checkbox" id="rOptB"><span><span data-i18n="optB">특정 베이스의 코드만 출제</span><small data-i18n="optBsub"></small></span></label>
-          <div class="sub" id="rBasesBox" hidden>
-            <div class="bases" id="rBases"></div>
-            <div><button class="white-btn" id="rBasesWhite" type="button" aria-pressed="false" data-i18n="whiteKeys">흰 건반</button><button class="linkbtn" id="rBasesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="rBasesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
+          <h3 data-i18n="improvGen">코드 생성 방식</h3>
+          <div class="chips radios" role="radiogroup" aria-label="코드 생성 방식" data-i18n-aria="improvGen">
+            <label class="chip"><input type="radio" name="rGen" id="rGenrandom" value="random"><span data-i18n="improvGenRandom">랜덤</span></label>
+            <label class="chip"><input type="radio" name="rGen" id="rGenharmony" value="harmony"><span data-i18n="improvGenHarmony">화성</span></label>
           </div>
-          <label class="check"><input type="checkbox" id="rOptC"><span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsub"></small></span></label>
-          <div class="sub" id="rCBox" hidden>
-            <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
-              <label class="chip"><input type="radio" name="rCMax" id="rCMax1" value="1" checked><span data-i18n="max1">최대 1개</span></label>
-              <label class="chip"><input type="radio" name="rCMax" id="rCMax2" value="2"><span data-i18n="max2">최대 2개</span></label>
+        </div>
+
+        <div class="group" id="rRandomBox" style="gap: 16px">
+          <hr class="divider">
+
+          <div id="rTypeGroups" class="group" style="gap: 16px"></div>
+
+          <hr class="divider">
+
+          <div class="opt">
+            <h3 data-i18n="rangeH">출제 범위</h3>
+            <label class="check"><input type="checkbox" id="rOptB"><span><span data-i18n="optB">특정 베이스의 코드만 출제</span><small data-i18n="optBsub"></small></span></label>
+            <div class="sub" id="rBasesBox" hidden>
+              <div class="bases" id="rBases"></div>
+              <div><button class="white-btn" id="rBasesWhite" type="button" aria-pressed="false" data-i18n="whiteKeys">흰 건반</button><button class="linkbtn" id="rBasesAll" type="button" data-i18n="selectAll">모두 선택</button><button class="linkbtn" id="rBasesNone" type="button" data-i18n="selectNone">모두 해제</button></div>
+            </div>
+            <label class="check"><input type="checkbox" id="rOptC"><span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsub"></small></span></label>
+            <div class="sub" id="rCBox" hidden>
+              <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
+                <label class="chip"><input type="radio" name="rCMax" id="rCMax1" value="1" checked><span data-i18n="max1">최대 1개</span></label>
+                <label class="chip"><input type="radio" name="rCMax" id="rCMax2" value="2"><span data-i18n="max2">최대 2개</span></label>
+              </div>
+            </div>
+            <!-- 분수코드: 전위형(C/E)·하이브리드 코드(B♭/C)를 약 25% (improv/slash.js, 처음 설정 켜짐) -->
+            <label class="check"><input type="checkbox" id="rOptSlash"><span><span data-i18n="improvSlash">분수코드 허용</span><small data-i18n="improvSlashSub"></small></span></label>
+          </div>
+
+          <button class="adv-toggle" id="rAdvToggle" aria-expanded="false" aria-controls="rAdvBox"><span data-i18n="adv">[심화] 입시 대비 표기 옵션</span><span class="chev" aria-hidden="true">▾</span></button>
+          <div class="adv" id="rAdvBox" hidden>
+            <label class="check"><input type="checkbox" id="rOptD"><span><span data-i18n="optD"></span><small data-i18n="optDsub"></small></span></label>
+            <label class="check"><input type="checkbox" id="rOptE"><span><span data-i18n="optE"></span><small data-i18n="optEsub"></small></span></label>
+          </div>
+
+          <p class="warnbox" id="rSettingsWarn"></p>
+        </div>
+
+        <!-- 화성: 화성 범위(누적, 처음 SDM) · 키 고정(처음 켜짐, C Major) · 분수코드 · 텐션 · [더보기] 코드 개연성(처음 중간) — improv/settings.js -->
+        <div class="group" id="rHarmonyBox" style="gap: 16px" hidden>
+          <hr class="divider">
+          <div class="opt">
+            <h3 id="rStageH" data-i18n="hStageH">화성 범위</h3>
+            <!-- 글자 가운데 = 슬라이더가 멈추는 자리 (2026-11-16 — 고르게 벌려 놓으면 글자 길이 때문에 어긋나서). 글자를 눌러도 고름 -->
+            <input class="pg-range stops" type="range" id="rStage" min="0" max="5" step="1" aria-labelledby="rStageH">
+            <div class="stop-labels" id="rStageLabels" aria-hidden="true"><span data-i18n="hStage0">다이아
+토닉</span><span data-i18n="hStage1">세컨
+더리</span><span>SubV7</span><span>SDM</span><span>Dim</span><span data-i18n="hStage5">모달</span></div>
+          </div>
+          <div class="opt">
+            <label class="switch-row"><span data-i18n="hKeyFix">키 고정</span><input type="checkbox" class="switch" id="rKeyFix" role="switch"></label>
+            <div class="sub key-pick" id="rKeyBox" hidden>
+              <select id="rKeyRoot" aria-label="키" data-i18n-aria="hKey"></select>
+              <button class="mode-btn" id="rKeyMode" type="button" aria-label="Major / minor">Major</button>
             </div>
           </div>
-          <!-- 분수코드: 전위형(C/E)·하이브리드 코드(B♭/C)를 약 25% (improv/slash.js, 처음 설정 켜짐) -->
-          <label class="check"><input type="checkbox" id="rOptSlash"><span><span data-i18n="improvSlash">분수코드 허용</span><small data-i18n="improvSlashSub"></small></span></label>
+          <div class="opt">
+            <label class="check"><input type="checkbox" id="rHSlash"><span><span data-i18n="progSlash">분수코드 출제 허용</span></span></label>
+            <label class="check"><input type="checkbox" id="rHTen"><span><span data-i18n="progTen">텐션 허용</span></span></label>
+            <div class="sub" id="rHTenBox" hidden>
+              <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
+                <label class="chip"><input type="radio" name="rHTenMax" id="rHTen1" value="1"><span data-i18n="max1">최대 1개</span></label>
+                <label class="chip"><input type="radio" name="rHTenMax" id="rHTen2" value="2"><span data-i18n="max2">최대 2개</span></label>
+                <label class="chip"><input type="radio" name="rHTenMax" id="rHTenhard" value="hard"><span>HARD</span></label>
+              </div>
+            </div>
+          </div>
+          <button class="more-toggle" id="rHMoreToggle" type="button" aria-expanded="false" aria-controls="rHMoreBox"><span data-i18n="hMore">더보기</span><span class="chev" aria-hidden="true">▾</span></button>
+          <div class="adv" id="rHMoreBox" hidden>
+            <div class="opt">
+              <h3 id="rHChanceH" data-i18n="progChanceH">코드 개연성</h3>
+              <input class="pg-range" type="range" id="rHChance" min="0" max="2" step="1" aria-labelledby="rHChanceH">
+              <div class="pg-ticks" aria-hidden="true"><span data-i18n="progChanceT0">높음</span><span data-i18n="progChanceT1">중간</span><span data-i18n="progChanceT2">낮음</span></div>
+            </div>
+          </div>
         </div>
-
-        <button class="adv-toggle" id="rAdvToggle" aria-expanded="false" aria-controls="rAdvBox"><span data-i18n="adv">[심화] 입시 대비 표기 옵션</span><span class="chev" aria-hidden="true">▾</span></button>
-        <div class="adv" id="rAdvBox" hidden>
-          <label class="check"><input type="checkbox" id="rOptD"><span><span data-i18n="optD"></span><small data-i18n="optDsub"></small></span></label>
-          <label class="check"><input type="checkbox" id="rOptE"><span><span data-i18n="optE"></span><small data-i18n="optEsub"></small></span></label>
-        </div>
-
-        <p class="warnbox" id="rSettingsWarn"></p>
       </aside>
 
       <!-- 8마디 코드진행 모드의 출제 설정 (improv/prog-settings.js). 코드 종류·베이스는 고를 수 없음(전부) — 옵션 알파벳은 화면에 안 보임 -->

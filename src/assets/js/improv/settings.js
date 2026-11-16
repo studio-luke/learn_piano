@@ -10,7 +10,13 @@
 //   bars    한 코드당 마디수 "0.5" | "1" | "2" (기본 "1")
 //   slash   분수코드 허용 (기본 켜짐 — 전위형·하이브리드 코드를 약 25%, improv/slash.js)
 //   adv     [심화] 묶음 펼침
+//   gen     코드 생성 방식 "random" | "harmony" (기본 랜덤 — 2026-11-16). 화성이면 아래 h… 옵션만 보임(코드 종류·출제 범위·[심화]는 숨김)
+//   hStage  화성 범위 0 다이아토닉 · 1 세컨더리 도미넌트 · 2 SubV7 · 3 SDM · 4 Diminished · 5 모달 인터체인지 (누적, 기본 3) — grammar.js harmonyPhrase
+//   hKeyFix 키 고정 (기본 꺼짐 — 2026-11-16 사용자 결정)   hRoot 키 이름(grammar.js KEY_NAMES 철자, 기본 "C")   hMinor 단조 (기본 장조)
+//   hSlash  분수코드 출제 허용 (기본 켜짐)   hTen 텐션 허용 (기본 꺼짐)   hTenMax "1" | "2" | "hard"
+//   hChance 코드 개연성 0 높음 · 1 중간 · 2 낮음 (기본 중간, [더보기] 안)   hMore [더보기] 펼침
 import { Engine } from "../core/engine.js";
+import { KEY_NAMES } from "./grammar.js";
 import { applyI18n, t } from "../i18n/index.js";
 import { $, chipHTML } from "../common/dom.js";
 import { store } from "../common/storage.js";
@@ -26,6 +32,7 @@ export const DEFAULTS = {
   },
   optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
   bars: "1", slash: true, adv: false,
+  gen: "random", hStage: 3, hKeyFix: false, hRoot: "C", hMinor: false, hSlash: true, hTen: false, hTenMax: "1", hChance: 1, hMore: false,
 };
 
 /**
@@ -51,8 +58,33 @@ export const HAD_SAVED = !!(saved && typeof saved === "object");
 {
   if (HAD_SAVED) Object.assign(S, saved);
   if (!["0.5", "1", "2"].includes(S.bars)) S.bars = "1";
+  if (!["random", "harmony"].includes(S.gen)) S.gen = "random";
+  S.hStage = Math.min(5, Math.max(0, Math.round(+S.hStage) || 0));
+  S.hChance = Math.min(2, Math.max(0, Math.round(+S.hChance) || 0));
+  if (!["1", "2", "hard"].includes(S.hTenMax)) S.hTenMax = "1";
+  if (!KEY_NAMES[S.hMinor ? "minor" : "major"].includes(S.hRoot)) S.hRoot = sameRoot(S.hRoot, !!S.hMinor);
 }
 const save = () => store.setJSON(KEY, S);
+
+/** 바꾼 설정 번호 — 화성 모드(random.js)가 만들어 둔 코드를 버릴지 정할 때 */
+let ver = 0;
+export const version = () => ver;
+
+/** 화성 모드 옵션 → grammar.js harmonyPhrase */
+export const harmonyOptions = () => ({
+  stage: S.hStage, chance: S.hChance + 1, tension: S.hTen ? S.hTenMax : "off", slash: S.hSlash,
+  key: S.hKeyFix ? { ...parseKeyName(S.hRoot), minor: S.hMinor, name: S.hRoot + (S.hMinor ? "m" : "") } : null,
+});
+const LETTERS = "CDEFGAB", NATURAL = [0, 2, 4, 5, 7, 9, 11];
+const parseKeyName = n => ({ l: LETTERS.indexOf(n[0]), a: n.includes("♯") ? 1 : n.includes("♭") ? -1 : 0 });
+const pcOfName = n => { const k = parseKeyName(n); return (NATURAL[k.l] + k.a + 12) % 12; };
+/** Major ↔ minor를 바꿀 때 같은 근음(pc)의 그 조 철자 (D♭ → C♯, G♯ → A♭) — 없으면 C */
+function sameRoot(name, minor) {
+  const pc = name ? pcOfName(name) : 0;
+  return KEY_NAMES[minor ? "minor" : "major"].find(n => pcOfName(n) === pc) || "C";
+}
+/** 드롭다운 순서: C부터 반음씩 */
+const rootsInOrder = minor => [...KEY_NAMES[minor ? "minor" : "major"]].sort((a, b) => pcOfName(a) - pcOfName(b));
 
 // 출제 설정 묶음 (화면에 이 순서대로 — 랜덤 코드 연습과 같음)
 const GROUPS = ["triad", "sus", "seventh", "sixth", "add", "tension"];
@@ -98,10 +130,23 @@ export function initSettings() {
   $("rOptE").onchange = e => { S.optE = e.target.checked; changed(); };
   $("rOptSlash").onchange = e => { S.slash = e.target.checked; changed(); };
   $("rAdvToggle").onclick = () => { S.adv = !S.adv; changed(); };
+
+  // 코드 생성 방식 · 화성 모드 옵션
+  for (const v of ["random", "harmony"]) $("rGen" + v).onchange = () => { S.gen = v; changed(); };
+  $("rStage").oninput = e => { S.hStage = +e.target.value; changed(); };
+  [...$("rStageLabels").children].forEach((el, i) => { el.onclick = () => { S.hStage = i; changed(); }; });
+  $("rKeyFix").onchange = e => { S.hKeyFix = e.target.checked; changed(); };
+  $("rKeyRoot").onchange = e => { S.hRoot = e.target.value; changed(); };
+  $("rKeyMode").onclick = () => { S.hMinor = !S.hMinor; S.hRoot = sameRoot(S.hRoot, S.hMinor); changed(); };
+  $("rHSlash").onchange = e => { S.hSlash = e.target.checked; changed(); };
+  $("rHTen").onchange = e => { S.hTen = e.target.checked; changed(); };
+  for (const v of ["1", "2", "hard"]) $("rHTen" + v).onchange = () => { S.hTenMax = v; changed(); };
+  $("rHChance").oninput = e => { S.hChance = +e.target.value; changed(); };
+  $("rHMoreToggle").onclick = () => { S.hMore = !S.hMore; changed(); };
   syncSettingsUI();
 }
 
-function changed() { syncSettingsUI(); save(); }
+function changed() { ver++; syncSettingsUI(); save(); }
 
 /**
  * 출제 설정 공유 링크(common/share-settings.js)에 담을 값: S에 마디수를 켜짐/꺼짐 두 개로 더한 것
@@ -133,6 +178,22 @@ export function syncSettingsUI() {
   $("rOptD").checked = S.optD; $("rOptE").checked = S.optE;
   $("rOptSlash").checked = S.slash;
   $("rAdvToggle").setAttribute("aria-expanded", String(S.adv)); $("rAdvBox").hidden = !S.adv;
+  // 코드 생성 방식: 탭처럼 아래 옵션 묶음을 바꿈
+  const harmony = S.gen === "harmony";
+  for (const v of ["random", "harmony"]) $("rGen" + v).checked = S.gen === v;
+  $("rRandomBox").hidden = harmony; $("rHarmonyBox").hidden = !harmony;
+  $("rStage").value = S.hStage;
+  $("rStage").style.setProperty("--p", `calc(10px + (100% - 20px) * ${S.hStage / 5})`);   // 손잡이 가운데까지 채움 (--thumb 20px)
+  [...$("rStageLabels").children].forEach((el, i) => { el.classList.toggle("on", i === S.hStage); el.classList.toggle("in", i <= S.hStage); });
+  $("rKeyFix").checked = S.hKeyFix; $("rKeyBox").hidden = !S.hKeyFix;
+  $("rKeyRoot").innerHTML = rootsInOrder(S.hMinor).map(n => `<option value="${n}"${n === S.hRoot ? " selected" : ""}>${n}</option>`).join("");
+  $("rKeyMode").textContent = S.hMinor ? "minor" : "Major";
+  $("rKeyMode").setAttribute("aria-pressed", String(S.hMinor));
+  $("rHSlash").checked = S.hSlash;
+  $("rHTen").checked = S.hTen; $("rHTenBox").hidden = !S.hTen;
+  for (const v of ["1", "2", "hard"]) $("rHTen" + v).checked = S.hTenMax === v;
+  $("rHChance").value = S.hChance;
+  $("rHMoreToggle").setAttribute("aria-expanded", String(S.hMore)); $("rHMoreBox").hidden = !S.hMore;
   // 출제할 수 없는 설정이면 경고 (랜덤 코드 연습과 같은 문구)
   const has7 = Engine.TYPES.some(x => x.seventh && S.types[x.id]);
   const err = !Engine.TYPES.some(x => S.types[x.id]) ? "noTypes" : S.optB && !S.bases.some(Boolean) ? "noBases" : S.optC && !has7 ? "warnC" : "";

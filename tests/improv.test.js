@@ -588,3 +588,31 @@ test("improv grammar: levels 0·1 use money-chord patterns with dominants on wea
     assert.ok(rate > 0.06 && rate < 0.15, "난이도 " + level + " C – C/E " + (100 * rate).toFixed(1) + "%");
   }
 });
+
+// ---------- 무작위 코드 모드의 화성 모드 (사용자 결정 2026-11-16) ----------
+test("improv harmony mode: stage filters the chord set, fixed key stays put, key-off modulates about every 8 chords with at least 2 chords per key", async () => {
+  const G = await import("../src/assets/js/improv/grammar.js");
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const run = (h, phrases) => { const st = {}; return Array.from({ length: phrases }, () => G.harmonyPhrase(h, st, rnd)).flat(); };
+  const C = G.keyNamed("C", false);
+  for (let stage = 0; stage <= 5; stage++) {
+    const qs = run({ stage, chance: 2, tension: "hard", slash: true, key: C }, 40);
+    assert.ok(qs.every(q => q.keyName === "C"), "키 고정");
+    const kinds = new Set(qs.map(q => q.kind));
+    if (stage === 0) assert.ok([...kinds].every(k => k === "dia"), "다이아토닉 " + [...kinds]);
+    if (stage >= 1) assert.ok(kinds.has("sec"));
+    assert.strictEqual(kinds.has("subv"), stage >= 2, "SubV7 " + stage);
+    assert.strictEqual(kinds.has("sdm"), stage >= 3, "SDM " + stage);
+    assert.strictEqual(kinds.has("dim"), stage >= 4, "Dim " + stage);
+    assert.strictEqual(kinds.has("modal"), stage >= 5, "모달 " + stage);
+  }
+  // 단조 고정
+  assert.ok(run({ stage: 3, chance: 1, tension: "off", slash: true, key: G.keyNamed("F♯", true) }, 10).every(q => q.keyName === "F♯m"));
+  // 키 고정 Off: 평균 약 8코드마다 전조, 한 키에 최소 2코드
+  const qs = run({ stage: 3, chance: 2, tension: "off", slash: true, key: null }, 500);
+  const runs = [];
+  qs.forEach((q, i) => { if (!i || q.keyName !== qs[i - 1].keyName) runs.push(0); runs[runs.length - 1]++; });
+  const avg = qs.length / (runs.length - 1);
+  assert.ok(avg > 6.5 && avg < 9.5, "전조 간격 " + avg.toFixed(2));
+  assert.ok(runs.slice(0, -1).every(n => n >= 2), "최소 2코드");
+});
