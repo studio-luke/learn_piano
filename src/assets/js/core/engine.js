@@ -231,7 +231,8 @@ function rebuild(sp, s) {
   // 2026-11-10 전에 저장된 add9·madd9 (head "add9" / "madd9" / "-add9", items 없음) → 지금 표기 (head "" / "m" / "-", items ["add9"])
   if ((type.id === "add9" || type.id === "madd9") && !sp.items.length && /add9$/.test(sp.head)) sp = { ...sp, head: sp.head.slice(0, -4), items: ["add9"] };
   const alt = !!sp.alt && type.id === "dom7";
-  const parts = buildTones(type, { l: sp.l, a: sp.a }, tens, alt, s);
+  // s.loose: 겹변화표 제한을 풀어 줌 — 코드 기호에는 안 보이고 구성음에만 겹변화표가 생기는 코드(코드 초견의 A♭°7/G)용
+  const parts = buildTones(type, { l: sp.l, a: sp.a }, tens, alt, s, !!s?.loose);
   return parts && question(type, { l: sp.l, a: sp.a }, tens, alt, sp.head, sp.items.map(String), parts);
 }
 

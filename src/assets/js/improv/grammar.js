@@ -441,6 +441,12 @@ const fifthOf = typeId => (/^(m7b5|dim)/.test(typeId) ? 6 : /^aug/.test(typeId) 
 const SUS_HYBRIDS = [[10, 7, "maj", 3, "IV/V"], [10, 7, "M7", 1.5], [7, 5, "m7", 1], [10, 7, "min", 0.7], [7, 5, "m7b5", 0.25], [7, 5, "min", 0.25]];
 // 페달형 (베이스 = 토닉·IV 근음): 리디안 II/I(D/C) · V/I(G/C) · dim7(D°7/C · B°7/C)
 const PEDAL_HYBRIDS = [[2, 2, "maj", 2], [7, 5, "maj", 2], [2, 2, "dim7", 0.5], [11, 7, "dim7", 0.5]];
+// 화성 모드 (사용자 결정 2026-11-16): 하이브리드로 바꾸는 확률 20% — SDM부터 서스 도미넌트형(V7·세컨더리 자리) · D/C·G/C(토닉·IV 자리),
+//   Diminished부터 dim7 페달형(토닉·IV 자리 D°7/C·B°7/C, 장조 IIm7·VIm7 자리 C♯°7/D·E°7/D · G♯°7/A·B°7/A)과
+//   도미넌트 7(♭9) 대체(G 위의 dim7 — B°7/G 2 : A♭°7/G 1 : F°7/G 0.5 : D°7/G 0.5, 서스 도미넌트형과 합쳐 그 비율의 절반 몫으로)
+const HARMONY_SWAP = 0.2;
+const DIM_PEDAL = [[11, 7, "dim7", 2], [2, 2, "dim7", 1]];   // 목표 코드의 이끔음 dim7을 그 근음 위에 (C♯°7/D — 철자만 다른 E°7/D)
+const DOM_DIM = [[4, 3, "dim7", 1], [1, 2, "dim7", 0.5], [10, 7, "dim7", 0.25], [7, 5, "dim7", 0.25]];   // G7(♭9) = B°7/G · A♭°7/G · F°7/G · D°7/G
 /** V7sus4 자리가 하이브리드가 될 확률과 모양: 1 IV/V만 40% · 2 서스 도미넌트형 6종 30% · 3 20% · 4~6 IV/V를 뺀 5종 20% */
 const susHybrids = level => (level <= 1 ? SUS_HYBRIDS.slice(0, 1) : level >= 4 ? SUS_HYBRIDS.slice(1) : SUS_HYBRIDS);
 const SUS_HYBRID_ODDS = { 1: 0.4, 2: 0.3, 3: 0.2 };
@@ -450,7 +456,8 @@ const SWAP_ODDS = { 4: 0.02, 5: 0.05, 6: 0.05 };
 /** 하이브리드 코드 하나 — 베이스는 role의 근음 */
 function makeHybrid(role, shapes, o, rnd) {
   const [semi, deg, type] = pickBy(shapes, h => h[3], rnd);
-  const q = makeChord({ ...role, root: spell(role.root, semi, deg), sus: false }, type, null, { ...o, tension: "off" }, rnd);
+  // dim7 모양은 구성음의 겹변화표를 허용 (A♭°7/G = A♭ C♭ E𝄫 G𝄫 — 기호에는 안 보임, 사용자 결정 2026-11-16)
+  const q = makeChord({ ...role, root: spell(role.root, semi, deg), sus: false }, type, null, { ...o, tension: "off", loose: type === "dim7" }, rnd);
   return q && Object.assign(q, { bass: role.root.name, bassPc: role.root.pc, slash: "hybrid", why: "hybrid", symbol: q.symbol + "/" + role.root.name });
 }
 
@@ -527,7 +534,7 @@ function makeChord(role, typeId, bass, o, rnd) {
   const m = type.std[0].match(/^(.*)\((.*)\)$/);
   const head = alt ? "7alt" : m ? m[1] : type.std[0];
   const items = alt ? [] : (m ? m[2].split(",") : []).concat(tens.map(Engine.tenText));
-  const q = Engine.rebuild({ l: role.root.l, a: role.root.a, type: type.id, tens, alt, head, items }, { optE: true });
+  const q = Engine.rebuild({ l: role.root.l, a: role.root.a, type: type.id, tens, alt, head, items }, { optE: true, loose: !!o.loose });
   if (!q) return null;
   q.rootName = role.root.name; q.symbol = q.rootName + q.label;   // 철자 정리(tidy)한 근음 이름으로
   q.bassPc = q.rootPc;
@@ -548,10 +555,12 @@ function realize(role, o, rnd, forced) {
   const typeId = forced?.type || pickBy(role.types, t => t[1], rnd)[0];
   if (!forced && o.slash) {
     if (role.sus && rnd() < (SUS_HYBRID_ODDS[o.level] ?? 0.2)) return makeHybrid(role, susHybrids(o.level), o, rnd);
-    const swap = SWAP_ODDS[o.level] || 0;
+    const harmony = o.stage != null, dims = harmony && o.stage >= STAGE_DIM;   // 화성 모드 (위 HARMONY_SWAP)
+    const swap = harmony ? (o.stage >= 3 ? HARMONY_SWAP : 0) : SWAP_ODDS[o.level] || 0;
     if (swap && rnd() < swap) {
-      if (isDominant(role) && !role.sus && (role.id === "V" || role.kind === "sec")) return makeHybrid(role, susHybrids(o.level), o, rnd);
-      if (role.kind === "dia" && ["I", "i", "IV", "iv"].includes(role.id)) return makeHybrid(role, PEDAL_HYBRIDS, o, rnd);
+      if (isDominant(role) && !role.sus && (role.id === "V" || role.kind === "sec")) return makeHybrid(role, dims ? [...susHybrids(o.level), ...DOM_DIM] : susHybrids(o.level), o, rnd);
+      if (role.kind === "dia" && ["I", "i", "IV", "iv"].includes(role.id)) return makeHybrid(role, harmony && !dims ? PEDAL_HYBRIDS.filter(h => h[2] !== "dim7") : PEDAL_HYBRIDS, o, rnd);
+      if (dims && role.kind === "dia" && ["II", "VI"].includes(role.id)) return makeHybrid(role, DIM_PEDAL, o, rnd);
     }
   }
   const q = makeChord(role, typeId, forced?.bass || null, o, rnd);
@@ -719,7 +728,7 @@ function reread(r, roles) {
 }
 /** 키 하나에서 쓸 것들: 역할·표·패턴 */
 function makeEnv(key, o) {
-  const roles = stageRoles(buildRoles(key, o.level), o.stage);
+  const roles = stageRoles(buildRoles(key, o.level), o.stage, key);
   const byId = Object.fromEntries(roles.map(r => [r.id, r]));
   const ctx = { table: key.minor ? TABLE_MINOR : TABLE_MAJOR, rows: rowsFor(key.minor), byId, level: o.level, chance: o.chance, count: f => roles.filter(f).length || 1 };
   const tonic = byId[key.minor ? "i" : "I"];
@@ -743,13 +752,45 @@ const MOD_ODDS = 0.16;
 //   (3번째 ×0.4 · 4번째 ×0.16 · 5번째 ×0.064 …). 묶음을 넘어서도 이어서 셈.
 //   패턴도: 패턴 안에서 가장 길게 이어지는 다이아토닉 L개(묶음 첫 자리면 앞에서 이어진 수까지 더함)마다 0.4^(L−2)의 확률로만 넣음 — 1-6-2-5 16% · 2-5-1 40% · 하행 베이스 0.4%
 const DIA_DECAY = 0.4;
+/** 화성 모드에서 다이아토닉으로 세는 코드: 역할이 다이아토닉이고, 코드 구성음과 베이스가 모두 그 키의 음계 안(단조는 이끔음도) — 텐션 음은 보지 않음.
+ *  Dm7/G·FM7/G는 다이아토닉, D/C·Fm/G·B°7/C는 아님 (사용자 결정 2026-11-16) */
+export function diatonicIn(q, key) {
+  if (q.kind !== "dia" || !key) return false;
+  const sc = scaleOf(key);
+  if (key.minor) sc.add((keyPc(key) + 11) % 12);
+  return q.tones.every(t => t.role !== "chord" || sc.has(t.pc)) && (q.bassPc == null || sc.has(q.bassPc));
+}
 // 디미니시드·SubV7 비중 (사용자 결정 2026-11-16 — 목표 SubV7 약 7.5% · 디미니시드 약 5%, 개연성마다 같게): 패턴이 정하지 않은 자리마다 아래 확률로
 //   그 자리에 올 수 있는(점수가 있는) 디미니시드 / SubV7 중에서 점수 비율대로 고름. 저절로 나오는 몫을 빼고 측정해서 맞춘 값. 화성 범위에 들어 있을 때만
 const PICK_ODDS = { dim: { 1: 0.155, 2: 0.065, 3: 0.025 }, subv: { 1: 0.045, 2: 0.035, 3: 0.045 } };
 /** 화성 범위로 역할 거르기 (SubV7 단계는 SDM·디미니시드 없이, SDM 단계는 디미니시드 없이) */
-function stageRoles(roles, stage) {
-  if (stage == null || stage === 1 || stage === 0 || stage >= STAGE_DIM) return roles;
-  return roles.filter(r => r.kind !== "dim" && r.id !== "viio" && (stage >= 3 || r.kind !== "sdm"));
+function stageRoles(roles, stage, key) {
+  if (stage == null) return roles;
+  if (stage === 2) roles = roles.filter(r => r.kind !== "dim" && r.id !== "viio" && r.kind !== "sdm");
+  if (stage === 3) roles = roles.filter(r => r.kind !== "dim" && r.id !== "viio");
+  // SDM부터 mM7·augM7을 원형 코드 자리의 드문 코드 종류로 (아래 LINE_TYPE)
+  if (stage >= 3) roles = roles.map(r => (lineType(r, key) && !r.types.some(t => t[0] === lineType(r, key)) ? { ...r, types: [...r.types, [lineType(r, key), LINE_W]] } : r));
+  return roles;
+}
+// ---------- 화성 모드의 mM7·augM7 (사용자 결정 2026-11-16) ----------
+// 라인 클리셰 대신: SDM 범위부터 아래 자리의 코드 종류로 드물게(LINE_W), 그리고 같은 근음의 원형 코드와 이웃할 확률을 높임 —
+//   앞: 원형 코드(Am7·Am6·Am, CM7·C6·C) 다음 자리가 LINE_FWD로 같은 근음의 mM7·augM7 (Am7 – AmM7)
+//   뒤: mM7·augM7 다음 자리가 LINE_BACK으로 같은 근음의 원형 코드 (AmM7 – Am7)
+// 자리: mM7 = 장조 IIm7·IIIm7·VIm7 · SDM IVm, 단조 Im·IVm / augM7 = 장조 I·IV, 단조 ♭III·♭VI. 비율은 측정해서 맞춘 값
+const LINE_TYPE = { major: { II: "mM7", III: "mM7", VI: "mM7", I: "augM7", IV: "augM7" }, minor: { i: "mM7", iv: "mM7", bIII: "augM7", bVI: "augM7" } };
+const LINE_W = 0.012, LINE_FWD = 0.022, LINE_BACK = 0.5;
+/** 그 역할 자리에 쓸 mM7·augM7 (없으면 null) */
+function lineType(role, key) {
+  if (role.kind === "dia") return LINE_TYPE[key.minor ? "minor" : "major"][role.id] || null;
+  return role.kind === "sdm" && role.id === "iv" && !key.minor ? "mM7" : null;
+}
+/** 바로 앞 코드 q(역할 role)를 보고 이번 자리를 같은 근음의 mM7·augM7 / 원형 코드로 할지 — 코드 종류 id 또는 null */
+function lineNeighbor(q, role, key, rnd) {
+  const lt = role && q && q.slash !== "hybrid" && lineType(role, key);
+  if (!lt) return null;
+  const plain = role.types.filter(t => t[0] !== lt);
+  if (q.type === lt) return rnd() < LINE_BACK ? pickBy(plain, t => t[1], rnd)[0] : null;
+  return plain.some(t => t[0] === q.type) && rnd() < LINE_FWD ? lt : null;
 }
 const STREAM_ENVS = new Map();
 /** 화성 모드의 키 env — 묶음이 바뀌어도 같은 역할 객체를 쓰게(앞 묶음의 마지막 코드에서 이어 가려고) 캐시 */
@@ -786,7 +827,7 @@ export function harmonyPhrase(h, state, rnd = Math.random) {
   const g = generateGrammar(o, slots, rnd);
   const chords = g.chords.flat();
   let diaRun = state.diaRun || 0;
-  for (const q of chords) diaRun = q.kind === "dia" ? diaRun + 1 : 0;
+  chords.forEach((q, n) => { diaRun = diatonicIn(q, keys[at[n]]) ? diaRun + 1 : 0; });
   Object.assign(state, { key: keys[at[N - 1]], since, before: chords[N - 1], count: count + N, diaRun });
   return chords;
 }
@@ -971,9 +1012,13 @@ function attempt(o, slots, rnd, fits) {
       };
       if (!(o.stage >= STAGE_DIM && pick("dim")) && o.stage >= 2) pick("subv");
     }
-    if (o.stream && o.stage >= 1 && !out[n] && diaRun >= 2) cand = cand.map(([r, w]) => [r, r.kind === "dia" ? w * DIA_DECAY ** (diaRun - 1) : w]);
+    if (o.stream && o.stage >= 3 && !out[n] && prev && !boundary) {   // 화성 모드: mM7·augM7과 원형 코드 이웃 (위 LINE_FWD·LINE_BACK)
+      const t = lineNeighbor(chords[n - 1] || o.stream.before, prev, env.key, rnd);
+      if (t && byId[prev.id] === prev) { cand = [[prev, 1]]; forced = { type: t, bass: null }; }
+    }
+    if (o.stream && o.stage >= 1 && !out[n] && diaRun >= 2 && !forced) cand = cand.map(([r, w]) => [r, r.kind === "dia" ? w * DIA_DECAY ** (diaRun - 1) : w]);
     // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드(난이도 3부터)·도미넌트 7 (사용자 결정). 난이도 0은 다이아토닉만이라 없음
-    if (o.chance === 3 && o.level > 0 && !out[n] && prev && !boundary && rnd() < 0.1) cand = [[surprise(rnd, o.stage != null && o.stage < STAGE_DIM ? 2 : o.level), 1]];
+    if (o.chance === 3 && o.level > 0 && !out[n] && prev && !boundary && !forced && rnd() < 0.1) cand = [[surprise(rnd, o.stage != null && o.stage < STAGE_DIM ? 2 : o.level), 1]];
 
     // 역할을 고르고 코드로 — 그 자리에 맞지 않으면(긴 코드 자리 등) 텐션·분수코드를 빼 보고, 그래도 안 되면 다른 역할로
     let role = null, q = null;
@@ -1002,7 +1047,7 @@ function attempt(o, slots, rnd, fits) {
     }
     // 라인 클리셰로 늘이기 (위 clicheFor) — 첫 코드도 클리셰의 첫 코드로 바꿈. 키가 바뀌는 자리에서는 시작하지 않고, 클리셰 전체가 한 키 안에
     const barPulses = slots[slot.bar].reduce((a, sl) => a + sl.len, 0);
-    if (!out[n] && !boundary && !repeat && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
+    if (!o.stream && !out[n] && !boundary && !repeat && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
       const cl = clicheFor(role, env.key, o.level, rnd);
       const end = cl && n + cl.items.length - 1;
       const span = cl && end < flat.length ? flat[end].bar - slot.bar + 1 : 99;
@@ -1046,7 +1091,7 @@ function attempt(o, slots, rnd, fits) {
     if (prev && isDominant(prev) && role.root.pc !== prev.target && role.kind === "dia" && role.fn !== "D") pending = { pc: prev.target, left: 2 };
     else if (pending && (role.root.pc === pending.pc || --pending.left <= 0)) pending = null;
     prev = role;
-    diaRun = q.kind === "dia" ? diaRun + 1 : 0;
+    diaRun = diatonicIn(q, env.key) ? diaRun + 1 : 0;
   }
 
   // X로 돌아온 키를 아직 확인 못 했으면 1마디로 이어지는 코드까지 봄 (8마디 → 1마디)

@@ -616,3 +616,34 @@ test("improv harmony mode: stage filters the chord set, fixed key stays put, key
   assert.ok(avg > 6.5 && avg < 9.5, "전조 간격 " + avg.toFixed(2));
   assert.ok(runs.slice(0, -1).every(n => n >= 2), "최소 2코드");
 });
+
+test("improv harmony mode: hybrids by range (SDM: sus-dominant + D/C·G/C, Dim: + dim7 pedal and G7(♭9) as B°7/G), non-diatonic tones break the diatonic count", async () => {
+  const G = await import("../src/assets/js/improv/grammar.js");
+  let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const C = G.keyNamed("C", false);
+  const hybrids = stage => { const st = {}; return Array.from({ length: 600 }, () => G.harmonyPhrase({ stage, chance: 2, tension: "off", slash: true, key: C }, st, rnd)).flat().filter(q => q.slash === "hybrid"); };
+  const sdm = hybrids(3), dim = hybrids(4);
+  assert.ok(sdm.some(q => q.symbol === "D/C") && sdm.some(q => q.symbol === "FM7/G"), "SDM");
+  assert.ok(!sdm.some(q => /dim7/.test(q.symbol)), "SDM에는 dim7 하이브리드 없음");
+  for (const s of ["Bdim7/C", "C♯dim7/D", "G♯dim7/A", "Bdim7/G"]) assert.ok(dim.some(q => q.symbol === s), s);
+  assert.ok(!hybrids(2).some(q => q.role !== "Vsus"), "SubV7 범위에는 V7sus4 자리(전부터 있던 규칙) 말고는 하이브리드 없음");
+  const find = (sym, list) => list.find(q => q.symbol === sym);
+  assert.ok(G.diatonicIn(find("FM7/G", sdm), C) && !G.diatonicIn(find("D/C", sdm), C) && !G.diatonicIn(find("C♯dim7/D", dim), C));
+});
+
+test("improv harmony mode: no line clichés, mM7·augM7 from SDM next to their plain chord, A♭°7/G as a G7(♭9) hybrid", async () => {
+  const G = await import("../src/assets/js/improv/grammar.js");
+  let seed = 9; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const run = (stage, key, slash = false) => { const st = {}; return Array.from({ length: 1500 }, () => G.harmonyPhrase({ stage, chance: 2, tension: "off", slash, key }, st, rnd)).flat(); };
+  const line = q => q.type === "mM7" || q.type === "augM7";
+  assert.ok(!run(2, G.keyNamed("A", true)).some(line), "SubV7 범위까지는 없음");
+  for (const key of [G.keyNamed("C", false), G.keyNamed("A", true)]) {
+    const qs = run(3, key);
+    assert.ok(!qs.some(q => /cliche/.test(q.pattern || "")), "클리셰 없음");
+    const hits = qs.map((q, i) => [q, i]).filter(([q]) => line(q));
+    const share = hits.length / qs.length, near = hits.filter(([q, i]) => [qs[i - 1], qs[i + 1]].some(c => c && c.rootPc === q.rootPc && !line(c))).length / hits.length;
+    assert.ok(share > 0.004 && share < 0.02, "비율 " + share);
+    assert.ok(near > 0.55, "이웃 " + near);
+  }
+  assert.ok(run(4, G.keyNamed("C", false), true).some(q => q.symbol === "A♭dim7/G"), "A♭°7/G");
+});
