@@ -152,9 +152,11 @@
 /* "흰 건반": 모두 선택처럼 글자만, 본문색 굵은 글씨로 구분, 켜져 있으면 밑줄 */
 .white-btn { border: none; background: none; color: var(--ink); font-size: 12px; font-weight: 700; padding: 2px 4px; margin-right: 4px; text-underline-offset: 3px; }
 .white-btn[aria-pressed="true"] { text-decoration: underline; text-decoration-thickness: 2px; }
-.adv-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 1px dashed var(--line); background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
-.adv-toggle .chev { transition: transform 150ms; }
-.adv-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+/* [더보기] 펼침 버튼 — 구분선 모양 (2026-11-16: 화성 진행 연습에서 시작, [심화] 표기 옵션 버튼도 이것으로 바꿈 — 세 연습 공통) */
+.more-toggle { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: none; padding: 4px 0; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.more-toggle::before, .more-toggle::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.more-toggle .chev { transition: transform 150ms; }
+.more-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .adv { display: flex; flex-direction: column; gap: 12px; }
 .warnbox { font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; margin: 0; }
 .warnbox:empty { display: none; }

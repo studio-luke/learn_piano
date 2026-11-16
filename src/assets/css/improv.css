@@ -197,11 +197,7 @@
 .stop-labels span:nth-child(4) { left: 60%; } .stop-labels span:nth-child(5) { left: 80%; } .stop-labels span:nth-child(6) { left: 100%; }
 .stop-labels span.in::before { background: var(--accent); }
 .stop-labels span.on { color: var(--ink); font-weight: 700; }
-/* 화성 옵션의 [더보기]: 버튼 모양 대신 구분선 가운데 글자 (2026-11-16 사용자 요청) */
-.more-toggle { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: none; padding: 4px 0; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
-.more-toggle::before, .more-toggle::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
-.more-toggle .chev { transition: transform 150ms; }
-.more-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+/* 화성 옵션의 [더보기] 모양(.more-toggle)은 practice.css — 세 연습 공통 */
 /* 비활성 체크박스 (화성 모드 [더보기]의 비중 높이기 — 허용 옵션이 꺼져 있을 때) */
 .check:has(input:disabled) { opacity: 0.45; cursor: default; }
 .check:has(input:disabled) input { cursor: default; }

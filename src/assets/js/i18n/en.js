@@ -60,7 +60,6 @@ export default {
   max1: "Up to 1",
   max2: "Up to 2",
   cNote: "Chords with tensions count as correct without the perfect 5th. When a dominant chord shows ♯5 or ♭5, playing the perfect 5th is wrong. For 7alt, play R·3·♭7 plus at least one of ♭9, ♯9, ♯11, ♭13.",
-  adv: "[Advanced] Notation options",
   optD: "Allow symbol notation (△, -, +, °, ø)",
   optDsub: "Mixed in, e.g. CM7 → C△7, Cm7 → C-7, Caug → C+, Cdim7 → C°7, Cm7(♭5) → Cø7.",
   optE: "Allow complex spellings",
