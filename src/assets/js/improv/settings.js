@@ -159,7 +159,7 @@ export function setGen(g) { if (S.gen !== g) { S.gen = g; changed(); } }
  * 출제 설정 공유 링크(common/share-settings.js)에 담을 값: S에 마디수를 켜짐/꺼짐 두 개로 더한 것
  * (링크의 옵션 글자는 켜짐/꺼짐만 담아서 — H ½마디, L 2마디, 둘 다 없으면 1마디)
  */
-export const presetSource = () => ({ ...S, barsHalf: S.bars === "0.5", barsTwo: S.bars === "2" });
+export const presetSource = (src = S) => ({ ...src, barsHalf: src.bars === "0.5", barsTwo: src.bars === "2" });
 
 /**
  * 공유 링크의 [바꾸기]: 링크의 설정을 넣고(마디수는 barsHalf·barsTwo에서 되돌림) 화면·저장.

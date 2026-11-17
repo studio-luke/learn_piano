@@ -422,6 +422,7 @@ test("improv grammar: tensions by level — 10% on 0~2, 15/20/40/60% on 3~6; two
       const qs = p.bars.flat().map(c => c.q);
       for (const q of qs) {
         if (q.group === "tension") tc++;
+        if (q.ensured) continue;   // 옵션 보장으로 채운 코드는 비율에서 뺌 (아래 보장 테스트)
         assert.ok(q.items.length <= 2, "괄호 안 개수 " + q.symbol);
         if (level <= 1) {
           assert.ok(!q.alt, q.symbol);   // 7alt는 난이도 4부터
@@ -438,6 +439,17 @@ test("improv grammar: tensions by level — 10% on 0~2, 15/20/40/60% on 3~6; two
   assert.ok(chordsOf(await progs({ tension: "1", level: 6, slash: false }, 300)).every(c => c.q.items.length <= 1 && c.q.group !== "tension"));
   const near = (v, want, tol) => Math.abs(v - want) < tol;
   assert.ok(near(rate[0], 10, 3) && near(rate[1], 10, 3) && near(rate[2], 10, 3) && near(rate[3], 15, 3.5) && near(rate[4], 20, 4) && near(rate[5], 40, 5) && near(rate[6], 60, 5), JSON.stringify(rate));
+});
+
+test("improv grammar: every progression has at least one chord the tension option asks for — a tension (1), two in parentheses (2), a tension chord or 7alt (HARD) (2026-11-17)", async () => {
+  const want = { 1: q => q.tens.length > 0 || q.alt || q.group === "tension", 2: q => q.items.length >= 2, hard: q => q.alt || q.group === "tension" };
+  for (const tension of ["1", "2", "hard"]) for (let level = 0; level <= 6; level++) for (const chance of [1, 2, 3, 4]) {
+    for (const p of await progs({ tension, level, chance, count: "high" }, 40)) {
+      const qs = p.bars.flat().map(c => c.q);
+      assert.ok(qs.some(want[tension]), tension + " 난이도 " + level + " 개연성 " + chance + ": " + qs.map(q => q.symbol).join(" "));
+      if (level === 0) assert.ok(qs.every(q => !q.alt), "난이도 0 7alt 없음");
+    }
+  }
 });
 
 test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), halves never identical, bar 5 never starts on bar 1's chord, at most 2 non-diatonic in a row on level 2", async () => {

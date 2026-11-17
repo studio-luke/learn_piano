@@ -13,6 +13,8 @@
 //   - 글자는 영문·숫자·.·-만 → 메신저에서 잘리거나 바뀌지 않음
 //   - 코드 초견의 화성 진행 연습·8마디 초견(2026-11-16)은 탭마다 다른 형식·주소 이름(hpreset·ppreset)과 ?mode — preset.js 아래쪽.
 //     한 페이지에 링크 버튼이 여럿이면 initPresetLink를 여러 번(버튼 id·codec이 다름)
+//   - 디버깅용 기본값 링크 (2026-11-17 사용자 요청): 값 자리에 "default" → 그 페이지(탭)의 처음 설정(DEFAULTS)으로.
+//     ?preset=default · ?mode=harmony&hpreset=default · ?mode=prog&ppreset=default. 링크에 담는 항목만 바뀌고, 확인 창 등은 보통 링크와 같음
 //
 // 공유하는 것: 코드 종류, 옵션 B와 베이스, 옵션 C와 텐션 개수, D·E(랜덤 코드 연습), E·자리바꿈(코드 추론하기).
 // 공유하지 않는 것: 키보드로 건반 입력·MIDI(기기별), 소리·건반 음이름 표시·[심화] 펼침(보는 사람 취향), 타이머(설정이 아니라 켜고 끄는 상태 — 사용자 결정).
@@ -85,6 +87,7 @@ async function copyLink(url) {
  * @param S       그 페이지의 출제 설정 객체(읽기만 — 링크 만들 때), 또는 그런 객체를 돌려주는 함수
  *                (코드 초견처럼 링크에 담기 전에 값을 바꿔야 할 때 — 마디수 "0.5" → barsHalf)
  * @param apply   (설정 일부) => void  [바꾸기]를 눌렀을 때 페이지가 S에 넣고 화면·저장(기기+계정)·새 문제까지 처리
+ * @param defaults () => 처음 설정(S와 같은 모양) — ?<param>=default 링크용. 링크에 담는 항목만 골라 보통 링크처럼 적용
  * @param hasPrior () => boolean  지금 이 사람에게 덮어쓸 "원래 설정"이 있는지 — 이 기기에 저장된 설정이 있거나, 로그인했고 계정에 그 페이지 설정이 있으면 true.
  *                 없으면(처음 온 사람·로그인 안 했고 저장된 설정 없음) 묻지 않고 바로 적용 (2026-11-10 사용자 요청)
  * @returns {{ pending: boolean, consume(): boolean }}
@@ -93,7 +96,7 @@ async function copyLink(url) {
  *             로그인한 학생은 페이지를 열 때마다 계정 설정이 기기 설정을 덮어써서(Account "profile"),
  *             true면 페이지가 계정 설정을 받는 대신 지금 설정을 계정에 올려야 링크 설정이 되돌아가지 않음
  */
-export function initPresetLink({ spec, S, apply, hasPrior = () => true, codec = DEFAULT_CODEC, btnId = "presetBtn" }) {
+export function initPresetLink({ spec, S, apply, defaults, hasPrior = () => true, codec = DEFAULT_CODEC, btnId = "presetBtn" }) {
   // 버튼: 관리자에게만 (선생님 역할이 생기면 여기 조건에 추가)
   const btn = $(btnId);
   const showBtn = () => { btn.hidden = !Account.isAdmin(); };
@@ -113,7 +116,7 @@ export function initPresetLink({ spec, S, apply, hasPrior = () => true, codec = 
     params.delete("review");   // ?review=1과 함께 왔으면 다시 풀기는 시작하지 않으므로(pending) 새로고침 때 시작되지 않게 같이 지움
     const q = params.toString();
     history.replaceState(history.state, "", location.pathname + (q ? "?" + q : "") + location.hash);
-    const preset = codec.decode(raw, spec);
+    const preset = codec.decode(raw === "default" && defaults ? codec.encode(defaults(), spec) : raw, spec);
     if (!preset) toast(t("presetBad"));
     else whenSettled(() => {
       const cur = typeof S === "function" ? S() : S;

@@ -10,7 +10,7 @@ import { hooks as authHooks, isOpen as authOpen } from "../account/auth-dialog.j
 import { t, onLangChange } from "../i18n/index.js";
 import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
-import { S, save, HAD_SAVED, initSettings, syncSettingsUI, replaceSettings } from "../naming/settings.js";
+import { S, save, HAD_SAVED, initSettings, syncSettingsUI, replaceSettings, DEFAULTS } from "../naming/settings.js";
 import { initKeys } from "../naming/keys.js";
 import { menuOpen } from "../naming/answer-menu.js";
 import { initKeypad, type, backspace, deleteForward, moveCaret, caretTo, caretAtEnd, selectAll, undo, redo, extendCaret } from "../naming/keypad.js";
@@ -134,6 +134,7 @@ authHooks.startReview = mode => (mode === "name" ? beginReview() : goTrainerRevi
 const preset = initPresetLink({
   spec: { route: ROUTES.nameTrainer, types: NAME_TYPES.map(x => x.id), flags: ["B", "C", "E", "I"] },
   S,
+  defaults: () => DEFAULTS,
   apply(p) {
     setTimer(false);
     Object.assign(S, p);

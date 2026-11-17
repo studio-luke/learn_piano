@@ -505,11 +505,12 @@ function makeChord(role, typeId, bass, o, rnd) {
   // 텐션 (7화음만). 마이너로 해결하는 도미넌트는 ♭9·♯9·♭13, 메이저로 해결하면 9·13·♯11·♭9
   const H = o.stage != null;   // 화성 모드 (위 H_TEN 등)
   const twoOk = o.tension === "2" || o.tension === "hard";
-  const two = twoOk && rnd() < (H ? H_TWO : TWO_ODDS[level] || 0);   // 이 코드는 괄호 안 2개까지
+  const must = o.must;   // 8마디 보장(ensureTension)이 다시 만들 때: "1" 텐션 · "2" 괄호 안 2개 · "hard" 텐션 코드
+  const two = twoOk && (must === "2" || rnd() < (H ? H_TWO : TWO_ODDS[level] || 0));   // 이 코드는 괄호 안 2개까지
   const canTen = type.seventh && !role.sus && typeId !== "dim7" && typeId !== "mM7" && (typeId !== "m7b5" || two);
   // 화성 모드 HARD: 마이너로 해결하는 도미넌트 7은 텐션 대신 바로 7alt (위 H_ALT_MINOR)
   if (H && o.tension === "hard" && o.stage >= 2 && typeId === "dom7" && !role.sus && !role.lyd && role.targetMinor && rnd() < (o.tenUp ? UP_ALT_MINOR : H_ALT_MINOR)) alt = true;
-  else if (o.tension !== "off" && canTen && rnd() < (H ? (o.tenUp ? UP_TEN : H_TEN) : TEN_ODDS[level] ?? 0.6)) {
+  else if (o.tension !== "off" && canTen && (must || rnd() < (H ? (o.tenUp ? UP_TEN : H_TEN) : TEN_ODDS[level] ?? 0.6))) {
     {
       let pool = type.ten.slice();
       // SubV7·모달 도미넌트 7은 리디안 도미넌트(9·♯11·13)
@@ -522,7 +523,7 @@ function makeChord(role, typeId, bass, o, rnd) {
       }
       tens.sort((p, q) => Engine.TEN_ORDER.indexOf(p) - Engine.TEN_ORDER.indexOf(q));
       // HARD: 9·13·11을 텐션 코드 이름으로 (M7+9 → M9, 7+13 → 13, m7+11 → m11 …), 텐션 코드는 추가 텐션 1개까지 (사용자 결정)
-      if (o.tension === "hard" && rnd() < (H ? (o.tenUp ? UP_HARD : H_HARD) : HARD_ODDS[level] || 0)) {
+      if (o.tension === "hard" && (must === "hard" || rnd() < (H ? (o.tenUp ? UP_HARD : H_HARD) : HARD_ODDS[level] || 0))) {
         const conv = { M7: [["13", "M13"], ["9", "M9"]], m7: [["11", "m11"], ["9", "m9"]], dom7: [["13", "dom13"], ["9", "dom9"]] }[typeId] || [];
         const hit = conv.find(([t]) => tens.includes(t));
         if (hit) { type = Engine.BY_ID[hit[1]]; tens = tens.filter(t => t !== hit[0] && (hit[0] !== "13" || t !== "9")).slice(0, 1); }
@@ -866,7 +867,47 @@ export function generateGrammar(o, slots, rnd, fits = () => true) {
     if (!best || r.violations.length < best.violations.length) best = r;
     if (!r.violations.length) break;
   }
+  if (!o.stream) ensureTension(best, o, slots, rnd, fits);
   return best;
+}
+
+// ---------- 텐션 옵션 보장 (사용자 결정 2026-11-17) ----------
+// 8마디 하나에 옵션대로 최소 하나: 1개 → 텐션이 붙은 코드 · 최대 2개 → 괄호 안이 2개인 코드(m7(♭5,9)도) · HARD → 텐션 코드(M9·m11·13 …) 또는 7alt
+// 없으면 코드 하나를 같은 역할·같은 종류로 다시 만들어 텐션을 붙임 (진행은 그대로). 기존 확률은 그대로라 그만큼 텐션 비율이 올라감
+// 붙일 수 없는 코드는 건너뜀: 하이브리드 · 라인 클리셰 · 3화음·sus·dim7·mM7 · 이미 텐션 코드인 것, 긴 코드 자리 규칙·조건 검사를 새로 어기는 경우
+const TEN_CHORD = /^(M9|M13|m9|m11|dom9|dom13)$/;
+const MUST = {
+  1: q => q.tens.length > 0 || q.alt || TEN_CHORD.test(q.type),
+  2: q => q.items.length >= 2,
+  hard: q => q.alt || TEN_CHORD.test(q.type),
+};
+function ensureTension(g, o, slots, rnd, fits) {
+  const ok = MUST[o.tension];
+  const flat = slots.flatMap((bar, b) => bar.map((s, i) => ({ ...s, bar: b, idx: i })));
+  const all = g.chords.flat();
+  if (!ok || all.some(ok)) return;
+  const base = check(o, g.key, flat, all, []).length;
+  const order = all.map((q, n) => [n, rnd()]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  for (const n of order) {
+    const q = all[n], role = q.roleObj;
+    if (!role || q.slash === "hybrid" || /^cliche/.test(q.pattern || "") || !role.types.some(t => t[0] === q.type)) continue;
+    const key = ALL_KEYS.find(k => k.name === q.keyName) || g.key;
+    const others = all.filter((_, k) => k !== n && flat[k].bar === flat[n].bar);
+    for (let t = 0; t < 12; t++) {
+      const c = makeChord(role, q.type, null, { ...o, scale: scaleOf(key), must: o.tension }, rnd);
+      if (!c || !ok(c)) continue;
+      if (q.bass) {   // 전위형은 같은 베이스로 (새 코드의 구성음일 때만)
+        if (!c.tones.some(x => x.pc === q.bassPc)) continue;
+        Object.assign(c, { bass: q.bass, bassPc: q.bassPc, slash: q.slash, symbol: c.symbol + "/" + q.bass });
+      }
+      if (!fits(c, flat[n], others)) continue;
+      const before = { ...q };
+      Object.assign(q, c);
+      if (check(o, g.key, flat, all, []).length <= base) { q.ensured = true; return; }   // 비율 측정에서 뺄 수 있게
+      for (const k of Object.keys(q)) if (!(k in before)) delete q[k];
+      Object.assign(q, before);
+    }
+  }
 }
 
 /**
@@ -910,7 +951,9 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
   }
   // 분수코드: 용법과 상관없이 코드마다 RANDOM_INV (하이브리드는 realize가 난이도별로)
   bassLine(chords.flat(), flat, o, rnd, fits, chords.flat().map(q => ALL_KEYS.find(k => k.name === q.keyName)), o.level > 0);   // 난이도 0은 랜덤에서도 용법대로
-  return { key, keys: plan.keys, chords, violations: [] };
+  const g = { key, keys: plan.keys, chords, violations: [] };
+  ensureTension(g, o, slots, rnd, fits);
+  return g;
 }
 
 /** 조의 음계 pc 집합 (단조는 자연단음계) — 난이도 0·1의 텐션 거르기용 */

@@ -9,7 +9,7 @@ import { hooks as authHooks, isOpen as authOpen } from "../account/auth-dialog.j
 import { t, onLangChange } from "../i18n/index.js";
 import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
-import { S, IS_PC, HAD_SAVED, initSettings, syncSettingsUI, replaceSettings, save } from "../practice/settings.js";
+import { S, IS_PC, HAD_SAVED, initSettings, syncSettingsUI, replaceSettings, save, DEFAULTS } from "../practice/settings.js";
 import { initKeyboard, setKeyLabels, selected, renderKeys, CODE_TO_MIDI, LOW, HIGH, setFull, selectable, select } from "../practice/keyboard.js";
 import { Sound } from "../practice/audio.js";
 import { initTimer, setTimer, renderTimer, timerSettings, markInput } from "../practice/timer.js";
@@ -208,6 +208,7 @@ authHooks.startReview = mode => (mode === "name" ? goOtherReview(mode) : beginRe
 const preset = initPresetLink({
   spec: { route: ROUTES.trainer, types: Engine.TYPES.map(x => x.id), flags: ["B", "C", "D", "E"] },
   S,
+  defaults: () => DEFAULTS,
   apply(p) {
     setTimer(false);
     Object.assign(S, p);

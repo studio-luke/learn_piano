@@ -18,14 +18,14 @@ import { Sound } from "../practice/audio.js";
 import { Midi } from "../input/midi.js";
 import { createMetronome, clampBpm, BPM_MIN, BPM_MAX } from "../improv/metronome.js";
 import { initKeys, press } from "../improv/keys.js";
-import { initSettings, syncSettingsUI, presetSource, applyPreset, HAD_SAVED, setGen } from "../improv/settings.js";
+import { initSettings, syncSettingsUI, presetSource, applyPreset, HAD_SAVED, setGen, DEFAULTS } from "../improv/settings.js";
 import { initPresetLink } from "../common/share-settings.js";
 import { Engine } from "../core/engine.js";
 import { ROUTES } from "../common/sitemap.js";
 import * as Random from "../improv/random.js";
 import { generateProgression } from "../improv/progression.js";
 import { drawSheet, fitLabels, setPerLine } from "../improv/sheet.js";
-import { initProgSettings, syncProgUI, progOptions, applyProgPreset, S as ProgS, HAD_SAVED as PROG_SAVED } from "../improv/prog-settings.js";
+import { initProgSettings, syncProgUI, progOptions, applyProgPreset, S as ProgS, HAD_SAVED as PROG_SAVED, DEFAULTS as PROG_DEFAULTS } from "../improv/prog-settings.js";
 import { encodeHarmony, decodeHarmony, sameHarmony, encodeProg, decodeProg, sameProg } from "../common/preset.js";
 
 startPage({ title: "navImprov" });
@@ -378,6 +378,7 @@ const scrollTip = (() => {
 initPresetLink({
   spec: { route: ROUTES.improv, types: Engine.TYPES.map(x => x.id), flags: ["B", "C", "D", "E", "S", "H", "L"] },
   S: presetSource,
+  defaults: () => presetSource(DEFAULTS),
   apply(p) {
     if (mode !== "random") TABS.random.click();   // 화성 진행·8마디 모드를 보고 있었으면 무작위 코드 모드로
     applyPreset(p);
@@ -391,6 +392,7 @@ initPresetLink({
   codec: { param: "hpreset", encode: encodeHarmony, decode: decodeHarmony, same: sameHarmony },
   btnId: "presetBtnH",
   S: presetSource,
+  defaults: () => presetSource(DEFAULTS),
   apply(p) { if (mode !== "harmony") TABS.harmony.click(); applyPreset(p); },
   hasPrior: () => HAD_SAVED,
 });
@@ -399,6 +401,7 @@ initPresetLink({
   codec: { param: "ppreset", encode: encodeProg, decode: decodeProg, same: sameProg },
   btnId: "presetBtnP",
   S: ProgS,
+  defaults: () => PROG_DEFAULTS,
   apply(p) { if (mode !== "prog") TABS.prog.click(); applyProgPreset(p); if (!metro.running) newProgression(); },   // 받은 설정으로 바로 새 악보
   hasPrior: () => PROG_SAVED,
 });
