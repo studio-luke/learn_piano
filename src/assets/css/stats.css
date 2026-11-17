@@ -55,7 +55,11 @@
 .st-max { position: absolute; top: 0; left: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .st-chart { display: flex; align-items: stretch; gap: 6px; height: 170px; border-bottom: 1px solid var(--line); background: linear-gradient(var(--line) 1px, transparent 1px) top / 100% 50%; }
 .st-chart.dense, .st-x.dense { gap: 2px; }
-.st-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.st-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+/* 말풍선이 반응하는 자리: 색칠된 막대 위 (낮은 막대도 8px까지) — stats/view.js wireChartTip */
+.st-bar .st-hit { position: absolute; left: 0; right: 0; bottom: 0; }
+.st-tip { position: fixed; z-index: 50; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; line-height: 1.4; white-space: nowrap; border-radius: 8px; padding: 6px 9px; box-shadow: 0 8px 20px -10px rgba(40,20,10,.5); }
+.st-tip[hidden] { display: none; }
 .st-bar i { display: block; }
 .st-bar .ok { background: var(--ok); }
 .st-bar .no { background: var(--warn); opacity: 0.75; }

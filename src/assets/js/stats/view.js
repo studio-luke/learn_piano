@@ -49,12 +49,52 @@ export function chartHTML(data) {
     return dateText(x.key, { month: "numeric", day: "numeric" });
   };
   const tipDate = x => dateText(x.key, p.monthly ? { year: "numeric", month: "long" } : { year: years ? "numeric" : undefined, month: "long", day: "numeric" });
-  const bars = b.map(x => `<div class="st-bar" title="${esc(t("chartTip", { date: tipDate(x), ok: x.ok, no: x.n - x.ok }))}">
-    <i class="no" style="height:${((x.n - x.ok) / max) * 100}%"></i><i class="ok" style="height:${(x.ok / max) * 100}%"></i></div>`).join("");
+  // 말풍선은 색칠된 막대(.st-hit — 낮은 막대도 아래에서 8px까지) 위에서만, 바로 뜨고 마우스를 따라다님 (아래 wireChartTip, 2026-11-17 사용자 요청)
+  wireChartTip();
+  const bars = b.map(x => {
+    const tip = esc(t("chartTip", { date: tipDate(x), ok: x.ok, no: x.n - x.ok }));
+    const hit = x.n ? `<span class="st-hit" data-tip="${tip}" style="height:max(8px, ${(x.n / max) * 100}%)"></span>` : "";
+    return `<div class="st-bar" role="img" aria-label="${tip}">
+    <i class="no" style="height:${((x.n - x.ok) / max) * 100}%"></i><i class="ok" style="height:${(x.ok / max) * 100}%"></i>${hit}</div>`;
+  }).join("");
   const xs = b.map((x, i) => `<span>${esc(label(x, i))}</span>`).join("");
   const legend = `<div class="legend"><span><i class="dot" style="background: var(--ok)"></i>${esc(t("sCorrect"))}</span><span><i class="dot" style="background: var(--warn)"></i>${esc(t("sWrong"))}</span></div>`;
   const dense = b.length > 14 ? " dense" : "";   // 막대가 많으면 간격을 좁힘
   return `<div class="st-chart-wrap"><span class="st-max">${max}</span><div class="st-chart${dense}">${bars}</div><div class="st-x${dense}">${xs}</div></div>${legend}`;
+}
+
+/**
+ * 막대그래프 말풍선 (2026-11-17 사용자 요청 — 예전 title은 한참 뒤에야 떠서): 문서에 한 번만 연결.
+ * 마우스: .st-hit 위에 있는 동안만 포인터 옆에 바로 보이고 따라다님, 벗어나면 바로 사라짐(fade 없음).
+ * 터치: 막대를 누르면 누른 자리에, 다른 곳을 누르거나 스크롤하면 사라짐
+ */
+let tipEl = null;
+function wireChartTip() {
+  if (tipEl) return;
+  tipEl = document.createElement("div");
+  tipEl.className = "st-tip"; tipEl.hidden = true; tipEl.setAttribute("aria-hidden", "true");
+  document.body.appendChild(tipEl);
+  const show = (hit, x, y) => {
+    tipEl.textContent = hit.dataset.tip;
+    tipEl.hidden = false;
+    // 포인터 오른쪽 위, 화면 밖으로 나가면 왼쪽·아래로
+    const w = tipEl.offsetWidth, h = tipEl.offsetHeight, gap = 12;
+    tipEl.style.left = (x + gap + w > innerWidth - 4 ? Math.max(4, x - gap - w) : x + gap) + "px";
+    tipEl.style.top = (y - gap - h < 4 ? y + gap : y - gap - h) + "px";
+  };
+  const hide = () => { tipEl.hidden = true; };
+  document.addEventListener("pointermove", e => {
+    if (e.pointerType !== "mouse") return;
+    const hit = e.target.closest && e.target.closest(".st-hit");
+    if (hit) show(hit, e.clientX, e.clientY); else if (!tipEl.hidden) hide();
+  });
+  document.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse") return;
+    const hit = e.target.closest && e.target.closest(".st-hit");
+    if (hit) show(hit, e.clientX, e.clientY); else hide();
+  });
+  document.documentElement.addEventListener("pointerleave", hide);
+  addEventListener("scroll", hide, { passive: true });
 }
 
 // ---------- 표 정렬 상태 (2026-11-09 사용자 요청, 계산은 data.js sortRows) ----------
