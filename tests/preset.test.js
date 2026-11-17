@@ -84,7 +84,8 @@ test("preset: chord sight-reading — slash chords and bars per chord travel in 
   const { DEFAULTS } = await import("../src/assets/js/improv/settings.js");
   const spec = { route: "trainer/chord-improv/", types: Engine.TYPES.map(x => x.id), flags: ["B", "C", "D", "E", "S", "H", "L"] };
   const src = (bars, slash) => ({ ...structuredClone(DEFAULTS), bars, slash, barsHalf: bars === "0.5", barsTwo: bars === "2" });
-  for (const [bars, slash, flags] of [["0.5", true, "SH"], ["1", true, "S"], ["2", false, "L"], ["1", false, ""]]) {
+  // 처음 설정은 텐션 허용(C) 켜짐 (2026-11-17)
+  for (const [bars, slash, flags] of [["0.5", true, "CSH"], ["1", true, "CS"], ["2", false, "CL"], ["1", false, "C"]]) {
     const v = enc(src(bars, slash), spec);
     assert.ok(v.endsWith("-" + flags), v);
     const p = dec(v, spec);

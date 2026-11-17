@@ -32,7 +32,7 @@ export const DEFAULTS = {
     "6": true, m6: true,
     add9: true, madd9: true,
   },
-  optB: false, bases: Array(12).fill(false), optC: false, cMax: 1, optD: false, optE: false,
+  optB: false, bases: Array(12).fill(false), optC: true, cMax: 1, optD: false, optE: false,   // 텐션 허용(최대 1개) 켜짐 (2026-11-17 사용자 결정)
   bars: "1", slash: true, adv: false,
   gen: "random", hStage: 3, hKeyFix: false, hRoot: "C", hMinor: false, hSlash: true, hTen: false, hTenMax: "1", hChance: 1, hMore: false, hTenUp: false, hSlashUp: false,
 };
