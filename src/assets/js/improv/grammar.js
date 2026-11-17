@@ -144,9 +144,9 @@ const baseId = id => (id === "Vsus" ? "V" : id);
 
 /** add 코드는 난이도 0·1에서만 (사용자 결정 2026-11-12) — 2부터는 목록에서 빼고 나머지 비율로 */
 const withoutAdd = types => types.filter(t => !/add/.test(t[0]));
-/** 6th 코드(6·m6)는 난이도 2부터 (사용자 결정 2026-11-13) — 0·1에서는 목록에서 빼고 나머지 비율로 */
-const SIXTH = ["6", "m6"];
-const withoutSixth = types => types.filter(t => !SIXTH.includes(t[0]));
+/** 6th 코드(6·m6)·mM7은 난이도 2부터 (사용자 결정 2026-11-13, mM7은 2026-11-17) — 0·1에서는 목록에서 빼고 나머지 비율로 */
+const LATE = ["6", "m6", "mM7"];
+const withoutLate = types => types.filter(t => !LATE.includes(t[0]));
 
 /** 조 하나의 역할 목록 (난이도 0~4) */
 export function buildRoles(key, level) {
@@ -156,7 +156,7 @@ export function buildRoles(key, level) {
   for (let [id, deg, alt, types, fn] of key.minor ? DIA_MINOR : DIA_MAJOR) {
     if (id === "Vsus" && level < 1) continue;   // V7sus4는 난이도 1부터
     if (id === "viio" && level < 3) continue;   // dim7은 난이도 3부터 (단조 VII°7도)
-    types = level >= 2 ? withoutAdd(types) : withoutSixth(types);
+    types = level >= 2 ? withoutAdd(types) : withoutLate(types);
     roles.push({ id, root: spell(tonic, sc[deg - 1] + alt, deg), types, kind: "dia", fn, sus: id === "Vsus", weak: id === "v" });
   }
   const byId = Object.fromEntries(roles.map(r => [r.id, r]));
@@ -390,24 +390,23 @@ function byDegrees(name, mode) {
 // 패턴과 따로: 진행 중에 아래 코드가 뽑히면 그 자리에서 클리셰로 늘어날 수 있음 (마디 첫 박에서 시작).
 //   한 마디 안이면 1~7마디 어디서든, 2마디면 1·3·5·7마디, 2마디를 넘으면 1·5마디. 4박 마디의 2박짜리(1박 코드 둘)는 셋째 박에서도.
 //   30%는 두 번째 코드(mM7·augM7)부터 시작 — 가장 짧으면 DmM7 – Dm7, m7을 건너뛴 DmM7 – Dm6도. 끝나면 원래 코드(마지막 코드의 역할)의 다음 후보로 이어짐
-//   마이너: Im(단조, 난이도 0부터) · IVm(단조) · IIm7·VIm7(장조) — 난이도 1부터. m – mM7 – m7 – m6, 베이스 하행형(m – mM7/7 – m7/♭7 – m6/6)과 윗성부형 반반.
-//     50%는 m7에서 끝남, 난이도 0·1은 6th 코드가 없어 항상 m7에서
+//   마이너: Im·IVm(단조) · IIm7·VIm7(장조) — 난이도 2부터(2026-11-17 사용자 결정: 난이도 0·1에는 mM7·augM7 없음). m – mM7 – m7 – m6,
+//     베이스 하행형(m – mM7/7 – m7/♭7 – m6/6)과 윗성부형 반반. 50%는 m7에서 끝남
 //   메이저(윗성부형만): I·IV(장조), ♭III·♭VI(단조) — 난이도 2부터. M7 – augM7 – 6 – 7, 50%는 6에서 끝남.
 //     7까지 가면 I7은 V7/IV로, IV7은 모달 인터체인지(난이도 4부터)로 이어짐. IV는 난이도 2·3, ♭III·♭VI는 늘 6에서 끝남
 const CLICHE_ODDS = { 1: 0.52, 2: 0.36, 3: 0.19 };   // 클리셰가 될 수 있는 코드가 뽑혔을 때 (개연성별 — 2026-11-13 사용자 결정으로 1.5배쯤 늘림)
 const CLICHE_DEG = { i: 1, iv: 0.5, II: 0.6, VI: 0.6, I: 0.25, IV: 0.35, bIII: 0.35, bVI: 0.35 };   // 도수별 배율 — 마이너 총량은 예전(Im만)과 비슷하게, 메이저는 그 절반쯤
 const CLICHE_LONG = 0.12;   // 2마디를 넘게 걸치면 (코드 개수 최소 등) ×0.12 — 4마디짜리는 드물게 (2026-11-13 사용자 결정 "최소일 때 비율 낮추기")
 const CLICHE_BAR_EACH = 0.25;   // 코드 둘이 한 마디씩 2마디(코드 개수 최소 등)면 ×0.25
-const CLICHE_LOW_LEVEL = { 0: 0.35, 1: 0.25 };   // 난이도 0·1: 클리셰가 짧고(m7에서 끝남) 코드 종류가 적어 더 자주 걸리므로 낮춤 — 난이도마다 비슷하게
 
 /** 이 역할에서 시작하는 라인 클리셰 { name, items: [[역할 id, 코드 종류, 베이스]…] } 또는 null */
 function clicheFor(role, key, level, rnd) {
   if (role.kind !== "dia") return null;
   const minorDeg = key.minor ? ["i", "iv"] : ["II", "VI"], majorDeg = key.minor ? ["bIII", "bVI"] : ["I", "IV"];
-  if (minorDeg.includes(role.id) && (role.id === "i" || level >= 1)) {
+  if (minorDeg.includes(role.id) && level >= 2) {
     const bass = rnd() < 0.5;
     let seq = bass ? [["min"], ["mM7", "7"], ["m7", "b7"], ["m6", "6"]] : [["min"], ["mM7"], ["m7"], ["m6"]];
-    if (level < 2 || rnd() < 0.5) seq.pop();
+    if (rnd() < 0.5) seq.pop();
     if (rnd() < CLICHE_SECOND) {
       seq.shift();   // 두 번째 코드부터 (DmM7 – Dm7 …)
       if (seq.length === 3 && rnd() < 1 / 3) seq.splice(1, 1);   // m7을 건너뛴 DmM7 – Dm6도 (사용자 결정)
@@ -467,7 +466,7 @@ function makeHybrid(role, shapes, o, rnd) {
 //   개연성에 따라 그 자리에서 쓸 확률 높음 70% · 중간 50% · 낮음 35%
 // 용법이 없는 전위형(낯선 소리): 난이도 2부터 코드마다 3% · 6% · 8% · 10% · 12%
 // 지켜야 할 해결: 7음 베이스는 다음 베이스가 반음·온음 아래(페달로 그대로도 됨), 도미넌트의 3음(이끔음) 베이스는 다음 베이스가 반음 위
-const USE_ODDS = { 1: 0.7, 2: 0.5, 3: 0.35 };
+const USE_ODDS = { 1: 0.7, 2: 0.5, 3: 0.35, 4: 0.7 };   // 4 = 개연성 랜덤의 난이도 0 (그 밖의 랜덤은 RANDOM_INV) — 2026-11-17 사용자 결정, 빠져 있어서 0%였음
 const FREE_ODDS = { 2: 0.03, 3: 0.06, 4: 0.08, 5: 0.1, 6: 0.12 };
 const RANDOM_INV = 0.2;   // 개연성 랜덤: 용법·해결과 상관없이 코드마다 20%
 // 화성 모드 [더보기]의 분수코드 비중 높이기(o.slashUp, 사용자 결정 2026-11-16): 용법 있는 전위형 95% · 용법 없는 전위형 25%(세컨더리부터) · 하이브리드로 바꾸는 확률 60%(SDM부터)
@@ -475,14 +474,14 @@ const UP_USE = 0.95, UP_FREE = 0.25, UP_SWAP = 0.6;
 const hasMinor7 = typeId => /^(dom7|dom9|dom13|m7|m9|m11|m7b5|7sus4)$/.test(typeId);
 
 // 텐션 (사용자 결정 2026-11-13) — 출제 설정의 텐션 옵션을 켰을 때만, 코드 진행 난이도에 따라:
-//   텐션이 붙는 비율(붙일 수 있는 코드 중): 0·1·2 10% (0은 8마디에 하나까지) · 3 15% · 4 20% · 5 40% · 6 60%
-//   괄호 안 텐션 2개: 옵션이 '최대 2개'·HARD이고 난이도 3부터 — 텐션이 붙는 코드 중 3 10% · 4 20% · 5 30% · 6 47% (2026-11-13 사용자 결정, 그 밖에는 1개)
+//   텐션이 붙는 비율(붙일 수 있는 코드 중): 0·1·2 10% · 3 15% · 4 20% · 5 40% · 6 60% (난이도 0의 "8마디에 하나까지"는 2026-11-17에 없앰)
+//   괄호 안 텐션 2개: 옵션이 '최대 2개'·HARD이면 어느 난이도든 (2026-11-17 사용자 결정 — 예전엔 3부터) — 텐션이 붙는 코드 중 0~3 10% · 4 20% · 5 30% · 6 47%
 //     m7(♭5)는 ♭5가 이미 괄호에 있어서 텐션을 붙이면 괄호 안 2개 → '2개'가 뽑혔을 때만 m7(♭5,9)·m7(♭5,11)·m7(♭5,♭13)
 //   난이도 0·1은 조의 음계 음(단조는 자연단음계)인 텐션만 — G7(9)·G7(13)은 되고 G7(♭9)는 안 됨, 7alt는 난이도 4부터(아래)
-//   텐션 코드(HARD — M9·13·m11 …): 난이도 3부터, 텐션이 붙는 코드 중 3 5% · 4 10% · 5 20% · 6 50%. 괄호 텐션은 '2개'가 뽑혔을 때만 하나 더(CM9(13))
+//   텐션 코드(HARD — M9·13·m11 …): 어느 난이도든(2026-11-17, 예전엔 3부터), 텐션이 붙는 코드 중 0~3 5% · 4 10% · 5 20% · 6 50%. 괄호 텐션은 '2개'가 뽑혔을 때만 하나 더(CM9(13))
 const TEN_ODDS = { 0: 0.1, 1: 0.1, 2: 0.1, 3: 0.15, 4: 0.2, 5: 0.4, 6: 0.6 };
-const TWO_ODDS = { 3: 0.1, 4: 0.2, 5: 0.3, 6: 0.47 };
-const HARD_ODDS = { 3: 0.05, 4: 0.1, 5: 0.2, 6: 0.5 };
+const TWO_ODDS = { 0: 0.1, 1: 0.1, 2: 0.1, 3: 0.1, 4: 0.2, 5: 0.3, 6: 0.47 };
+const HARD_ODDS = { 0: 0.05, 1: 0.05, 2: 0.05, 3: 0.05, 4: 0.1, 5: 0.2, 6: 0.5 };
 const ALT_ODDS = { 4: 0.1, 5: 0.3, 6: 0.5 };
 const AUG7_ODDS = 0.3;    // 7(♭13) → aug7
 const FLAT5_ODDS = 0.3;   // HARD: ♭13 → ♯5, ♯11 → ♭5
@@ -505,7 +504,7 @@ function makeChord(role, typeId, bass, o, rnd) {
   const level = o.level ?? 6;
   // 텐션 (7화음만). 마이너로 해결하는 도미넌트는 ♭9·♯9·♭13, 메이저로 해결하면 9·13·♯11·♭9
   const H = o.stage != null;   // 화성 모드 (위 H_TEN 등)
-  const twoOk = (H || level >= 3) && (o.tension === "2" || o.tension === "hard");
+  const twoOk = o.tension === "2" || o.tension === "hard";
   const two = twoOk && rnd() < (H ? H_TWO : TWO_ODDS[level] || 0);   // 이 코드는 괄호 안 2개까지
   const canTen = type.seventh && !role.sus && typeId !== "dim7" && typeId !== "mM7" && (typeId !== "m7b5" || two);
   // 화성 모드 HARD: 마이너로 해결하는 도미넌트 7은 텐션 대신 바로 7alt (위 H_ALT_MINOR)
@@ -523,7 +522,7 @@ function makeChord(role, typeId, bass, o, rnd) {
       }
       tens.sort((p, q) => Engine.TEN_ORDER.indexOf(p) - Engine.TEN_ORDER.indexOf(q));
       // HARD: 9·13·11을 텐션 코드 이름으로 (M7+9 → M9, 7+13 → 13, m7+11 → m11 …), 텐션 코드는 추가 텐션 1개까지 (사용자 결정)
-      if (o.tension === "hard" && (H || level >= 3) && rnd() < (H ? (o.tenUp ? UP_HARD : H_HARD) : HARD_ODDS[level] || 0)) {
+      if (o.tension === "hard" && rnd() < (H ? (o.tenUp ? UP_HARD : H_HARD) : HARD_ODDS[level] || 0)) {
         const conv = { M7: [["13", "M13"], ["9", "M9"]], m7: [["11", "m11"], ["9", "m9"]], dom7: [["13", "dom13"], ["9", "dom9"]] }[typeId] || [];
         const hit = conv.find(([t]) => tens.includes(t));
         if (hit) { type = Engine.BY_ID[hit[1]]; tens = tens.filter(t => t !== hit[0] && (hit[0] !== "13" || t !== "9")).slice(0, 1); }
@@ -565,19 +564,26 @@ function makeChord(role, typeId, bass, o, rnd) {
  */
 function realize(role, o, rnd, forced) {
   const typeId = forced?.type || pickBy(role.types, t => t[1], rnd)[0];
-  if (!forced && o.slash) {
-    if (role.sus && rnd() < (SUS_HYBRID_ODDS[o.level] ?? 0.2)) return makeHybrid(role, susHybrids(o.level), o, rnd);
-    const harmony = o.stage != null, dims = harmony && o.stage >= STAGE_DIM;   // 화성 모드 (위 HARMONY_SWAP)
-    const swap = harmony ? (o.stage >= 3 ? (o.slashUp ? UP_SWAP : HARMONY_SWAP) : 0) : SWAP_ODDS[o.level] || 0;
-    if (swap && rnd() < swap) {
-      if (isDominant(role) && !role.sus && (role.id === "V" || role.kind === "sec")) return makeHybrid(role, dims ? [...susHybrids(o.level), ...DOM_DIM] : susHybrids(o.level), o, rnd);
-      if (role.kind === "dia" && ["I", "i", "IV", "iv"].includes(role.id)) return makeHybrid(role, harmony && !dims ? PEDAL_HYBRIDS.filter(h => h[2] !== "dim7") : PEDAL_HYBRIDS, o, rnd);
-      if (dims && role.kind === "dia" && ["II", "VI"].includes(role.id)) return makeHybrid(role, DIM_PEDAL, o, rnd);
-    }
-  }
+  const h = forced ? null : hybridFor(role, o, rnd);
+  if (h !== null) return h || null;
   const q = makeChord(role, typeId, forced?.bass || null, o, rnd);
   if (q?.bass) q.why = "pattern";
   return q;
+}
+
+/** 이 역할 자리를 하이브리드로 바꿀지 — 하이브리드 q(철자가 안 되면 undefined/false) 또는 null(바꾸지 않음) */
+function hybridFor(role, o, rnd) {
+  if (!o.slash) return null;
+  const hyb = (...a) => makeHybrid(...a) || false;   // 철자가 안 되는 하이브리드는 false — realize가 null을 돌려 다시 뽑게(예전 그대로)
+  if (role.sus && rnd() < (SUS_HYBRID_ODDS[o.level] ?? 0.2)) return hyb(role, susHybrids(o.level), o, rnd);
+  const harmony = o.stage != null, dims = harmony && o.stage >= STAGE_DIM;   // 화성 모드 (위 HARMONY_SWAP)
+  const swap = harmony ? (o.stage >= 3 ? (o.slashUp ? UP_SWAP : HARMONY_SWAP) : 0) : SWAP_ODDS[o.level] || 0;
+  if (swap && rnd() < swap) {
+    if (isDominant(role) && !role.sus && (role.id === "V" || role.kind === "sec")) return hyb(role, dims ? [...susHybrids(o.level), ...DOM_DIM] : susHybrids(o.level), o, rnd);
+    if (role.kind === "dia" && ["I", "i", "IV", "iv"].includes(role.id)) return hyb(role, harmony && !dims ? PEDAL_HYBRIDS.filter(h => h[2] !== "dim7") : PEDAL_HYBRIDS, o, rnd);
+    if (dims && role.kind === "dia" && ["II", "VI"].includes(role.id)) return hyb(role, DIM_PEDAL, o, rnd);
+  }
+  return null;
 }
 
 const step = (a, b) => { const d = iv(a, b); return d === 1 || d === 2 ? 1 : d === 10 || d === 11 ? -1 : 0; };   // 순차 상행 1 · 하행 -1 · 아니면 0
@@ -867,6 +873,7 @@ export function generateGrammar(o, slots, rnd, fits = () => true) {
  * 코드 개연성 4 — 완전 무작위 (비추천, 사용자 결정 Q7): 그 난이도의 코드 목록 안에서 같은 비율로 아무거나. 진행 규칙 없음.
  * 바로 앞과 같은 맨 아래 음만 피하고, 긴 코드 자리(fits)는 지킴. 인자와 돌려주는 값은 generateGrammar와 같음
  */
+const RANDOM_LINE = 0.04;   // 개연성 랜덤: mM7·augM7 자리에서 그 코드 종류로 바꿀 확률 (측정해서 맞춘 값)
 export function generateRandom(o, slots, rnd, fits = () => true) {
   const key = chooseKey(rnd, o.level);
   o = { ...o, scale: scaleOf(key) };
@@ -888,7 +895,10 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
         // 종류별 비율: 디미니시드는 역할 수가 많아서 하나하나를 낮게(전체에서 가끔만) — 다이아토닉·세컨더리 1, II-minor 0.7, 디미니시드 0.25,
         // SubV7·서브도미넌트 마이너 0.6, 모달 인터체인지 0.4
         const role = pickBy(roles, r => ({ dia: 1, sec: 1, ii: 0.7, dim: 0.25, subv: 0.6, sdm: 0.6, modal: 0.4 })[r.kind] || 1, rnd);
-        const c = realize(role, k < 30 ? o : { ...o, tension: "off", slash: false }, rnd);
+        let c = realize(role, k < 30 ? o : { ...o, tension: "off", slash: false }, rnd);
+        // mM7·augM7: 라인 클리셰가 없는 랜덤이라 그 자리(위 LINE_TYPE)의 코드 종류로 드물게 (난이도 2부터, 2026-11-17 사용자 결정)
+        const lt = o.level >= 2 && c && !c.bass && lineType(role, k0);
+        if (lt && rnd() < RANDOM_LINE) c = makeChord(role, lt, null, k < 30 ? o : { ...o, tension: "off" }, rnd);
         // 난이도 1부터: 5마디 첫 코드는 1마디 첫 코드와 다른 코드(이름 전체로 비교, 2026-11-13)
         const sameAsBar1 = o.level >= 1 && chords.length === 4 && !out.length && c && c.symbol === chords[0][0].symbol;
         if (c && !sameAsBar1 && c.bassPc !== prevBass && fits(c, slot, out)) q = tag(c, role, null, k0);
@@ -898,7 +908,6 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
     }
     chords.push(out);
   }
-  capTensions(chords.flat(), o, rnd);
   // 분수코드: 용법과 상관없이 코드마다 RANDOM_INV (하이브리드는 realize가 난이도별로)
   bassLine(chords.flat(), flat, o, rnd, fits, chords.flat().map(q => ALL_KEYS.find(k => k.name === q.keyName)), o.level > 0);   // 난이도 0은 랜덤에서도 용법대로
   return { key, keys: plan.keys, chords, violations: [] };
@@ -906,18 +915,6 @@ export function generateRandom(o, slots, rnd, fits = () => true) {
 
 /** 조의 음계 pc 집합 (단조는 자연단음계) — 난이도 0·1의 텐션 거르기용 */
 const scaleOf = key => new Set((key.minor ? MINOR : MAJOR).map(x => (Engine.pcOf(key.l, key.a) + x) % 12));
-
-/** 난이도 0: 텐션이 붙은 코드는 8마디에 하나까지 — 두 번째부터는 텐션을 떼고 다시 만듦 (사용자 결정 2026-11-13) */
-function capTensions(chords, o, rnd) {
-  if (o.level !== 0 || o.tension === "off") return;
-  let seen = false;
-  for (const q of chords) {
-    if (!q.tens.length && !q.alt) continue;
-    if (!seen) { seen = true; continue; }
-    const plain = makeChord(q.roleObj, q.type, null, { ...o, tension: "off" }, rnd);
-    if (plain) Object.assign(q, plain);
-  }
-}
 
 /** 코드에 역할 정보를 붙임 (roleObj는 베이스 라인 단계용, keyName은 그 코드를 읽는 키(난이도 5부터 자리마다 다름) — 화면에 안 보이게 열거 안 됨) */
 function tag(q, role, pattern, key) {
@@ -1029,8 +1026,8 @@ function attempt(o, slots, rnd, fits) {
       if (t && byId[prev.id] === prev) { cand = [[prev, 1]]; forced = { type: t, bass: null }; }
     }
     if (o.stream && o.stage >= 1 && !out[n] && diaRun >= 2 && !forced) cand = cand.map(([r, w]) => [r, r.kind === "dia" ? w * DIA_DECAY ** (diaRun - 1) : w]);
-    // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드(난이도 3부터)·도미넌트 7 (사용자 결정). 난이도 0은 다이아토닉만이라 없음
-    if (o.chance === 3 && o.level > 0 && !out[n] && prev && !boundary && !forced && rnd() < 0.1) cand = [[surprise(rnd, o.stage != null && o.stage < STAGE_DIM ? 2 : o.level), 1]];
+    // 개연성 3: 코드마다 10%로 "뜬금없는" 디미니시드·도미넌트 7 (사용자 결정) — 8마디는 난이도 3부터(2026-11-17 사용자 결정, 전엔 1부터), 화성 모드는 다이아토닉 범위 밖에서
+    if (o.chance === 3 && (o.stage != null ? o.level > 0 : o.level >= 3) && !out[n] && prev && !boundary && !forced && rnd() < 0.1) cand = [[surprise(rnd, o.stage != null && o.stage < STAGE_DIM ? 2 : o.level), 1]];
 
     // 역할을 고르고 코드로 — 그 자리에 맞지 않으면(긴 코드 자리 등) 텐션·분수코드를 빼 보고, 그래도 안 되면 다른 역할로
     let role = null, q = null;
@@ -1059,7 +1056,7 @@ function attempt(o, slots, rnd, fits) {
     }
     // 라인 클리셰로 늘이기 (위 clicheFor) — 첫 코드도 클리셰의 첫 코드로 바꿈. 키가 바뀌는 자리에서는 시작하지 않고, 클리셰 전체가 한 키 안에
     const barPulses = slots[slot.bar].reduce((a, sl) => a + sl.len, 0);
-    if (!o.stream && !out[n] && !boundary && !repeat && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id] * (CLICHE_LOW_LEVEL[o.level] ?? 1)) {
+    if (!o.stream && !out[n] && !boundary && !repeat && (slot.idx === 0 || (barPulses === 4 && slot.start === 2)) && o.chance <= 3 && CLICHE_DEG[role.id] && rnd() < (CLICHE_ODDS[o.chance] || 0) * CLICHE_DEG[role.id]) {
       const cl = clicheFor(role, env.key, o.level, rnd);
       const end = cl && n + cl.items.length - 1;
       const span = cl && end < flat.length ? flat[end].bar - slot.bar + 1 : 99;
@@ -1137,7 +1134,6 @@ function attempt(o, slots, rnd, fits) {
     return s;
   }
 
-  capTensions(chords, o, rnd);
   // 베이스 라인: 화성을 다 정한 뒤 전위형 (위 bassLine) — 페달은 자리마다 그 키의 토닉·도미넌트
   bassLine(chords, flat, o, rnd, fits, flat.map((_, n) => envAt(n).key));
 
@@ -1257,7 +1253,8 @@ function attempt6(o, slots, rnd, fits) {
         // 철자·역할: B의 해석, 없으면 지금 키에서 가장 가까운 키의 그 코드
         const at = x.best || envs.filter(e => e.byChord.has(x.c.id)).map(e => { const role = e.byChord.get(x.c.id)[0][0]; return { env: e, role, v: closeness(prev.env.key, e.key, o.chance) * (oddRoot(role) ? 0.02 : 1) }; }).sort((a, b) => b.v - a.v)[0];
         pick = { role: at.role, env: at.env, type: x.c.type, why: x.best && (1 - lambda) * x.b / sumB >= lambda * x.a / sumA ? "B" : "A" };
-        const c = makeChord(pick.role, pick.type, null, o, rnd);
+        // 하이브리드도 다른 난이도처럼 (2026-11-17 사용자 결정 — 전엔 첫 코드만 realize를 거쳐 개연성 1~3에서 0%)
+        const c = hybridFor(pick.role, o, rnd) || makeChord(pick.role, pick.type, null, o, rnd);
         const before = barOf(n).at(-1);
         if (!c || !fits(c, slot, barOf(n)) || (before && before.rootPc === c.rootPc && before.type === c.type)) {
           const plain = c && makeChord(pick.role, pick.type, null, { ...o, tension: "off" }, rnd);
@@ -1279,7 +1276,6 @@ function attempt6(o, slots, rnd, fits) {
     chords.push(q);
     prev = { role: pick.role, env: pick.env, pc: pick.role.root.pc, type: pick.type };
   }
-  capTensions(chords, o, rnd);
   bassLine(chords, flat, o, rnd, fits, chords.map(q => ALL_KEYS.find(k => k.name === q.keyName)));
   const bars = slots.map(() => []);
   flat.forEach((s, n) => bars[s.bar].push(chords[n]));

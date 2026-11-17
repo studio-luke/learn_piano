@@ -226,7 +226,7 @@ test("improv prog: one notation per progression, no ø, no +/- tensions; HARD-on
 });
 
 // ---------- 코드진행 문법 (improv/grammar.js, 6단계 난이도 1·2 — 2026-11-11) ----------
-test("improv grammar: level 0 = major diatonic only, slash only passing/same-chord, no V7sus4; level 1 adds minor + V7sus4; add chords only on 0·1; dim7 from level 3; ImM7 only in the line cliché (2026-11-12, 2026-11-15)", async () => {
+test("improv grammar: level 0 = major diatonic only, slash only passing/same-chord, no V7sus4; level 1 adds minor + V7sus4; add chords only on 0·1; dim7 from level 3; no mM7·augM7 on 0·1 (2026-11-12, 2026-11-15, 2026-11-17)", async () => {
   const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10, 11];   // 단조는 V7의 이끔음 포함
   const { Engine } = await import("../src/assets/js/core/engine.js");
   for (const level of [0, 1]) {
@@ -235,17 +235,16 @@ test("improv grammar: level 0 = major diatonic only, slash only passing/same-cho
         if (level === 0) assert.ok(!p.key.minor, "난이도 0은 장조만 " + p.key.name);
         const tonic = Engine.pcOf(p.key.l, p.key.a), sc = p.key.minor ? MINOR : MAJOR;
         for (const c of p.bars.flat()) {
-          if (level === 1 && c.q.kind === "surprise") continue;   // 개연성 3의 뜬금 도미넌트
           assert.strictEqual(c.q.kind, "dia", c.q.symbol);
           assert.ok(sc.includes((c.q.rootPc - tonic + 12) % 12), p.key.name + " " + c.q.symbol);
           assert.ok(!["sus4", "sus2", "dim7"].includes(c.q.type), c.q.symbol);
           if (level === 0) assert.ok(c.q.type !== "7sus4" && (!c.q.bass || ["passing", "same"].includes(c.q.why)), "난이도 0 " + c.q.symbol + " " + c.q.why);
-          if (c.q.type === "mM7") assert.ok(/^cliche/.test(c.q.pattern), "ImM7은 클리셰로만 " + c.q.symbol);
+          assert.ok(!["mM7", "augM7"].includes(c.q.type) && !/^cliche/.test(c.q.pattern || ""), "난이도 0·1은 mM7·augM7·라인 클리셰 없음 " + c.q.symbol);
         }
       }
     }
   }
-  // 6th 코드는 난이도 2부터, 난이도 0·1의 라인 클리셰는 Im7까지 (2026-11-13)
+  // 6th 코드는 난이도 2부터 (2026-11-13)
   for (const level of [0, 1]) assert.ok(chordsOf(await progs({ level, chance: 1 }, 600)).every(c => !["6", "m6"].includes(c.q.type)), "난이도 " + level + " 6th");
   assert.ok(chordsOf(await progs({ level: 2 }, 600)).some(c => ["6", "m6"].includes(c.q.type)), "난이도 2 6th");
   const one = chordsOf(await progs({ level: 1 }, 600));
@@ -399,7 +398,21 @@ test("improv grammar: slash chords come from the bass line — passing, same cho
   assert.ok(chordsOf(await progs({ slash: true, level: 3 }, 800)).every(c => c.q.slash !== "hybrid" || c.q.role === "Vsus"));
 });
 
-test("improv grammar: tensions by level — 10% on 0~2 (one per chart on 0), 15/20/40/60% on 3~6; two in parentheses and tension chords only from 3 with the '2'·HARD option; scale tones only on 0·1 (2026-11-13)", async () => {
+test("improv grammar: level 0 random still has usage inversions, level 6 has hybrids on every chance, random chance has mM7·augM7 from level 2 (2026-11-17)", async () => {
+  const qs = async o => chordsOf(await progs(o, 300)).map(c => c.q);
+  assert.ok((await qs({ level: 0, chance: 4 })).some(q => q.bass && ["passing", "same"].includes(q.why)), "난이도 0 랜덤 전위형");
+  for (const chance of [1, 2, 3]) assert.ok((await qs({ level: 6, chance })).some(q => q.slash === "hybrid"), "난이도 6 하이브리드 " + chance);
+  const lines = (await qs({ level: 3, chance: 4 })).filter(q => /^(mM7|augM7)$/.test(q.type));
+  assert.ok(lines.some(q => q.type === "mM7") && lines.some(q => q.type === "augM7"), "랜덤 mM7·augM7");
+  assert.ok((await qs({ level: 1, chance: 4 })).every(q => !/^(mM7|augM7)$/.test(q.type)), "난이도 1은 없음");
+});
+
+test("improv grammar: chance 3 surprise chords only from level 3 (2026-11-17)", async () => {
+  for (const level of [0, 1, 2]) assert.ok(chordsOf(await progs({ level, chance: 3 }, 200)).every(c => c.q.kind !== "surprise"), "난이도 " + level);
+  for (const level of [3, 5]) assert.ok(chordsOf(await progs({ level, chance: 3 }, 200)).some(c => c.q.kind === "surprise"), "난이도 " + level);
+});
+
+test("improv grammar: tensions by level — 10% on 0~2, 15/20/40/60% on 3~6; two in parentheses and tension chords on any level with the '2'·HARD option; scale tones only on 0·1 (2026-11-13, 2026-11-17)", async () => {
   const { Engine } = await import("../src/assets/js/core/engine.js");
   const rate = {};
   for (const level of [0, 1, 2, 3, 4, 5, 6]) {
@@ -407,12 +420,11 @@ test("improv grammar: tensions by level — 10% on 0~2 (one per chart on 0), 15/
     for (const p of await progs({ tension: "hard", level, slash: false }, 400)) {
       const sc = new Set((p.key.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11]).map(x => (Engine.pcOf(p.key.l, p.key.a) + x) % 12));
       const qs = p.bars.flat().map(c => c.q);
-      if (level === 0) assert.ok(qs.filter(q => q.tens.length || q.alt).length <= 1, "난이도 0은 8마디에 하나까지");
       for (const q of qs) {
         if (q.group === "tension") tc++;
-        assert.ok(q.items.length <= (level >= 3 ? 2 : 1), "괄호 안 개수 " + q.symbol);   // m7(♭5)의 ♭5도 괄호 안 1개
+        assert.ok(q.items.length <= 2, "괄호 안 개수 " + q.symbol);
         if (level <= 1) {
-          assert.ok(!q.alt && q.group !== "tension", q.symbol);
+          assert.ok(!q.alt, q.symbol);   // 7alt는 난이도 4부터
           for (const t of q.tones) if (t.role === "tension") assert.ok(sc.has(t.pc), "조 안의 텐션만 " + p.key.name + " " + q.symbol);
         }
         const eligible = Engine.BY_ID[q.type].seventh && !["7sus4", "dim7", "mM7", "m7b5"].includes(q.type);
@@ -420,13 +432,12 @@ test("improv grammar: tensions by level — 10% on 0~2 (one per chart on 0), 15/
       }
     }
     rate[level] = 100 * has / can;
-    if (level < 3) assert.strictEqual(tc, 0, "텐션 코드는 난이도 3부터");
-    if (level >= 4) assert.ok(tc > 0, "난이도 " + level + " 텐션 코드");
+    assert.ok(tc > 0, "난이도 " + level + " 텐션 코드");   // HARD면 어느 난이도든 (2026-11-17)
   }
   // 옵션 '최대 1개'면 어느 난이도든 괄호 안 1개, 텐션 코드 없음
   assert.ok(chordsOf(await progs({ tension: "1", level: 6, slash: false }, 300)).every(c => c.q.items.length <= 1 && c.q.group !== "tension"));
   const near = (v, want, tol) => Math.abs(v - want) < tol;
-  assert.ok(near(rate[1], 10, 3) && near(rate[2], 10, 3) && near(rate[3], 15, 3.5) && near(rate[4], 20, 4) && near(rate[5], 40, 5) && near(rate[6], 60, 5), JSON.stringify(rate));
+  assert.ok(near(rate[0], 10, 3) && near(rate[1], 10, 3) && near(rate[2], 10, 3) && near(rate[3], 15, 3.5) && near(rate[4], 20, 4) && near(rate[5], 40, 5) && near(rate[6], 60, 5), JSON.stringify(rate));
 });
 
 test("improv grammar: tonic appears, II-V at least 2 (chance 1) / 1 (chance 2), halves never identical, bar 5 never starts on bar 1's chord, at most 2 non-diatonic in a row on level 2", async () => {
@@ -525,7 +536,7 @@ test("improv prog: if dim or aug lands on a one-beat slot, that chart writes it 
   assert.ok(free > 100 && wordDim / free > 0.25 && wordDim / free < 0.55, (100 * wordDim / free).toFixed(0) + "% 글자");
 });
 
-test("improv grammar: line clichés — minor (Im·IVm in minor, IIm·VIm in major, from level 1; Im from 0) and major (I·IV, ♭III·♭VI, from level 2); early stops; may start on the 2nd chord; start spots by length (2026-11-13)", async () => {
+test("improv grammar: line clichés — minor (Im·IVm in minor, IIm·VIm in major, from level 2) and major (I·IV, ♭III·♭VI, from level 2); early stops; may start on the 2nd chord; start spots by length (2026-11-13)", async () => {
   const MINOR = ["min", "mM7", "m7", "m6"], MAJOR = ["M7", "augM7", "6", "dom7"];
   const seen = {}, forms = new Set();
   for (const level of [0, 1, 2, 3, 4]) for (const count of ["low", "mid", "high"]) {
@@ -555,8 +566,7 @@ test("improv grammar: line clichés — minor (Im·IVm in minor, IIm·VIm in maj
           assert.ok(MINOR.join(" ").includes(types.join(" ")) || types.join(" ") === "mM7 m6", types.join(" "));
           assert.ok(types.includes("mM7"), types.join(" "));
           assert.ok(p.key.minor ? ["i", "iv"].includes(q.role) : ["II", "VI"].includes(q.role), tag);
-          if (q.role !== "i") assert.ok(level >= 1, "Im 밖의 클리셰는 난이도 1부터");
-          if (level <= 1) assert.ok(!types.includes("m6"), "난이도 0·1은 m7에서 끝");
+          assert.ok(level >= 2, "마이너 클리셰도 난이도 2부터 (2026-11-17)");
         }
       }
     }
