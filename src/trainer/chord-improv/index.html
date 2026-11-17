@@ -43,7 +43,8 @@
          누르고 있는 동안만 선택, 아직 채점은 없고 표시·소리만 (improv/keys.js) -->
     <section class="im-card im-keys" id="keysCard" hidden aria-label="피아노 건반" data-i18n-aria="improvKeysAria">
       <div class="im-keys-head">
-        <label class="check"><input type="checkbox" id="optMidiSound"> <span data-i18n="improvMidiSound">MIDI 건반 입력 시 소리 재생</span></label>
+        <!-- MIDI 건반이 연결되지 않았으면(권한 없음·건반 없음·미지원 브라우저) 회색 + 이유, 누르면 권한 요청 또는 안내 (pages/improv.js renderMidi, 2026-11-17) -->
+        <label class="check" id="midiSoundLabel"><input type="checkbox" id="optMidiSound"> <span><span data-i18n="improvMidiSound">MIDI 건반 입력 시 소리 재생</span><span id="midiSoundNeed"></span></span></label>
         <span class="im-midi">
           <!-- 아직 MIDI 권한을 받지 않은 브라우저에서만 보임: 누르면 권한 창 -->
           <button class="linkbtn" id="midiConnect" type="button" hidden data-i18n="improvMidiConnect">MIDI 건반 연결</button>

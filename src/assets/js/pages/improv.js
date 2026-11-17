@@ -268,6 +268,12 @@ if (IS_PC) {
 
   $("optMidiSound").checked = midiSound;
   $("optMidiSound").onchange = e => { midiSound = e.target.checked; store.set("improvMidiSound", midiSound ? "on" : "off"); };
+  // MIDI 건반이 연결되지 않았으면 옵션은 막고(renderMidi의 is-off), 누르면 그 이유에 맞게: 권한 요청 / 미지원 안내 / 건반 연결 안내 (2026-11-17 사용자 요청)
+  $("midiSoundLabel").addEventListener("click", e => {
+    if (!$("midiSoundLabel").classList.contains("is-off")) return;
+    e.preventDefault();
+    if (Midi.state === "ready") toast(t("improvMidiPlugIn")); else $("midiConnect").onclick();
+  });
 
   let soundTipShown = false;
   Midi.on("noteon", (m, vel) => {
@@ -306,6 +312,10 @@ function renderMidi() {
   el.classList.toggle("none", ready && !on);
   if (on) el.title = Midi.devices.join("\n"); else el.removeAttribute("title");
   $("midiConnect").hidden = !Midi.supported || ready;
+  // 소리 재생 옵션: 건반이 연결됐을 때만 켜고 끌 수 있음. 아니면 회색 + 이유(권한 필요 / 건반 연결 필요, 미지원 브라우저는 이유 없이)
+  $("midiSoundLabel").classList.toggle("is-off", !on);
+  $("optMidiSound").setAttribute("aria-disabled", String(!on));
+  $("midiSoundNeed").textContent = on || !Midi.supported ? "" : t(ready ? "improvMidiNeedDevice" : "improvMidiNeedPerm");
 }
 
 initSettings();

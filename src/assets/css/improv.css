@@ -98,6 +98,9 @@
 .im-midi .midi-status.none::before { background: var(--danger); }
 .im-midi .midi-status.on { cursor: help; }
 .im-keys .keyboard { cursor: pointer; }
+/* MIDI 건반이 연결되지 않았을 때의 "소리 재생" 옵션: 회색으로 막지만 누를 수는 있음(권한 요청·안내 — pages/improv.js) */
+.im-keys-head .check.is-off { color: var(--muted); }
+.im-keys-head .check.is-off input { opacity: 0.45; }
 
 /* ---------- 폰 세로: 코드 칸을 화면 폭에 맞춰 줄임 ---------- */
 @media (max-width: 600px) and (orientation: portrait) {
