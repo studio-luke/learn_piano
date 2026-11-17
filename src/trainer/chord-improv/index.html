@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- ===== 코드 초견 — 주소 /trainer/chord-improv/ =====
      메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 연습. 한 페이지에 모드 탭 두 개:
-       무작위 코드(?mode 없음)   한 마디(또는 ½·2마디)마다 무작위 코드, 이전·현재·다음 코드를 보여줌
+       랜덤 코드(?mode=random — 없으면 붙임)   한 마디(또는 ½·2마디)마다 무작위 코드, 이전·현재·다음 코드를 보여줌
        8마디 코드진행(?mode=prog) 실용음악 입시처럼 8마디 코드진행 악보
      화면 구성: 머리글(공통) · 모드 탭 · 연습 카드(모드별 내용 + 카운트인·박 표시 + 템포·시작) · 88건반(컴퓨터만) · 바닥글(공통).
      건반 모양은 랜덤 코드 연습의 practice.css(.keyboard/.key)를 그대로 쓰고, 이 페이지만의 모양은 improv.css,
@@ -10,8 +10,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 코드 초견 연습. 무작위 코드와 실용음악 입시형 8마디 코드진행.">
-<title>코드 초견 · ChordOven</title>
+<meta name="description" content="메트로놈에 맞춰 나오는 코드를 보고 바로 연주하는 랜덤 코드 초견 연습. 랜덤 코드와 실용음악 입시형 8마디 코드진행.">
+<title>랜덤 코드 초견 · ChordOven</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -33,7 +33,7 @@
   <main class="improv">
     <!-- 모드 탭: 고른 모드는 주소 ?mode=harmony · ?mode=prog로 남김 (화성 진행 연습은 무작위 코드와 같은 화면·출제 설정 카드를 씀) (새로고침·링크 공유 때 그대로, pages/improv.js) -->
     <div class="im-modes" role="tablist" aria-label="모드 고르기" data-i18n-aria="improvModesAria">
-      <button type="button" role="tab" class="im-mode" id="tabRandom" data-mode="random" aria-controls="panelRandom" aria-selected="true" data-i18n="improvModeRandom">무작위 코드</button>
+      <button type="button" role="tab" class="im-mode" id="tabRandom" data-mode="random" aria-controls="panelRandom" aria-selected="true" data-i18n="improvModeRandom">랜덤 코드</button>
       <button type="button" role="tab" class="im-mode" id="tabHarmony" data-mode="harmony" aria-controls="panelRandom" aria-selected="false" data-i18n="improvModeHarmony">화성 진행 연습</button>
       <button type="button" role="tab" class="im-mode" id="tabProg" data-mode="prog" aria-controls="panelProg" aria-selected="false" data-i18n="improvModeProg">8마디 초견</button>
     </div>

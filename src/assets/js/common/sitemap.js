@@ -3,6 +3,9 @@
 // 왼쪽 메뉴는 회원/비회원과 상관없는 사이트 지도만 보여줘요. 마이페이지·학생 통계는 오른쪽 계정 사이드바에 있어요
 // (사용자 결정 2026-11-06).
 // 새 학습 기능을 만들면: 페이지를 만들고 → 여기 항목에 path를 넣고 soon을 지우면 메뉴와 홈에 함께 나타나요.
+// navLearn 묶음의 페이지는 "연습 페이지"로도 쓰여요(PRACTICE_ROUTES): 마이페이지·선생님 화면의 [← 연습으로]가
+// 마지막으로 연 연습 페이지와 탭(주소의 ?mode=)으로 돌아가요(common/layout.js, 2026-11-17). 페이지 안에 탭이 있으면
+// 고른 탭을 주소의 ?mode=<값>(영문 소문자)으로 남겨야 그 탭으로 돌아와요 — 따로 등록할 것은 없음.
 //
 //   group  묶음 제목 문구 키 (null이면 제목 없이 구분선만)
 //   key    화면 문구 키 (assets/js/i18n/*.js) — 이름은 key, 홈 카드 설명은 key + "Desc"
@@ -56,3 +59,6 @@ export const SITEMAP = [
     ],
   },
 ];
+
+/** 연습 페이지 주소 목록 — 메뉴의 학습 묶음(navLearn)에서 준비 중이 아닌 것 (위 머리 주석) */
+export const PRACTICE_ROUTES = SITEMAP.filter(g => g.group === "navLearn").flatMap(g => g.items.filter(it => it.path && !it.soon).map(it => it.path));

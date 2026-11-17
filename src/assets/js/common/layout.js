@@ -9,7 +9,8 @@
 import { t, lang, setLang, applyI18n, onLangChange, PAGE_LANG } from "../i18n/index.js";
 import { Account } from "../account/account.js";
 import { initAuthDialog } from "../account/auth-dialog.js";
-import { SITEMAP, ROUTES, ROOT, pageUrl } from "./sitemap.js";
+import { SITEMAP, ROUTES, ROOT, pageUrl, PRACTICE_ROUTES } from "./sitemap.js";
+import { store } from "./storage.js";
 import { $ } from "./dom.js";
 
 const LANG_SELECT = `
@@ -35,8 +36,33 @@ function cleanAddressBar() {
   if (clean !== location.pathname) history.replaceState(history.state, "", clean + location.search + location.hash);
 }
 
-// 머리글. stats=true면 연습 페이지의 "정답/시도 · 연속" 표시, back=true면 "← 연습으로" 링크
+// ---------- 마지막 연습 페이지 (2026-11-17 사용자 요청) ----------
+// 연습 페이지(sitemap.js PRACTICE_ROUTES)를 떠날 때 그 주소와 탭(?mode=)을 이 기기에 기억 → [← 연습으로]가 그리로.
+// 언어와 상관없이 주소(route)만 기억하고, 링크는 지금 언어로 만듦. 기억이 없거나 그 페이지가 없어졌으면 코드 잡아보기
+const LAST_KEY = "lastPractice";
+/** 지금 보고 있는 페이지가 연습 페이지면 그 route, 아니면 null */
+const practiceHere = () => PRACTICE_ROUTES.find(r => cleanPath(new URL(pageUrl(r)).pathname) === cleanPath(location.pathname)) ?? null;
+function rememberPractice() {
+  const route = practiceHere();
+  if (route == null) return;
+  const save = () => {
+    const mode = new URLSearchParams(location.search).get("mode");
+    store.setJSON(LAST_KEY, { route, mode: mode && /^[a-z]+$/.test(mode) ? mode : null });
+  };
+  save();   // 탭을 고르면 주소만 바뀌므로(replaceState) 떠날 때 다시 저장
+  addEventListener("pagehide", save);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") save(); });
+}
+/** [← 연습으로]가 갈 곳: { route, query } */
+function lastPractice() {
+  const v = store.getJSON(LAST_KEY);
+  if (!v || !PRACTICE_ROUTES.includes(v.route)) return { route: ROUTES.trainer, query: "" };
+  return { route: v.route, query: typeof v.mode === "string" && /^[a-z]+$/.test(v.mode) ? "?mode=" + v.mode : "" };
+}
+
+// 머리글. stats=true면 연습 페이지의 "정답/시도 · 연속" 표시, back=true면 "← 연습으로" 링크(마지막 연습 페이지로)
 function headerHTML({ stats, back }) {
+  const last = back && lastPractice();
   return `
     <div class="brand">
       <button class="menu-btn" id="menuBtn" type="button" aria-label="메뉴" data-i18n-aria="menuOpen" aria-controls="navDrawer" aria-expanded="false">${MENU_ICON}</button>
@@ -44,7 +70,7 @@ function headerHTML({ stats, back }) {
       <span data-i18n="tagline"></span>
     </div>
     <div class="top-right">
-      ${back ? `<a class="linkbtn top-back" href="${pageUrl(ROUTES.trainer)}" data-route="${ROUTES.trainer}" data-i18n="backPractice"></a>` : ""}
+      ${back ? `<a class="linkbtn top-back" href="${pageUrl(last.route) + last.query}" data-route="${last.route}" data-query="${last.query}" data-i18n="backPractice"></a>` : ""}
       ${stats ? `<div class="stats" aria-label="연습 기록" data-i18n-aria="statsAria">
         <span class="stat"><span data-i18n="firstTry"></span> <b id="stFirst">0</b> / <b id="stTotal">0</b></span>
         <span class="stat"><span data-i18n="streak"></span> <b id="stStreak">0</b></span>
@@ -98,7 +124,7 @@ const FOOTER = `
  * 마이페이지처럼 주소가 하나인 페이지에서 언어를 바꿨을 때 홈·코드 연습 링크가 새 언어로 가게 하려고.
  */
 function relink() {
-  document.querySelectorAll("a[data-route]").forEach(a => { a.href = pageUrl(a.dataset.route); });
+  document.querySelectorAll("a[data-route]").forEach(a => { a.href = pageUrl(a.dataset.route) + (a.dataset.query || ""); });
 }
 
 /**
@@ -127,6 +153,7 @@ function wireHelp() {
  */
 export function startPage({ title = "docTitle", stats = false, back = false } = {}) {
   cleanAddressBar();
+  rememberPractice();
   const header = $("siteHeader"), footer = $("siteFooter");
   if (header) header.innerHTML = headerHTML({ stats, back });
   if (footer) { footer.innerHTML = FOOTER; footer.setAttribute("aria-labelledby", "contactH"); }

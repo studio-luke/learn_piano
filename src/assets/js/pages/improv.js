@@ -52,7 +52,7 @@ let mode = "random";
 /** 이전·현재·다음 코드 화면(improv/random.js)을 쓰는 모드인지 */
 const chordMode = m => m !== "prog";
 
-/** 주소의 ?mode → 지금 모드. 모르는 값이나 없으면 무작위 코드 */
+/** 주소의 ?mode → 지금 모드. 모르는 값이나 없으면 랜덤 코드 (주소는 showMode가 ?mode=random으로 맞춤 — 2026-11-17 사용자 요청) */
 const modeFromUrl = () => { const m = new URLSearchParams(location.search).get("mode"); return MODES.includes(m) ? m : "random"; };
 
 /**
@@ -61,7 +61,8 @@ const modeFromUrl = () => { const m = new URLSearchParams(location.search).get("
  */
 function setModeInUrl(m) {
   const u = new URL(location.href);
-  if (m === "random") u.searchParams.delete("mode"); else u.searchParams.set("mode", m);
+  if (u.searchParams.get("mode") === m) return;
+  u.searchParams.set("mode", m);   // 랜덤 코드도 ?mode=random (2026-11-17 사용자 요청 — 예전엔 mode 없음)
   history.replaceState(history.state, "", u.pathname + u.search + u.hash);
 }
 
@@ -407,5 +408,5 @@ initPresetLink({
 });
 
 onLangChange(() => { renderPlay(); renderMidi(); syncSettingsUI(); syncProgUI(); scrollTip.show(mode); if (metro.running) Random.render(); });
-showMode(modeFromUrl());
+{ const m = modeFromUrl(); showMode(m); setModeInUrl(m); }   // /trainer/chord-improv/ → ?mode=random
 renderPlay();
