@@ -46,6 +46,7 @@ export const SITEMAP = [
       { key: "navTrainer", path: ROUTES.trainer, icon: "🎹" },
       { key: "navNameTrainer", path: ROUTES.nameTrainer, icon: "🔍" },
       { key: "navImprov", path: ROUTES.improv, icon: "🎶" },
+      { key: "navEarTraining", soon: true, icon: "👂" },   // 청음 연습 (준비 중, 2026-11-23 사용자 요청)
       { key: "navChordGuide", soon: true, icon: "📖" },
       { key: "navVoiceLeading", soon: true, icon: "🎼" },
       { key: "navTheory", soon: true, icon: "🎵" },
