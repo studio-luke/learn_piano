@@ -31,7 +31,6 @@ const LEVELS = [
   { mode: "note1", track: "note", num: "1", key: "earN1", ready: true },
   { mode: "note2", track: "note", num: "2", key: "earN2" },
   { mode: "note3", track: "note", num: "3", key: "earN3" },
-  { mode: "note4", track: "note", num: "4", key: "earN4", hard: true },
   { mode: "chord1", track: "chord", num: "1", key: "earC1" },
   { mode: "chord2", track: "chord", num: "2", key: "earC2" },
   { mode: "chord3", track: "chord", num: "3", key: "earC3" },
@@ -181,7 +180,10 @@ $("earTonicEach").onchange = e => { S.tonicEach = e.target.checked; saveS(); };
 
 // ---------- 단음 ① 음 하나 ----------
 // phase: "idle"(시작 전) | "ask"(풀고 있음) | "done"(맞힘·정답 확인)
-const N = { phase: "idle", q: null, wrong: false };
+// wrong = 이 문제를 틀린 적이 있음([스케일] 버튼), life = 첫 오답을 한 번 봐주는 기회가 남았음
+//   ("문제마다 기준음 재생"을 끈 문제만 — 기준음 없이 듣는 만큼 첫 입력은 오답으로 치지 않음, 2026-11-24 사용자 요청.
+//    나중에 기록을 붙일 때도 이 첫 오답은 "첫 결과"로 세지 않을 것)
+const N = { phase: "idle", q: null, wrong: false, life: false };
 const SCALE_STEP = 0.42;   // 스케일 음 사이 간격(초)
 const Q_DUR = 1.4;         // 문제 음 길이(초)
 const TONIC_DUR = 1.0;     // 기준음 길이(초)
@@ -273,7 +275,7 @@ const playPicked = m => Ins.play(inst, [{ m, at: 0, dur: 0.9, vel: 0.5 }]);
 /** 새 문제. withScale = 스케일을 먼저 들려줌 (시작, 조를 바꿨을 때) */
 function newQuestion(withScale) {
   N.q = pickNote(key(), { chromatic: S.chromatic }, N.q && N.q.midi);
-  N.phase = "ask"; N.wrong = false;
+  N.phase = "ask"; N.wrong = false; N.life = !S.tonicEach;
   markKeys(); showNotes([]);
   setFeedback("", "");
   // 문제마다 기준음을 먼저 (2026-11-24 사용자 요청), 시작·조를 바꿨을 때는 그 앞에 스케일
@@ -320,11 +322,17 @@ function pick(m, spelled) {
     showNotes([{ note: N.q, cls: "good" }]);
     setFeedback("ok", t("earRight", { name: fullName(N.q) }));
   } else {
-    N.wrong = true;
     markKeys(new Map([[m, "bad"]]));
     showNotes([{ note, cls: "bad" }]);
-    const msg = r === "octUp" ? t("earOctUp") : r === "octDown" ? t("earOctDown") : t("earWrong");
-    setFeedback("no", msg);
+    const oct = r === "octUp" ? t("earOctUp") : r === "octDown" ? t("earOctDown") : "";
+    if (N.life) {
+      // 기준음 없이 들은 문제의 첫 오답: 기회를 하나 쓰고 오답으로 치지 않음 ([스케일]도 아직 안 나옴)
+      N.life = false;
+      setFeedback("no", t("earLife") + (oct ? " " + oct : ""));
+    } else {
+      N.wrong = true;
+      setFeedback("no", oct || t("earWrong"));
+    }
   }
   renderNoteButtons();
 }
@@ -456,5 +464,6 @@ function renderMidi() {
   }
 }
 
+setModeInUrl(mode);   // 주소에 mode가 없거나 모르는 값이면 지금 단계(처음엔 note1)로 고쳐 둠 (코드 초견과 같은 방식)
 renderInst(); renderSettings(); renderLevels(); renderNoteButtons(); renderMidi();
 onLangChange(() => { renderInst(); renderLevels(); renderNoteButtons(); renderMidi(); });
