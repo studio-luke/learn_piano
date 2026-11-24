@@ -37,8 +37,16 @@
     </div>
 
     <!-- 단계 막대: 번호 + 짧은 이름, 아래에 고른 단계의 한 줄 설명. 폰에서는 가로 스크롤 (ear.css) -->
-    <nav class="ear-levels" id="earLevels" aria-label="단계" data-i18n-aria="earLevelsAria"></nav>
-    <p class="ear-level-desc" id="earLevelDesc"></p>
+    <!-- 단계 막대: 넘치면 가로 스크롤(스크롤바는 숨김), 컴퓨터에서는 마우스로 끌어도 움직임.
+         잘린 쪽에만 ‹ › 버튼 (2026-11-24 사용자 요청, pages/ear.js levelScroll) -->
+    <div class="ear-levels-wrap">
+      <button type="button" class="ear-levels-arrow prev" id="levelsPrev" hidden aria-label="앞 단계 보기" data-i18n-aria="earLevelsPrev">‹</button>
+      <nav class="ear-levels" id="earLevels" aria-label="단계" data-i18n-aria="earLevelsAria"></nav>
+      <button type="button" class="ear-levels-arrow next" id="levelsNext" hidden aria-label="뒤 단계 보기" data-i18n-aria="earLevelsNext">›</button>
+    </div>
+    <!-- 단계 설명: 숨김 (2026-11-24 사용자 요청 — 폰에서 아래 버튼이 화면 밖으로 밀려서). 지우지 말고, 따로 지시가 있기 전까지 숨긴 채로 둠.
+         글은 pages/ear.js renderLevels가 계속 채우므로 hidden만 빼면 다시 보임 -->
+    <p class="ear-level-desc" id="earLevelDesc" hidden></p>
 
     <div class="ear-layout">
       <section class="ear-card" aria-label="연습" data-i18n-aria="deskAria">

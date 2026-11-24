@@ -488,6 +488,8 @@ export default {
   earTrackNote: "단음",
   earTrackChord: "코드",
   earLevelsAria: "단계",
+  earLevelsPrev: "앞 단계 보기",
+  earLevelsNext: "뒤 단계 보기",
   earHard: "어려움",
   earN1: "음 하나",
   earN1Desc: "스케일과 기준음(으뜸음)을 들은 뒤, 들리는 음 하나를 건반이나 악보에서 골라요.",

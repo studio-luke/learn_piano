@@ -11,7 +11,18 @@
 .ear-track[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40,20,10,.15); }
 
 /* ---------- 단계 막대: 번호 동그라미 + 짧은 이름. 넘치면 가로 스크롤 ---------- */
-.ear-levels { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+/* 가로 스크롤은 되지만 스크롤바는 안 보이게 (2026-11-24 사용자 요청) — Firefox는 scrollbar-width, Chrome·Safari는 ::-webkit-scrollbar */
+.ear-levels { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.ear-levels::-webkit-scrollbar { display: none; }
+.ear-levels.dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+.ear-levels.dragging .ear-level { pointer-events: none; }
+/* 잘린 쪽의 ‹ › 버튼: 막대 양 끝 위에 겹쳐서, 뒤 단계가 비치지 않게 카드 바탕색 그라데이션 */
+.ear-levels-wrap { position: relative; }
+.ear-levels-arrow { position: absolute; top: 0; bottom: 2px; z-index: 1; width: 44px; border: none; font-size: 26px; line-height: 1; color: var(--ink); cursor: pointer; padding: 0; }
+.ear-levels-arrow[hidden] { display: none; }
+.ear-levels-arrow.prev { left: 0; text-align: left; padding-left: 4px; background: linear-gradient(to right, var(--bg) 55%, transparent); }
+.ear-levels-arrow.next { right: 0; text-align: right; padding-right: 4px; background: linear-gradient(to left, var(--bg) 55%, transparent); }
+.ear-levels-arrow:hover { color: var(--accent); }
 .ear-level { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 14px; font-weight: 500; text-decoration: none; }
 .ear-level:hover { background: var(--sunken); }
 .ear-level .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--sunken); font-size: 13px; font-weight: 700; }
@@ -21,6 +32,7 @@
 .ear-level .tag { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
 .ear-level .tag.hard { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
 .ear-level-desc { margin: 0; color: var(--muted); font-size: 14px; }
+.ear-level-desc[hidden] { display: none; }
 
 /* ---------- 연습 카드 + 출제 설정 (넓은 화면 2단, 좁으면 1단) ---------- */
 .ear-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }

@@ -487,6 +487,8 @@ export default {
   earTrackNote: "単音",
   earTrackChord: "コード",
   earLevelsAria: "段階",
+  earLevelsPrev: "前の段階を見る",
+  earLevelsNext: "次の段階を見る",
   earHard: "難しい",
   earN1: "音ひとつ",
   earN1Desc: "スケールと基準音(主音)を聴いたあと、聞こえた音を鍵盤か楽譜で選びます。",

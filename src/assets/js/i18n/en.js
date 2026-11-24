@@ -487,6 +487,8 @@ export default {
   earTrackNote: "Notes",
   earTrackChord: "Chords",
   earLevelsAria: "Levels",
+  earLevelsPrev: "Show previous levels",
+  earLevelsNext: "Show more levels",
   earHard: "Hard",
   earN1: "One note",
   earN1Desc: "After the scale and the reference note (tonic), pick the note you hear on the keyboard or the staff.",

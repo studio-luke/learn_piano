@@ -487,6 +487,8 @@ export default {
   earTrackNote: "单音",
   earTrackChord: "和弦",
   earLevelsAria: "阶段",
+  earLevelsPrev: "查看前面的阶段",
+  earLevelsNext: "查看后面的阶段",
   earHard: "难",
   earN1: "单个音",
   earN1Desc: "听完音阶和参考音(主音)后，在键盘或五线谱上选出听到的音。",

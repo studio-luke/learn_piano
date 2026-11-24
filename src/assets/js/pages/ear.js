@@ -67,6 +67,7 @@ function renderLevels() {
   $("earLevelDesc").textContent = t(lv.key + "Desc");
   const cur = $("earLevels").querySelector('[aria-current="step"]');
   if (cur) cur.scrollIntoView({ block: "nearest", inline: "nearest" });
+  levelArrows();
   // 패널: 만든 단계만 내용, 나머지는 "준비 중"
   $("panelNote1").hidden = mode !== "note1";
   $("earKeyRow").hidden = mode !== "note1";   // 맨 윗줄의 조 표시는 단음 단계만
@@ -82,7 +83,59 @@ function goMode(m) {
   setModeInUrl(m);
   renderLevels();
 }
-$("earLevels").addEventListener("click", e => { const b = e.target.closest(".ear-level"); if (b) goMode(b.dataset.mode); });
+$("earLevels").addEventListener("click", e => {
+  if (dragged) { dragged = false; return; }   // 마우스로 끌어서 움직였으면 단계를 고르지 않음
+  const b = e.target.closest(".ear-level");
+  if (b) goMode(b.dataset.mode);
+});
+
+// ---------- 단계 막대 가로 스크롤 (2026-11-24 사용자 요청) ----------
+// 폰은 손가락으로 밀면 되고, 컴퓨터는 마우스로 누른 채 좌우로 끌어도 움직임(5px 넘게 끌면 단계 고르기는 안 함).
+// 잘린 쪽에만 ‹ › 버튼: 누르면 막대 폭의 70%만큼 부드럽게
+let dragged = false;
+{
+  const bar = $("earLevels");
+  let drag = null;   // { x: 누른 곳, left: 그때의 scrollLeft }
+  bar.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    drag = { x: e.clientX, left: bar.scrollLeft };
+    dragged = false;
+  });
+  window.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (Math.abs(dx) > 5) { dragged = true; bar.classList.add("dragging"); }
+    if (dragged) bar.scrollLeft = drag.left - dx;
+  });
+  window.addEventListener("pointerup", () => { drag = null; bar.classList.remove("dragging"); });
+  bar.addEventListener("dragstart", e => e.preventDefault());   // 글자·버튼을 끄는 브라우저 기본 동작 막기
+
+  // 목표 위치를 직접 계산해 끝(0 ~ 최대)에서 멈춤 — iPhone Safari에서 scrollBy를 빠르게 두 번 부르면
+  // 끝을 넘어 빈 곳까지 밀려 갔음 (2026-11-24). 움직이는 중에 또 누르면 앞의 목표에서 이어서
+  let target = null;
+  const maxLeft = () => bar.scrollWidth - bar.clientWidth;
+  const step = dir => {
+    const from = target ?? bar.scrollLeft;
+    target = Math.max(0, Math.min(maxLeft(), from + dir * bar.clientWidth * 0.7));
+    bar.scrollTo({ left: target, behavior: "smooth" });
+  };
+  // 스크롤이 멈추면(0.15초 동안 움직임 없음) 목표를 잊음 — scrollend 이벤트는 옛 Safari에 없어서 직접 잼
+  let quiet = 0;
+  bar.addEventListener("scroll", () => { clearTimeout(quiet); quiet = setTimeout(() => { target = null; }, 150); }, { passive: true });
+  bar.addEventListener("pointerdown", () => { target = null; });
+  $("levelsPrev").onclick = () => step(-1);
+  $("levelsNext").onclick = () => step(1);
+  bar.addEventListener("scroll", levelArrows, { passive: true });
+  window.addEventListener("resize", levelArrows);
+}
+/** 잘린 쪽에만 ‹ › 보이기 (1px 오차는 무시) */
+function levelArrows() {
+  const bar = $("earLevels");
+  const max = bar.scrollWidth - bar.clientWidth;
+  if (bar.scrollLeft > max + 1) bar.scrollLeft = max;   // 혹시 끝을 넘어갔으면 되돌림 (iPhone Safari)
+  $("levelsPrev").hidden = bar.scrollLeft <= 1;
+  $("levelsNext").hidden = bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 1;
+}
 $("trackNote").onclick = () => goMode(lastOfTrack.note);
 $("trackChord").onclick = () => goMode(lastOfTrack.chord);
 
