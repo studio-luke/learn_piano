@@ -361,6 +361,7 @@ function renderDebug() {
   if (debugMode() && N.phase !== "idle") {
     if (dictation() && N.dict) {
       if (N.dict.chords) lines.push(N.dict.chords.map(c => c.name).join(" | ") + (N.dict.contour ? `   (contour: ${N.dict.contour})` : ""));
+      if (N.dict.motifs && N.dict.motifs.length) lines.push("motif: " + N.dict.motifs.join(", "));
       let bar = 0, out = "";
       for (const x of N.dict) {
         const b = Math.floor(x.pos / BAR);

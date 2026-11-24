@@ -187,7 +187,14 @@ export const CONTOURS = {
   W:      { w: 5, pts: [[0, 0.8], [0.25, 0], [0.5, 0.55], [0.75, 0], [1, 0.8]] },     // W형
   free:   { w: 12, pts: null },                                                        // 끌지 않음
 };
-const CONTOUR_S = { high: 3, mid: 4.5, low: 7 };   // 끄는 세기 (작을수록 셈) — 개연성이 높을수록 모양이 뚜렷
+const CONTOUR_S = { high: 3, mid: 4.5, low: 7 };
+// 음정 모티브 반복 (2026-11-25 사용자 결정) — 최소 16분은 한 박, 최소 8분은 반 마디를 한 단위로 봄(최소 4분·랜덤은 안 씀).
+// 앞 단위(16분: 4박 전 · 2박 전 · 1박 전, 8분: 한 마디 전 · 반 마디 전)와 리듬을 비교해서
+//   ① 같음(배수 1) → 같은 자리 음  ② 한쪽이 부분집합(0.7) → 겹치는 자리만 따오고, 새 자리는 앞뒤 사이를 순차·화성음으로 메움
+//   ③ 음 개수만 같음(3개 이상, 0.5) → 순서대로 맞춤.  ①·②는 지금 단위에 음이 2개 이상일 때만. 1박 전은 배수 0.5를 더 곱함
+// 방식별 확률(관계 ① 기준): 그대로 MOTIF_EXACT · 동형진행 MOTIF_SEQ(조 안의 음으로 1~2칸, 방향은 윤곽 기울기)
+const MOTIF_EXACT = { high: 0.20, mid: 0.12, low: 0 };
+const MOTIF_SEQ = { high: 0.40, mid: 0.28, low: 0.15 };   // 끄는 세기 (작을수록 셈) — 개연성이 높을수록 모양이 뚜렷
 const CONTOUR_SPAN = { 1: 7, 2: 10 };              // 목표 선의 높낮이 폭 (반음) — 1마디는 좁게
 
 /** 윤곽 하나 고르기 → { name, pts, base(목표 선의 가장 낮은 midi), span, s } */
@@ -234,48 +241,152 @@ function weighted(items, ws, rnd) {
  * @param chords  코드 진행, 코드 하나의 길이 = slot (16분 단위)
  * @returns [{ ..., note? }] 또는 실패하면 null (어보이드 노트를 해결할 음이 없는 등 — 다시 뽑음)
  */
-export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random, contour = null) {
+export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random, contour = null, { min = 2, chance = "mid" } = {}) {
   const center = scaleMidis(key)[0] + 5;   // 첫 음은 가운데쯤 (윤곽이 있으면 윤곽의 시작 높이 쪽으로도 끎)
   const total = rhythm.length ? rhythm[rhythm.length - 1].pos + rhythm[rhythm.length - 1].dur : 16;
   const pull = contour && contour.pts ? contour : null;
   let prev = null, prev2 = null, nctRun = 0, prevAvoid = false, hi = -Infinity, lo = Infinity;
   const notes = rhythm.filter(x => !x.rest);
   const out = [];
+  const chordAt = pos => chords[Math.min(chords.length - 1, Math.floor(pos / slot))];
+  const kindIn = (ch, n) => (ch.pcs.has(n.pc) ? "ct" : ch.avoid.has(n.pc) ? "avoid" : "nct");
+
+  // ----- 음정 모티브 -----
+  const U = min === 1 ? 4 : min === 2 ? 8 : 0;                 // 모티브 단위 길이 (16분 단위), 0이면 안 씀
+  const OFFS = min === 1 ? [[4, 1], [2, 1], [1, 0.5]] : [[2, 1], [1, 1]];   // [몇 단위 전, 확률 배수] — 앞 것을 먼저
+  const unitNotes = new Map();                                 // 단위 → [노트 순번 k]
+  if (U) notes.forEach((x, k) => { const u = Math.floor(x.pos / U); if (!unitNotes.has(u)) unitNotes.set(u, []); unitNotes.get(u).push(k); });
+  const motifs = [];                                           // 디버그용 기록
+  let plan = null, lastSeq = null;                             // plan: 지금 단위의 { at: Map(k → 정한 음), fill: Set(k) }
+
+  /** 음 하나를 조 안에서 d칸 옮기고(0이면 그대로) 그 자리 코드의 철자로 — 범위 밖이면 null */
+  const moveNote = (src, d, pos) => {
+    const L = src.l + d, l = ((L % 7) + 7) % 7, oct = src.oct + Math.floor(L / 7);
+    return notesFor(key, chordAt(pos)).find(n => n.l === l && n.oct === oct) || null;
+  };
+  /** 단위 u를 시작할 때: 따올 앞 단위·관계·방식을 정하고, 정한 음이 규칙에 맞는 이동량을 고름 */
+  const makePlan = u => {
+    const cur = unitNotes.get(u) || [];
+    const rel = ks => ks.map(k => notes[k].pos % U);
+    const cr = rel(cur);
+    let best = null;
+    for (const [o, omul] of OFFS) {
+      const src = unitNotes.get(u - o);
+      if (!src || !src.length || src.some(k => k >= out.length)) continue;
+      const sr = rel(src), sub = (a, b) => a.every(p => b.includes(p));
+      let rank = 0, mul = 0;
+      if (cr.length >= 2 && cr.length === sr.length && sub(cr, sr)) { rank = 3; mul = 1; }
+      else if (cr.length >= 2 && sr.length >= 2 && (sub(cr, sr) || sub(sr, cr))) { rank = 2; mul = 0.7; }
+      else if (cr.length >= 3 && cr.length === sr.length) { rank = 1; mul = 0.5; }
+      if (rank && (!best || rank > best.rank)) best = { o, src, sr, rank, mul: mul * omul };
+    }
+    if (!best) return null;
+    const pE = (MOTIF_EXACT[chance] ?? 0) * best.mul, pS = (MOTIF_SEQ[chance] ?? 0) * best.mul, r = rnd();
+    const mode = r < pE ? "exact" : r < pE + pS ? "seq" : null;
+    if (!mode) return null;
+    // 지금 단위 음마다 따올 앞 음 (없으면 메울 자리)
+    const srcOf = cur.map((k, i) => {
+      if (best.rank === 1) return out[best.src[i]];
+      const j = best.sr.indexOf(cr[i]);
+      return j >= 0 ? out[best.src[j]] : null;
+    });
+    // 이동량 순서: 그대로 [0], 동형진행은 윤곽 기울기 방향 1·2칸 → 반대 방향 (앞 단위를 같은 출처로 옮겼으면 그 이동량부터)
+    let ds = [0];
+    if (mode === "seq") {
+      const mid = notes[cur[0]].pos / total;
+      const slope = pull ? contourAt(pull, Math.min(1, mid + 0.1)) - contourAt(pull, Math.max(0, mid - 0.1)) : rnd() - 0.5;
+      const dir = slope >= 0 ? 1 : -1;
+      ds = [dir, 2 * dir, -dir, -2 * dir];
+      if (lastSeq && lastSeq.o === best.o && lastSeq.u === u - 1) ds = [lastSeq.d, ...ds.filter(d => d !== lastSeq.d)];
+      if (chance !== "low") ds.push(0);   // 동형진행이 안 되면 그대로 (낮음은 그대로 없음)
+    }
+    // 정한 음이 규칙에 맞는지: 범위·옥타브 이내·어보이드 아님·같은 방향 연속 도약 아님, 강박 음은 화성음을 먼저
+    const tryD = (d, strictStrong) => {
+      const at = new Map();
+      let h = hi, l = lo, p1 = prev, p2 = prev2;
+      for (let i = 0; i < cur.length; i++) {
+        const k = cur[i], x = notes[k];
+        if (!srcOf[i]) { p2 = p1; p1 = null; continue; }   // 메울 자리 — 앞뒤 관계는 따지지 않음
+        const n = moveNote(srcOf[i], d, x.pos);
+        if (!n) return null;
+        const ch = chordAt(x.pos), kd = kindIn(ch, n);
+        if (kd === "avoid") return null;
+        if (i === 0 && prevAvoid && !(kd === "ct" && Math.abs(n.midi - prev.midi) >= 1 && Math.abs(n.midi - prev.midi) <= 2)) return null;
+        if (strictStrong && x.pos % 4 === 0 && kd !== "ct") return null;
+        h = Math.max(h, n.midi); l = Math.min(l, n.midi);
+        if (h - l > RANGE) return null;
+        if (p1 && Math.abs(n.midi - p1.midi) > 12) return null;
+        if (p1 && p2 && directionW(p1.midi - p2.midi, n.midi - p1.midi, true, true) === 0) return null;
+        at.set(k, n);
+        p2 = p1; p1 = n;
+      }
+      return at;
+    };
+    for (const strict of [true, false]) for (const d of ds) {
+      const at = tryD(d, strict);
+      if (!at) continue;
+      const realMode = d === 0 ? "exact" : "seq";
+      lastSeq = realMode === "seq" ? { o: best.o, d, u } : null;
+      const name = x => (min === 1 ? "b" : "h") + (x + 1);
+      motifs.push(`${name(u)}←${name(u - best.o)} ${realMode === "seq" ? (d > 0 ? "+" : "") + d : "="}${best.rank === 3 ? "" : best.rank === 2 ? " sub" : " cnt"}`);
+      return { at, fill: new Set(cur.filter(k => !at.has(k))) };
+    }
+    return null;
+  };
+
   for (let k = 0; k < notes.length; k++) {
-    const x = notes[k], ch = chords[Math.min(chords.length - 1, Math.floor(x.pos / slot))];
+    const x = notes[k], ch = chordAt(x.pos);
     const strong = x.pos % 4 === 0, last = k === notes.length - 1;
+    if (U) {
+      const u = Math.floor(x.pos / U);
+      if (unitNotes.get(u)[0] === k) { plan = makePlan(u); if (!plan) lastSeq = null; }
+    }
+    const kind = n => kindIn(ch, n);
     const cands = notesFor(key, ch).filter(n => (!prev || Math.abs(n.midi - prev.midi) <= 12) &&
       Math.max(hi, n.midi) - Math.min(lo, n.midi) <= RANGE);
-    const kind = n => (ch.pcs.has(n.pc) ? "ct" : ch.avoid.has(n.pc) ? "avoid" : "nct");
-    let pool = cands;
-    // 어보이드 노트 다음: 반드시 순차 화성음
-    if (prevAvoid) pool = cands.filter(n => kind(n) === "ct" && Math.abs(n.midi - prev.midi) >= 1 && Math.abs(n.midi - prev.midi) <= 2);
-    // 어보이드 노트는 강박·마지막 음에 안 옴, 다음 음이 해결할 수 있을 때만 (다음 음이 같은 코드라고 보고 순차 화성음이 있는지)
-    pool = pool.filter(n => kind(n) !== "avoid" || (!strong && !last &&
-      cands.some(c => kind(c) === "ct" && Math.abs(c.midi - n.midi) >= 1 && Math.abs(c.midi - n.midi) <= 2)));
-    if (!pool.length) return null;
-    const wantCT = rnd() < P_CHORD[Math.min(nctRun, 2)];
-    let side = pool.filter(n => (kind(n) === "ct") === wantCT);
-    if (!side.length) side = pool;
-    const wOf = n => {
-      let w = prev ? STEP_W(Math.abs(n.midi - prev.midi)) : Math.max(0.05, 1 - Math.abs(n.midi - center) / 14);
-      if (prev && nctRun > 0 && Math.abs(n.midi - prev.midi) >= 1 && Math.abs(n.midi - prev.midi) <= 2) w *= AFTER_NCT_STEP;
-      if (kind(n) === "avoid") w *= AVOID_W;
-      if (prev) w *= AWKWARD[Math.abs(n.midi - prev.midi)] ?? 1;
-      // 아르페지오 = 앞 두 음과 이 음이 모두 지금 코드의 구성음
-      if (pull) w *= Math.exp(-Math.abs(n.midi - contourAt(pull, x.pos / total)) / pull.s);   // 윤곽 쪽으로 약하게
-      if (prev && prev2) w *= directionW(prev.midi - prev2.midi, n.midi - prev.midi, kind(n) === "ct", ch.pcs.has(prev.pc) && ch.pcs.has(prev2.pc));
-      return w;
-    };
-    let pick = weighted(side, side.map(wOf), rnd);
-    if (!pick) return null;
-    // 도약 뒤 반대 방향으로 또 도약해서 비화성음이면 (1 − OPP_LEAP_NCT) 확률로 그런 음을 빼고 다시 고름 — 화성음·비화성음을
-    // 먼저 정하는 방식이라 가중치만 곱하면 비화성음끼리만 바뀌어서, 전체 비율이 OPP_LEAP_NCT배가 되게 다시 고름
-    const oppLeapNct = n => prev && prev2 && Math.abs(prev.midi - prev2.midi) >= LEAP && kind(n) !== "ct" &&
-      Math.abs(n.midi - prev.midi) >= 3 && Math.sign(n.midi - prev.midi) === -Math.sign(prev.midi - prev2.midi);
-    if (oppLeapNct(pick) && rnd() >= OPP_LEAP_NCT) {
-      const alt = pool.filter(n => !oppLeapNct(n));
-      pick = weighted(alt, alt.map(wOf), rnd) || pick;
+    let pick = null;
+    // 모티브로 정한 음 (지금 범위에 여전히 맞으면 그대로)
+    const planned = plan && plan.at.get(k);
+    if (planned && cands.some(c => c.midi === planned.midi && c.l === planned.l)) pick = planned;
+    if (!pick) {
+      let pool = cands;
+      // 어보이드 노트 다음: 반드시 순차 화성음
+      if (prevAvoid) pool = cands.filter(n => kind(n) === "ct" && Math.abs(n.midi - prev.midi) >= 1 && Math.abs(n.midi - prev.midi) <= 2);
+      // 어보이드 노트는 강박·마지막 음에 안 옴, 다음 음이 해결할 수 있을 때만 (다음 음이 같은 코드라고 보고 순차 화성음이 있는지)
+      // — 모티브 단위 안에서 메우는 음에는 안 씀 (다음 음이 이미 정해져 있어서)
+      const filling = plan && plan.fill.has(k);
+      pool = pool.filter(n => kind(n) !== "avoid" || (!strong && !last && !filling &&
+        cands.some(c => kind(c) === "ct" && Math.abs(c.midi - n.midi) >= 1 && Math.abs(c.midi - n.midi) <= 2)));
+      if (!pool.length) return null;
+      // 메우는 음: 다음에 정해진 음이 있으면 앞 음과 그 음 사이(순차·화성음) 쪽으로
+      const nextPlanned = filling ? [...plan.at.entries()].find(([kk]) => kk > k)?.[1] : null;
+      const wantCT = rnd() < P_CHORD[Math.min(nctRun, 2)];
+      let side = pool.filter(n => (kind(n) === "ct") === wantCT);
+      if (!side.length) side = pool;
+      const wOf = n => {
+        let w = prev ? STEP_W(Math.abs(n.midi - prev.midi)) : Math.max(0.05, 1 - Math.abs(n.midi - center) / 14);
+        if (prev && nctRun > 0 && Math.abs(n.midi - prev.midi) >= 1 && Math.abs(n.midi - prev.midi) <= 2) w *= AFTER_NCT_STEP;
+        if (kind(n) === "avoid") w *= AVOID_W;
+        if (prev) w *= AWKWARD[Math.abs(n.midi - prev.midi)] ?? 1;
+        if (pull) w *= Math.exp(-Math.abs(n.midi - contourAt(pull, x.pos / total)) / pull.s);   // 윤곽 쪽으로 약하게
+        // 아르페지오 = 앞 두 음과 이 음이 모두 지금 코드의 구성음
+        if (prev && prev2) w *= directionW(prev.midi - prev2.midi, n.midi - prev.midi, kind(n) === "ct", ch.pcs.has(prev.pc) && ch.pcs.has(prev2.pc));
+        if (filling && prev && nextPlanned) {
+          const mid = (prev.midi + nextPlanned.midi) / 2, step = Math.abs(n.midi - nextPlanned.midi) <= 2;
+          w *= Math.exp(-Math.abs(n.midi - mid) / 1.5) * (step ? 2 : 1);
+        }
+        return w;
+      };
+      pick = weighted(side, side.map(wOf), rnd);
+      if (!pick) return null;
+      // 도약 뒤 반대 방향으로 또 도약해서 비화성음이면 (1 − OPP_LEAP_NCT) 확률로 그런 음을 빼고 다시 고름 — 화성음·비화성음을
+      // 먼저 정하는 방식이라 가중치만 곱하면 비화성음끼리만 바뀌어서, 전체 비율이 OPP_LEAP_NCT배가 되게 다시 고름
+      const oppLeapNct = n => prev && prev2 && Math.abs(prev.midi - prev2.midi) >= LEAP && kind(n) !== "ct" &&
+        Math.abs(n.midi - prev.midi) >= 3 && Math.sign(n.midi - prev.midi) === -Math.sign(prev.midi - prev2.midi);
+      if (oppLeapNct(pick) && rnd() >= OPP_LEAP_NCT) {
+        const alt = pool.filter(n => !oppLeapNct(n));
+        pick = weighted(alt, alt.map(wOf), rnd) || pick;
+      }
     }
     out.push({ l: pick.l, a: pick.a, oct: pick.oct, midi: pick.midi });
     const kd = kind(pick);
@@ -286,7 +397,7 @@ export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random, c
     hi = Math.max(hi, pick.midi); lo = Math.min(lo, pick.midi);
   }
   let i = 0;
-  return rhythm.map(x => (x.rest ? x : { ...x, note: out[i++] }));
+  return Object.assign(rhythm.map(x => (x.rest ? x : { ...x, note: out[i++] })), { motifs });
 }
 
 /**
@@ -309,15 +420,16 @@ function directionW(last, next, ct, prevCT) {
 
 /**
  * 받아쓰기 문제 (개연성 높음·중간·낮음): 진행을 만들고 리듬 위에 멜로디. 실패하면 진행부터 다시
- * @returns { tokens, chords, slot, contour: 윤곽 이름 }
+ * @param min  최소 박자 (모티브 단위: 16분 = 한 박, 8분 = 반 마디, 4분 = 안 씀)
+ * @returns { tokens, chords, slot, contour: 윤곽 이름, motifs: 모티브 기록(디버그용) }
  */
-export function dictationOverChords(key, rhythm, bars, chance, chromatic, rnd = Math.random) {
+export function dictationOverChords(key, rhythm, bars, chance, chromatic, rnd = Math.random, min = 2) {
   const per = PER_BAR[chance] || 2, slot = 16 / per;
   const contour = pickContour(key, bars, chance, rnd);
   for (let tries = 0; tries < 60; tries++) {
     const chords = makeProgression(key, per * bars, chromatic, rnd);
-    const tokens = melodyOverChords(key, rhythm, chords, slot, rnd, contour);
-    if (tokens) return { tokens, chords, slot, contour: contour.name };
+    const tokens = melodyOverChords(key, rhythm, chords, slot, rnd, contour, { min, chance });
+    if (tokens) return { tokens, chords, slot, contour: contour.name, motifs: tokens.motifs };
   }
   return null;
 }

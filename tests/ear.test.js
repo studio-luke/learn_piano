@@ -414,3 +414,33 @@ test("ear level 3 harmony: contours pull the melody their way (rising questions 
   }
   assert.ok(diff.asc / n.asc > 2 && diff.desc / n.desc < -2, JSON.stringify({ diff, n }));
 });
+
+test("ear level 3 harmony: pitch motifs — repeated or sequenced from an earlier unit, more with higher chance, no exact repeats at low", () => {
+  const rate = (chance, min) => {
+    let any = 0, exact = 0;
+    for (let i = 0; i < 800; i++) {
+      const d = makeDictation({ root: "C", minor: i % 2 === 1 }, {}, { bars: 2, min, chance });
+      if (d.motifs.length) any++;
+      exact += d.motifs.filter(m => m.includes("=")).length;
+    }
+    return { any, exact };
+  };
+  for (const min of [1, 2]) {
+    const hi = rate("high", min), lo = rate("low", min);
+    assert.ok(hi.any > lo.any * 1.8, JSON.stringify({ min, hi, lo }));
+    assert.strictEqual(lo.exact, 0);
+  }
+  // 최소 4분에는 없음
+  assert.ok(Array.from({ length: 200 }, () => makeDictation({ root: "C", minor: false }, {}, { bars: 2, min: 4, chance: "high" })).every(d => !d.motifs.length));
+  // 동형진행은 같은 자리의 음이 조 안에서 같은 칸 수만큼 옮겨짐 (같은 리듬일 때)
+  for (let i = 0; i < 400; i++) {
+    const d = makeDictation({ root: "C", minor: false }, {}, { bars: 2, min: 1, chance: "high" });
+    for (const m of d.motifs) {
+      const g = /^b(\d)←b(\d) ([+-]\d)$/.exec(m);
+      if (!g) continue;
+      const [u, s, dd] = [g[1] - 1, g[2] - 1, +g[3]];
+      const at = u0 => d.filter(x => !x.rest && Math.floor(x.pos / 4) === u0).map(x => x.note);
+      at(u).forEach((n, j) => assert.strictEqual(n.oct * 7 + n.l - (at(s)[j].oct * 7 + at(s)[j].l), dd, m));
+    }
+  }
+});

@@ -166,6 +166,8 @@ const COPY_SETS = [
 // 마디 안 모티브 반복 (최소 16분, 2026-11-25 사용자 결정): 개연성별 [3박이 1박을 따라 할, 4박이 2박을 따라 할] 확률 —
 // 마디마다 따로 정함. 둘째 마디에서 이미 첫 마디를 따라 하기로 한 박은 그쪽이 먼저
 const INNER16 = { high: [0.35, 0.30], mid: [0.20, 0.15], low: [0.08, 0.06] };
+// 바로 앞 박(1박 전)을 따라 할 확률 — 2박·4박 전을 따라 하지 않는 박에서 낮은 확률로 (2026-11-25 사용자 결정)
+const PREV1_16 = { high: 0.10, mid: 0.06, low: 0.03 };
 // 첫 마디가 박 시작 어택 없이(쉼표로) 시작하면 둘째 마디도 그렇게 시작할 확률 (사용자 결정)
 const REST_START_AGAIN = 0.8;
 
@@ -223,6 +225,11 @@ function pickOnsets16(bars, rnd, chance = "mid") {
     // 같은 마디 앞 반의 같은 자리 박을 따라 함 (모티브 반복) — 규칙에 안 맞으면 새로 고름
     if (!fromBar && inner.has(i)) {
       const s = shapeOf(shapes[i - 2]);
+      if (s && fits(s, i)) { shapes.push(s.at); continue; }
+    }
+    // 바로 앞 박을 따라 함 (낮은 확률)
+    if (!fromBar && !inner.has(i) && i > 0 && rnd() < (PREV1_16[chance] ?? 0)) {
+      const s = shapeOf(shapes[i - 1]);
       if (s && fits(s, i)) { shapes.push(s.at); continue; }
     }
     const strong = i % 2 === 0, prev = shapes[i - 1];
@@ -369,8 +376,8 @@ export function makeDictation(key, opt = {}, { bars = 1, min = 2, chance = "rand
 function dictationOnce(key, opt, bars, min, chance, rnd) {
   const rhythm = generateRhythm(bars, min, rnd, chance);
   if (chance !== "random") {
-    const r = dictationOverChords(key, rhythm, bars, chance, !!opt.chromatic, rnd);
-    if (r) return Object.assign(r.tokens, { chords: r.chords, contour: r.contour });
+    const r = dictationOverChords(key, rhythm, bars, chance, !!opt.chromatic, rnd, min);
+    if (r) return Object.assign(r.tokens, { chords: r.chords, contour: r.contour, motifs: r.motifs });
   }
   const pitches = pickMelody(key, opt, rnd, rhythm.filter(x => !x.rest).length);
   let i = 0;
