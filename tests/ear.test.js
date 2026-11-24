@@ -195,6 +195,42 @@ test("ear level 3: higher melody chance → more common two-beat patterns, fewer
   assert.ok(hi.rare * 2.5 < lo.rare, JSON.stringify({ hi, lo }));
 });
 
+test("ear level 3: 16th minimum limits the kinds of 16th one-beat shapes per question (2 bars: high 3, mid 4 · 1 bar: high 3, mid 3)", () => {
+  const kinds = (bars, chance) => {
+    let most = 0, sum = 0;
+    for (let i = 0; i < 3000; i++) {
+      const at = generateRhythm(bars, 1, Math.random, chance).filter(x => !x.rest).map(x => x.pos), set = new Set();
+      for (let b = 0; b < bars * 4; b++) {
+        const s = at.filter(p => p >= b * 4 && p < b * 4 + 4).map(p => p - b * 4);
+        if (s.some(p => p % 2 === 1)) set.add(s.join(","));
+      }
+      most = Math.max(most, set.size); sum += set.size;
+    }
+    return { most, mean: sum / 3000 };
+  };
+  assert.ok(kinds(2, "high").most <= 3 && kinds(2, "mid").most <= 4);
+  assert.ok(kinds(2, "low").most > 4);
+  const h1 = kinds(1, "high");
+  assert.ok(h1.most <= 3 && h1.mean < 2.15, JSON.stringify(h1));   // 1마디 높음은 평균 2 가까이
+  assert.ok(kinds(1, "mid").most <= 3);
+});
+
+test("ear level 3: in 2-bar 16th questions the second bar copies first-bar beats more with higher melody chance", () => {
+  const stats = chance => {
+    let same = 0, rs = 0, rs2 = 0;
+    for (let i = 0; i < 4000; i++) {
+      const at = generateRhythm(2, 1, Math.random, chance).filter(x => !x.rest).map(x => x.pos);
+      const beat = b => at.filter(p => p >= b * 4 && p < b * 4 + 4).map(p => p - b * 4).join(",");
+      for (let b = 0; b < 4; b++) if (beat(b) === beat(b + 4)) same++;
+      if (!at.includes(0)) { rs++; if (!at.includes(16)) rs2++; }
+    }
+    return { same, again: rs2 / rs };
+  };
+  const hi = stats("high"), lo = stats("low");
+  assert.ok(hi.same > lo.same * 1.5, JSON.stringify({ hi, lo }));
+  assert.ok(Math.abs(hi.again - 0.8) < 0.1 && Math.abs(lo.again - 0.8) < 0.1, JSON.stringify({ hi, lo }));   // 쉼표 시작도 80% 따라 함
+});
+
 test("ear level 3: dictation gives a pitch to every note and none to rests", () => {
   for (let i = 0; i < 300; i++) {
     const d = makeDictation({ root: "G", minor: false }, {}, { bars: 2, min: 1 });
