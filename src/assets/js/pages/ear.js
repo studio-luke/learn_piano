@@ -172,7 +172,7 @@ function listen(parts, required = false) {
   stopListening();
   const tok = listenTok;
   const notes = [], spans = [];   // spans: [{ start, end, text }] 잠그는 구간
-  const dots = [];                // 건반에 점을 찍을 스케일·기준음 (문제 음은 찍지 않음 — 답이 되므로)
+  const dots = [];                // 건반을 칠할 스케일·기준음 (문제 음은 칠하지 않음 — 답이 되므로)
   let at = 0;
   for (const p of parts) {
     const seg = p.kind === "scale" ? scaleNotes(at) : p.kind === "tonic" ? tonicNotes(at) : questionNotes(at);
@@ -185,11 +185,14 @@ function listen(parts, required = false) {
   if (locking) setRef(spans[0].text);   // 소리가 준비되기 전부터 잠금
   Ins.play(inst, notes).then(() => {
     if (tok !== listenTok) return;
-    // 스케일·기준음이 울리는 동안 그 건반에 점 (2026-11-24 사용자 요청 — 필수 재생이든 버튼으로 다시 듣든)
-    for (const n of dots) {
+    // 스케일·기준음이 울리는 동안 그 건반을 파란색으로 (2026-11-24 사용자 요청 — 필수 재생이든 버튼으로 다시 듣든)
+    // 스케일 음은 소리가 살짝 겹치므로(다음 음 시작 뒤 0.05초) 색은 다음 음이 시작될 때 넘겨줌 — 두 건반이 함께 칠해지지 않게
+    dots.forEach((n, i) => {
+      const next = dots[i + 1];
+      const off = next && next.at < n.at + n.dur ? next.at : n.at + n.dur;
       timers.push(setTimeout(() => tok === listenTok && refKey(n.m, true), n.at * 1000));
-      timers.push(setTimeout(() => tok === listenTok && refKey(n.m, false), (n.at + n.dur) * 1000));
-    }
+      timers.push(setTimeout(() => tok === listenTok && refKey(n.m, false), off * 1000 - 5));
+    });
     if (!locking) return;
     spans.forEach((sp, i) => {
       if (i) timers.push(setTimeout(() => tok === listenTok && setRef(sp.text), sp.start * 1000));

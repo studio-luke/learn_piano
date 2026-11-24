@@ -70,8 +70,8 @@ export function markKeys(marks = new Map()) {
 }
 
 /**
- * 스케일·기준음이 울리는 동안 그 건반에 점 (정답 표시와 다른 색 — ear.css .key.ref).
- * @param m   MIDI 번호 (범위 밖이면 아무것도 안 함), null이면 모든 건반의 점을 지움
+ * 스케일·기준음이 울리는 동안 그 건반 전체를 파란색으로 (정답 표시와 다른 색 — ear.css .key.ref).
+ * @param m   MIDI 번호 (범위 밖이면 아무것도 안 함), null이면 모든 건반의 색을 지움
  */
 export function refKey(m, on) {
   if (m === null) { for (const el of keyEls.values()) el.classList.remove("ref"); return; }

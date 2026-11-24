@@ -50,6 +50,8 @@
 /* 문제 다시 듣기: 안내 문구와 오선지 사이 가운데의 큰 동그란 재생 버튼 */
 .ear-replay { align-self: center; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.15), var(--card-shadow); cursor: pointer; transition: transform 80ms, filter 80ms; }
 .ear-replay[hidden] { display: none; }
+.ear-start { align-self: center; font-size: 16px; padding: 12px 28px; }   /* 시작 전: 재생 버튼 자리에 [▶ 시작] */
+.ear-start[hidden] { display: none; }
 .ear-replay:hover { filter: brightness(1.06); }
 .ear-replay:active { transform: scale(0.95); }
 .ear-replay svg { width: 34px; height: 34px; fill: currentColor; margin-left: 3px; }   /* 삼각형은 무게중심이 왼쪽이라 살짝 오른쪽으로 */
@@ -65,21 +67,30 @@
 .ear-staff .good { fill: var(--ok); stroke: var(--ok); }
 .ear-staff .bad { fill: var(--warn); stroke: var(--warn); }
 .ear-staff .ghost { fill: var(--muted); stroke: var(--muted); opacity: 0.45; }
-.ear-accs { display: flex; gap: 4px; }
+.ear-accs { display: flex; align-items: center; gap: 4px; }
+.ear-acc-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
 .ear-acc { min-width: 40px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 10px; font-size: 15px; }
 .ear-acc#accKey { font-size: 13px; }
 .ear-acc[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 
 /* ---------- 건반: 오답 표시 (정답 초록은 practice.css .key.sel.good) ---------- */
-/* 스케일·기준음이 울리는 동안 그 건반에 점 — 정답 점(초록, .ans)과 다른 색 --ref (pages/ear.js listen) */
-.key.ref::after { content: ""; position: absolute; left: 50%; bottom: 26px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--ref); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ref) 30%, transparent); }
-.key.black.ref::after { bottom: 18px; width: 9px; height: 9px; margin-left: -4.5px; }
+/* 스케일·기준음이 울리는 동안 그 건반 전체를 --ref 색으로 — 정답 초록과 구분 (pages/ear.js listen, 2026-11-24 사용자 요청: 점 대신 건반 전체) */
+.key.ref.white { background: var(--ref); border-color: color-mix(in srgb, var(--ref) 60%, #000); color: #fff; }
+.key.ref.black { background: color-mix(in srgb, var(--ref) 80%, #000); }
 .key.sel.bad.white { background: var(--warn); color: #fff; border-color: color-mix(in srgb, var(--warn) 55%, #000); }
 .key.sel.bad.black { background: color-mix(in srgb, var(--warn) 75%, #000); }
 .ear-kb { cursor: pointer; }
+/* 색이 바로 바뀌게 (practice.css .key의 0.06초 색 전환을 끔) — 울리는 건반이 흰색을 거쳐 파랗게 되며 번쩍이지 않게 (2026-11-24) */
+.ear-kb .key { transition: none; }
 
 /* 기준(스케일·기준음)을 들려주는 동안: 건반·오선지·변화표 버튼을 회색으로, 누를 수 없게 (pages/ear.js setRef) */
-.ear-kb.locked, .ear-staff.locked, .ear-accs.locked { filter: grayscale(1); opacity: 0.4; pointer-events: none; transition: opacity 120ms; }
+.ear-staff.locked, .ear-accs.locked { filter: grayscale(1); opacity: 0.4; pointer-events: none; transition: opacity 120ms; }
+/* 건반은 묶음 전체가 아니라 건반마다 회색으로 — 지금 울리는 건반(.ref)은 색을 그대로 둬서 잘 보이게 (2026-11-24 사용자 요청).
+   투명하게(opacity) 하면 뒤의 흰 건반이 검은 건반을 비쳐 보여서, 투명도 없이 회색·어둡게만 */
+.ear-kb.locked { pointer-events: none; }
+/* 전환 효과(transition)는 넣지 않음: 울리던 건반이 다음 건반에 색을 넘길 때, 바탕은 바로 흰색이 되는데 회색은 천천히 덮여서
+   건반이 하얗게 번쩍였음 (2026-11-24) */
+.ear-kb.locked .key:not(.ref) { filter: grayscale(1) brightness(0.55); }
 
 /* ---------- 출제 설정의 조성 고르기 (코드 초견 improv.css .key-pick과 같은 모양) ---------- */
 .key-pick { display: flex; align-items: center; gap: 8px; }

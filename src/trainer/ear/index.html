@@ -59,19 +59,19 @@
 
         <!-- 단음 ① 음 하나 -->
         <div class="ear-panel" id="panelNote1">
-          <!-- 둘째 줄: 왼쪽 [▶ 시작](시작 전만) + 안내 문구, 오른쪽 기준 듣기 버튼 (2026-11-24 사용자 요청 — 줄 공간을 아끼려고)
+          <!-- 둘째 줄: 왼쪽 안내 문구, 오른쪽 기준 듣기 버튼 (2026-11-24 사용자 요청 — 줄 공간을 아끼려고)
                안내 문구: 필수 재생(새 문제 앞의 스케일·기준음) 중에는 "… 재생 중이에요." + [생략하기] (pages/ear.js)
                기준 듣기: 한 자리에 [🚩 기준음 듣기], 그 문제를 틀리면 [🎹 스케일 들어보기]로 바뀜 -->
           <div class="ear-listen">
             <div class="ear-listen-main">
-              <button class="btn primary" id="btnStart" type="button" data-i18n="earStart">▶ 시작</button>
               <p class="ear-hint" id="earHint"><span id="earHintText" data-i18n="earN1Intro">시작을 누르면 스케일을 들려준 뒤 문제를 내요.</span> <button class="linkbtn ear-skip" id="btnSkip" type="button" hidden data-i18n="earSkip">생략하기</button></p>
             </div>
             <button class="btn" id="btnTonic" type="button" hidden data-i18n="earTonic">🚩 기준음 듣기</button>
             <button class="btn" id="btnScale" type="button" hidden data-i18n="earScale">🎹 스케일 들어보기</button>
           </div>
 
-          <!-- 문제 다시 듣기: 안내 문구와 오선지 사이 가운데에 큰 재생(▶) 버튼 (2026-11-24 사용자 요청). 단축키 Space -->
+          <!-- 안내 문구와 오선지 사이 가운데: 시작 전에는 [▶ 시작], 그다음엔 문제 다시 듣기 큰 재생(▶) 버튼(단축키 Space) (2026-11-24 사용자 요청) -->
+          <button class="btn primary ear-start" id="btnStart" type="button" data-i18n="earStart">▶ 시작</button>
           <button class="ear-replay" id="btnReplay" type="button" hidden aria-label="문제 다시 듣기" data-i18n-aria="earReplay" data-i18n-title="earReplay" title="문제 다시 듣기">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
           </button>
@@ -79,11 +79,13 @@
           <!-- 오선지: 줄·칸을 눌러 음 고르기. 변화표는 아래 버튼으로 (ear/staff.js) -->
           <div class="ear-staff-wrap">
             <div class="ear-staff" id="earStaff" role="img" aria-label="오선지 — 눌러서 음 고르기" data-i18n-aria="earStaffAria"></div>
-            <div class="ear-accs" role="radiogroup" aria-label="변화표" data-i18n-aria="earAccAria">
-              <button type="button" class="ear-acc" id="accKey" data-acc="key" aria-pressed="true" data-i18n="earAccKey">조표대로</button>
+            <!-- 임시표: [♯][♮][♭][해제] — 고른 것으로 한 번 들어가고 해제(조표대로)로 돌아감 (2026-11-24 사용자 요청: 해제는 맨 오른쪽) -->
+            <div class="ear-accs" role="radiogroup" aria-labelledby="earAccLabel">
+              <span class="ear-acc-label" id="earAccLabel" data-i18n="earAccLabel">임시표:</span>
               <button type="button" class="ear-acc" id="accSharp" data-acc="1" aria-pressed="false">♯</button>
               <button type="button" class="ear-acc" id="accNat" data-acc="0" aria-pressed="false">♮</button>
               <button type="button" class="ear-acc" id="accFlat" data-acc="-1" aria-pressed="false">♭</button>
+              <button type="button" class="ear-acc" id="accKey" data-acc="key" aria-pressed="true" data-i18n="earAccKey">해제</button>
             </div>
           </div>
 
