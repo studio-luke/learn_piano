@@ -348,7 +348,15 @@ function setAcc(v) {
 }
 for (const b of document.querySelectorAll(".ear-acc")) b.onclick = () => setAcc(b.dataset.acc === "key" ? "key" : (acc === +b.dataset.acc ? "key" : +b.dataset.acc));
 
-$("btnStart").onclick = () => newQuestion(true);
+$("btnStart").onclick = () => {
+  newQuestion(true);
+  // 폰: 시작하면 카드 위쪽이 화면 맨 위에 닿게 부드럽게 내림 — 갈래·단계 막대는 위로 밀려나고 건반·버튼이 한 화면에
+  // 들어오게 (2026-11-24 사용자 요청). 컴퓨터는 화면이 넉넉해서 그대로
+  if (!IS_PC) {
+    const top = document.querySelector(".ear-card").getBoundingClientRect().top + window.scrollY - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  }
+};
 $("btnReplay").onclick = () => listen([{ kind: "question" }]);
 $("btnTonic").onclick = () => listen([{ kind: "tonic" }]);
 $("btnScale").onclick = () => listen([{ kind: "scale" }]);
