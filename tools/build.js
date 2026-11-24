@@ -44,6 +44,7 @@ export const PAGES = [
   { src: "trainer/chords/index.html", route: "trainer/chords/", title: "seoTrainerTitle", desc: "seoTrainerDesc" },
   { src: "trainer/chords-name/index.html", route: "trainer/chords-name/", title: "seoNameTitle", desc: "seoNameDesc" },
   { src: "trainer/chord-improv/index.html", route: "trainer/chord-improv/", title: "seoImprovTitle", desc: "seoImprovDesc" },
+  { src: "trainer/ear/index.html", route: "trainer/ear/", title: "seoEarTitle", desc: "seoEarDesc" },
   { src: "about.html", route: "about", title: "seoAboutTitle", desc: "seoAboutDesc" },
 ];
 

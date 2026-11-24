@@ -24,6 +24,7 @@ npm run audit      # 폰 화면 레이아웃 검사 (처음 한 번: npm i && np
 | `/ko/about` … | `about.html` | About Us — 서비스 소개와 문의 연락처 (언어별) |
 | `/ko/trainer/chords/` … | `trainer/chords/index.html` | 랜덤 코드 연습(코드 트레이너). 누구나 사용, 로그인하면 기록 저장 (언어별) |
 | `/ko/trainer/chord-improv/` … | `trainer/chord-improv/index.html` | 코드 초견 — 메트로놈에 맞춰 나오는 코드를 보고 연주. 탭 [무작위 코드 \| 8마디 코드진행(`?mode=prog`)] (언어별, 만드는 중) |
+| `/ko/trainer/ear/` … | `trainer/ear/index.html` | 청음 연습 — 단음·코드 갈래 × 단계, 악기 음색 선택 (언어별, 만드는 중 — 단음 ① 음 하나) |
 | `/`, `/about`, `/trainer/chords/` | (빌드가 만듦) | 언어 고르는 입구 — 저장된 언어 → 브라우저 언어 → 영어 순으로 위 언어별 주소로 넘겨줌 (예전에 공유한 링크도 계속 동작) |
 | `/mypage` | `mypage.html` | 마이페이지 — 내 연습 통계, 틀린 문제 다시 풀기 (로그인한 회원) |
 | `/teacher/` | `teacher/index.html` | 선생님 — 학생 목록 (관리자만) |
@@ -44,11 +45,13 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
   index.html                홈            ┐ 빌드가 언어별로 만듦 (dist/ko/, dist/en/ …)
   about.html                About Us      │ 원래 자리에는 언어 고르는 입구
   trainer/chords/index.html 랜덤 코드 연습 │
-  trainer/chord-improv/index.html 코드 초견 ┘
+  trainer/chord-improv/index.html 코드 초견 │
+  trainer/ear/index.html    청음 연습     ┘
   mypage.html               마이페이지
   teacher/index.html, student.html   선생님 — 학생 목록·학생 기록
   terms.html  privacy.html  이용약관·개인정보처리방침
   favicon.svg  favicon-32.png  apple-touch-icon.png   파비콘 (오븐 창 속 8분음표. svg가 원본)
+  assets/sounds/choir/ epiano/ guitar/ strings/   청음 연습의 악기 녹음 (FluidR3 GM, 악기마다 22개 — 그 악기를 고를 때만 받음)
   assets/sounds/piano/   피아노 녹음 30개 (C·D♯·F♯·A, A0~C8 — practice/audio.js가 재생. C3~D♯6 14개는 바로, 나머지 16개는 MIDI 건반을 쓸 때만 받음)
   assets/css/
     base.css        공통: 색·글꼴 토큰(테마, 다크 모드), 머리글·바닥글, ☰ 왼쪽 메뉴, 도움말(?), 버튼·체크박스·알림
@@ -65,6 +68,8 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     core/naming.js          코드 추론하기 엔진: 보이싱(자리바꿈)·코드 이름 읽기·복수 정답 (순수 함수)
     naming/settings.js keys.js keypad.js staff.js quiz.js   코드 추론하기의 출제 설정·건반(보기만)·코드 입력 키패드·오선지 악보(SVG)·문제 흐름(기록·타이머·다시 풀기)
     pages/naming.js         코드 추론하기 페이지 (trainer/chords-name/)
+    pages/ear.js            청음 연습 페이지 (trainer/ear/, 모양은 css/ear.css)
+    ear/theory.js instruments.js keys.js staff.js   청음 연습의 조성·출제·채점(순수 함수)·연주 악기(피아노 외 FluidR3 GM)·답 고르는 건반(G3~G5)·눌러서 음을 고르는 오선지
     pages/improv.js         코드 초견 페이지 (trainer/chord-improv/, 모양은 css/improv.css)
     improv/metronome.js keys.js   코드 초견의 메트로놈(박을 소리 장치 시계에 미리 예약, 카운트인)·88건반(누르는 동안만 선택, 컴퓨터만)
     improv/random.js settings.js timing.js slash.js   코드 초견의 무작위 코드 모드(이전·현재·다음 코드)·출제 설정·마디수 계산·분수코드 출제
@@ -161,11 +166,13 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - [ ] 각 코드별 설명 페이지
 - [ ] 화성학 이론 학습 페이지
 - [ ] 코드 진행 만들기 실습 페이지 (키를 선택하면 쓸 수 있는 코드 목록 보여주고(다이아토닉, 세컨더리 도미넌트 등 분리) 고르기, 코드 당 1~4박 여부에 따라 조정 가능하게 해야함)
+- [ ] 청음 연습 페이지 (`/trainer/ear/`, 만드는 중 — 단음 ① 음 하나 완료): 단음 ①~④ · 코드 ①~⑤, 악기 음색 선택(피아노·사람 목소리·EP·기타·현악기). 나중에 아르페지오·밴드 합주 등 연주 방식, 기록·통계
 - [ ] '내 음악 실력 테스트' 페이지
 
 ## 사용한 자료
 
 - 피아노 소리: [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) — Alexander Holm, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 단3도마다 30개 음(A0~C8)을 mp3로 사용(Tone.js가 배포하는 변환본)
+- 그 밖의 악기 소리(청음 연습): FluidR3 GM — [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), [gleitz/midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts)의 음마다 mp3 변환본. Choir Aahs·Electric Piano 1·Acoustic Guitar (nylon)·String Ensemble 1을 단3도마다 22개 음(A1~C7)씩 사용
 
 ## 문의
 

@@ -1,0 +1,117 @@
+<!doctype html>
+<!-- ===== 청음 연습 — 주소 /trainer/ear/ =====
+     들려주는 음·멜로디·코드를 듣고 맞히는 연습. 맨 위 갈래 전환 [단음 | 코드] + 단계 막대,
+     고른 단계는 주소 ?mode=note1 … chord5로 남김(pages/ear.js). 지금은 단음 ①만 만들었고 나머지 단계는 "준비 중".
+     화면 구성: 머리글(공통) · 갈래·단계 · 연습 카드(듣기 버튼 · 악보 · 건반 · 결과) · 출제 설정 · 바닥글(공통).
+     건반 모양은 랜덤 코드 연습의 practice.css(.keyboard/.key)를 그대로 쓰고, 이 페이지만의 모양은 ear.css.
+     규칙은 chordoven-spec.md "청음 연습". -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="스케일을 듣고 음을 맞히는 청음 연습. 단음·코드 청음을 단계별로, 피아노·목소리·EP·기타·현악기 음색으로.">
+<title>청음 연습 · ChordOven</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#F5ECDD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1E1612" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Music&display=swap">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/account.css">
+<link rel="stylesheet" href="/assets/css/practice.css">
+<link rel="stylesheet" href="/assets/css/ear.css">
+<script type="module" src="/assets/js/pages/ear.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="top" id="siteHeader"></header>
+
+  <main class="ear">
+    <!-- 갈래 전환: 단음 / 코드 — 누르면 그 갈래의 마지막 단계(처음이면 ①)로 (pages/ear.js) -->
+    <div class="ear-tracks" role="tablist" aria-label="연습 갈래" data-i18n-aria="earTracksAria">
+      <button type="button" role="tab" class="ear-track" id="trackNote" data-track="note" aria-selected="true" data-i18n="earTrackNote">단음</button>
+      <button type="button" role="tab" class="ear-track" id="trackChord" data-track="chord" aria-selected="false" data-i18n="earTrackChord">코드</button>
+    </div>
+
+    <!-- 단계 막대: 번호 + 짧은 이름, 아래에 고른 단계의 한 줄 설명. 폰에서는 가로 스크롤 (ear.css) -->
+    <nav class="ear-levels" id="earLevels" aria-label="단계" data-i18n-aria="earLevelsAria"></nav>
+    <p class="ear-level-desc" id="earLevelDesc"></p>
+
+    <div class="ear-layout">
+      <section class="ear-card" aria-label="연습" data-i18n-aria="deskAria">
+        <!-- 오른쪽 위: 연주 악기 (모든 단계 공통, 기기에 저장 — ear/instruments.js) -->
+        <div class="ear-tools">
+          <label class="ear-inst"><span data-i18n="earInstrument">악기</span> <select id="earInst"></select></label>
+        </div>
+
+        <!-- 아직 만들지 않은 단계 -->
+        <div class="ear-soon" id="earSoon" hidden>
+          <p data-i18n="earSoonText">이 단계는 준비 중이에요.</p>
+        </div>
+
+        <!-- 단음 ① 음 하나 -->
+        <div class="ear-panel" id="panelNote1">
+          <!-- 지금 조 + [다른 조로 바꾸기] — 조를 바꾸면 스케일을 다시 들려줌 -->
+          <div class="ear-key-row">
+            <span class="ear-key-now"><span data-i18n="earKeyNow">조</span> <b id="earKeyName">C Major</b></span>
+            <button class="linkbtn" id="earOtherKey" type="button" data-i18n="earOtherKey">다른 조로 바꾸기</button>
+          </div>
+
+          <!-- 기준 듣기: 한 자리에 [🚩 기준음 듣기], 그 문제를 틀리면 [🎹 스케일 들어보기]로 바뀜 (2026-11-24 사용자 결정) -->
+          <div class="ear-listen">
+            <button class="btn primary" id="btnStart" type="button" data-i18n="earStart">▶ 시작</button>
+            <button class="btn" id="btnTonic" type="button" hidden data-i18n="earTonic">🚩 기준음 듣기</button>
+            <button class="btn" id="btnScale" type="button" hidden data-i18n="earScale">🎹 스케일 들어보기</button>
+          </div>
+          <p class="ear-hint" id="earHint" data-i18n="earN1Intro">시작을 누르면 스케일을 들려준 뒤 문제를 내요.</p>
+
+          <!-- 문제 다시 듣기: 안내 문구와 오선지 사이 가운데에 큰 재생(▶) 버튼 (2026-11-24 사용자 요청). 단축키 Space -->
+          <button class="ear-replay" id="btnReplay" type="button" hidden aria-label="문제 다시 듣기" data-i18n-aria="earReplay" data-i18n-title="earReplay" title="문제 다시 듣기">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+          </button>
+
+          <!-- 오선지: 줄·칸을 눌러 음 고르기. 변화표는 아래 버튼으로 (ear/staff.js) -->
+          <div class="ear-staff-wrap">
+            <div class="ear-staff" id="earStaff" role="img" aria-label="오선지 — 눌러서 음 고르기" data-i18n-aria="earStaffAria"></div>
+            <div class="ear-accs" role="radiogroup" aria-label="변화표" data-i18n-aria="earAccAria">
+              <button type="button" class="ear-acc" id="accKey" data-acc="key" aria-pressed="true" data-i18n="earAccKey">조표대로</button>
+              <button type="button" class="ear-acc" id="accSharp" data-acc="1" aria-pressed="false">♯</button>
+              <button type="button" class="ear-acc" id="accNat" data-acc="0" aria-pressed="false">♮</button>
+              <button type="button" class="ear-acc" id="accFlat" data-acc="-1" aria-pressed="false">♭</button>
+            </div>
+          </div>
+
+          <div class="keyboard ear-kb" id="keyboard" role="img" aria-label="피아노 건반 (G3–G5)" data-i18n-aria="earKbAria"></div>
+
+          <div class="feedback" id="earFeedback" role="status" aria-live="polite"></div>
+          <div class="ear-actions">
+            <button class="btn" id="btnReveal" type="button" disabled data-i18n="reveal">정답 확인🥲</button>
+            <button class="btn next" id="btnNext" type="button" disabled data-i18n="next">다음 문제 →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 단음 갈래의 출제 설정 (단계끼리 같이 씀, 기기에 저장 — pages/ear.js) -->
+      <aside class="sheet" id="sheetNote" aria-label="출제 설정" data-i18n-aria="settings">
+        <div class="sheet-head"><h2 data-i18n="settings">출제 설정</h2></div>
+        <div class="opt">
+          <h3 data-i18n="earKeyH">조성</h3>
+          <div class="key-pick">
+            <select id="earRoot" aria-label="으뜸음" data-i18n-aria="earRootAria"></select>
+            <button class="mode-btn" id="earMode" type="button" aria-label="Major / minor">Major</button>
+          </div>
+        </div>
+        <div class="opt">
+          <label class="check"><input type="checkbox" id="earChrom"><span><span data-i18n="earChrom">조 밖의 음 포함</span><small data-i18n="earChromSub">반음계의 모든 음</small></span></label>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="contact" id="siteFooter"></footer>
+</div>
+</body>
+</html>

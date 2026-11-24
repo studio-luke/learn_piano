@@ -1,0 +1,81 @@
+/* ===== 청음 연습 (trainer/ear/) =====
+   건반(.keyboard/.key)·출제 설정(.sheet)·버튼은 practice.css·base.css 것을 그대로 쓰고, 이 페이지만의 모양만 여기에.
+   색은 base.css의 토큰만 씀 (다크 모드 자동). */
+
+.ear { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------- 갈래 전환 [단음 | 코드] (코드 초견 탭과 같은 모양) ---------- */
+.ear-tracks { display: flex; gap: 4px; padding: 4px; background: var(--sunken); border-radius: 12px; width: max-content; max-width: 100%; }
+.ear-track { border: none; background: none; color: var(--muted); font-size: 14px; font-weight: 600; padding: 8px 20px; border-radius: 9px; white-space: nowrap; }
+.ear-track:hover { color: var(--ink); }
+.ear-track[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40,20,10,.15); }
+
+/* ---------- 단계 막대: 번호 동그라미 + 짧은 이름. 넘치면 가로 스크롤 ---------- */
+.ear-levels { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.ear-level { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 14px; font-weight: 500; text-decoration: none; }
+.ear-level:hover { background: var(--sunken); }
+.ear-level .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--sunken); font-size: 13px; font-weight: 700; }
+.ear-level[aria-current="step"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+.ear-level[aria-current="step"] .num { background: var(--accent); color: var(--accent-ink); }
+.ear-level.soon { color: var(--muted); }
+.ear-level .tag { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
+.ear-level .tag.hard { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.ear-level-desc { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* ---------- 연습 카드 + 출제 설정 (넓은 화면 2단, 좁으면 1단) ---------- */
+.ear-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .ear-layout { grid-template-columns: minmax(0, 1fr); } }
+.ear-layout.no-sheet { grid-template-columns: minmax(0, 1fr); }
+.ear-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ear-panel { display: flex; flex-direction: column; gap: 14px; }
+.ear-panel[hidden], .ear-soon[hidden] { display: none; }
+.ear-soon { padding: 40px 0; text-align: center; color: var(--muted); }
+
+.ear-tools { display: flex; justify-content: flex-end; }
+.ear-inst { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.ear-inst select { font-size: 14px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+
+.ear-key-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ear-key-now { font-size: 15px; color: var(--muted); }
+.ear-key-now b { color: var(--ink); font-size: 18px; }
+
+.ear-listen { display: flex; gap: 8px; flex-wrap: wrap; }
+.ear-hint { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* 문제 다시 듣기: 안내 문구와 오선지 사이 가운데의 큰 동그란 재생 버튼 */
+.ear-replay { align-self: center; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.15), var(--card-shadow); cursor: pointer; transition: transform 80ms, filter 80ms; }
+.ear-replay[hidden] { display: none; }
+.ear-replay:hover { filter: brightness(1.06); }
+.ear-replay:active { transform: scale(0.95); }
+.ear-replay svg { width: 34px; height: 34px; fill: currentColor; margin-left: 3px; }   /* 삼각형은 무게중심이 왼쪽이라 살짝 오른쪽으로 */
+
+/* ---------- 오선지 + 변화표 고르기 ---------- */
+.ear-staff-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.ear-staff svg { height: clamp(130px, 18vw, 170px); width: auto; display: block; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+.ear-staff .st-hit { fill: transparent; }
+.ear-staff .st-line, .ear-staff .st-ledger { stroke: currentColor; stroke-width: 1; }
+.ear-staff .st-ledger { stroke-width: 1.2; }
+.ear-staff .st-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 40px; fill: currentColor; }
+.ear-staff .st-acc, .ear-staff .st-head { fill: currentColor; }
+.ear-staff .good { fill: var(--ok); stroke: var(--ok); }
+.ear-staff .bad { fill: var(--warn); stroke: var(--warn); }
+.ear-staff .ghost { fill: var(--muted); stroke: var(--muted); opacity: 0.45; }
+.ear-accs { display: flex; gap: 4px; }
+.ear-acc { min-width: 40px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 10px; font-size: 15px; }
+.ear-acc#accKey { font-size: 13px; }
+.ear-acc[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+
+/* ---------- 건반: 오답 표시 (정답 초록은 practice.css .key.sel.good) ---------- */
+.key.sel.bad.white { background: var(--warn); color: #fff; border-color: color-mix(in srgb, var(--warn) 55%, #000); }
+.key.sel.bad.black { background: color-mix(in srgb, var(--warn) 75%, #000); }
+.ear-kb { cursor: pointer; }
+
+/* 기준(스케일·기준음)을 들려주는 동안: 건반·오선지·변화표 버튼을 회색으로, 누를 수 없게 (pages/ear.js setRef) */
+.ear-kb.locked, .ear-staff.locked, .ear-accs.locked { filter: grayscale(1); opacity: 0.4; pointer-events: none; transition: opacity 120ms; }
+
+/* ---------- 출제 설정의 조성 고르기 (코드 초견 improv.css .key-pick과 같은 모양) ---------- */
+.key-pick { display: flex; align-items: center; gap: 8px; }
+.key-pick select, .mode-btn { font-size: 15px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); cursor: pointer; }
+.mode-btn { min-width: 76px; font-weight: 600; }
+
+.ear-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

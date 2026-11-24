@@ -8,6 +8,7 @@
 // 오선 간격은 아래 SP(그림 단위) 하나로 정하고, 화면에서의 크기는 naming.css의 --staff-h(악보 높이)로 정해요.
 // → 악보를 키우거나 줄이려면 --staff-h만 바꾸면 됨.
 // 위치 계산(layout)은 화면 없이 테스트할 수 있게 따로 내보내요 (tests/naming.test.js).
+// 임시표·음표 머리 도형(ACC_PATH, headPath)은 청음 연습의 악보(ear/staff.js)도 함께 써요 (2026-11-24).
 import { $ } from "../common/dom.js";
 
 const SP = 10;                 // 오선 간격 (그림 단위)
@@ -80,7 +81,7 @@ const SHARP = poly([[-2.4, -12], [-1.3, -12], [-1.3, 11], [-2.4, 11]]) + poly([[
 const FLAT = poly([[-3.4, -14], [-2.3, -14], [-2.3, 5], [-3.4, 5]])
   + "M-2.3,-0.6C-0.4,-4.6 5.4,-4.4 3.9,0C3,2.5 0.4,3.9 -2.3,5.2L-2.3,3.4C-0.4,2.3 2,0.6 2.1,-0.9C2.3,-2.6 -0.5,-2.3 -2.3,0.6Z";
 const DSHARP = poly([[-3.6, -3.6], [-1, -3.6], [0, -1.4], [1, -3.6], [3.6, -3.6], [3.6, -1], [1.4, 0], [3.6, 1], [3.6, 3.6], [1, 3.6], [0, 1.4], [-1, 3.6], [-3.6, 3.6], [-3.6, 1], [-1.4, 0], [-3.6, -1]]);
-const ACC_PATH = { "1": SHARP, "-1": FLAT, "2": DSHARP, "-2": at(FLAT, -3.85) + at(FLAT, 3.35) };   // 𝄫: 첫 플랫의 오른쪽 끝에 둘째 플랫의 기둥이 닿게
+export const ACC_PATH = { "1": SHARP, "-1": FLAT, "2": DSHARP, "-2": at(FLAT, -3.85) + at(FLAT, 3.35) };   // 𝄫: 첫 플랫의 오른쪽 끝에 둘째 플랫의 기둥이 닿게
 
 // 온음표 머리: 비스듬한 타원 안에 반대로 기운 빈 타원 (fill-rule evenodd로 가운데를 비움)
 function ellipse(cx, cy, rx, ry, deg, steps = 28) {
@@ -91,7 +92,7 @@ function ellipse(cx, cy, rx, ry, deg, steps = 28) {
   }
   return "M" + pts.join("L") + "Z";
 }
-const headPath = (x, y) => ellipse(x, y, HEAD_RX, 4.6, -12) + ellipse(x, y, 3.5, 2.4, 55);
+export const headPath = (x, y) => ellipse(x, y, HEAD_RX, 4.6, -12) + ellipse(x, y, 3.5, 2.4, 55);
 
 /**
  * 악보 그리기.
