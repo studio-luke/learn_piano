@@ -22,6 +22,8 @@ import * as Ins from "../ear/instruments.js";
 import { Midi } from "../input/midi.js";
 import { initKeys, markKeys, refKey, setKeyLabels } from "../ear/keys.js";
 import { initStaff, setSignature, showNotes, setSlots, setAnswerSlot, setGhostEnabled } from "../ear/staff.js";
+import { renderScore } from "../ear/score.js";
+import { makeDictation } from "../ear/rhythm.js";
 import { KEY_ROOTS, LOW, HIGH, signature, scaleMidis, pickNote, pickMelody, judgeNote, spellMidi, midiOf, sigAcc, fullName, otherKey, sameRoot } from "../ear/theory.js";
 
 startPage({ title: "navEar" });
@@ -32,7 +34,7 @@ startPage({ title: "navEar" });
 const LEVELS = [
   { mode: "note1", track: "note", num: "1", key: "earN1", ready: true },
   { mode: "note2", track: "note", num: "2", key: "earN2", ready: true },
-  { mode: "note3", track: "note", num: "3", key: "earN3" },
+  { mode: "note3", track: "note", num: "3", key: "earN3", ready: true },   // 만드는 중 (2단계: 악보 미리보기)
   { mode: "chord1", track: "chord", num: "1", key: "earC1" },
   { mode: "chord2", track: "chord", num: "2", key: "earC2" },
   { mode: "chord3", track: "chord", num: "3", key: "earC3" },
@@ -76,7 +78,8 @@ function renderLevels() {
   levelArrows();
   // 패널: 만든 단계만 내용, 나머지는 "준비 중"
   $("panelNote").hidden = !isNoteMode();
-  $("earKeyRow").hidden = !isNoteMode();   // 맨 윗줄의 조 표시는 단음 단계만
+  $("panelNote3").hidden = mode !== "note3";
+  $("earKeyRow").hidden = lv.track !== "note";   // 맨 윗줄의 조 표시는 단음 단계만
   $("earSoon").hidden = lv.ready;
   $("sheetNote").hidden = lv.track !== "note" || !lv.ready;
   document.querySelector(".ear-layout").classList.toggle("no-sheet", $("sheetNote").hidden);
@@ -89,6 +92,7 @@ function goMode(m) {
   setModeInUrl(m);
   renderLevels();
   S = loadS(); renderSettings();   // 출제 설정은 레벨마다 따로
+  n3Sample();
   resetNote();   // 단계를 바꾸면 시작 전으로 ([▶ 시작]부터)
 }
 $("earLevels").addEventListener("click", e => {
@@ -158,8 +162,9 @@ Ins.load(inst);   // 고른 악기 녹음은 페이지를 열 때 받기 시작 
 // ---------- 단음 출제 설정 — 레벨마다 따로 기억 (기기에 저장: chordoven.ear.<mode>.v1, 2026-11-24 사용자 결정) ----------
 //   root·minor 조성, chromatic 조 밖의 음 포함, tonicEach 문제마다 기준음 재생(처음 켜짐),
 //   speed 멜로디 재생 속도 0 느리게·1 보통·2 빠르게·3 매우 빠르게, count 맞힐 음 개수 1·2 (speed·count는 단음 ②만)
+//   min 최소 박자 4·2·1(4분·8분·16분, 처음 8분), bars 마디 수 1·2 (min·bars는 단음 ③만)
 // 예전에 단음 단계끼리 같이 쓰던 값(chordoven.earNote.v1)이 있으면 그 레벨을 처음 열 때 시작값으로 씀
-const S_DEFAULTS = { root: "C", minor: false, chromatic: false, tonicEach: true, speed: 1, count: 1 };
+const S_DEFAULTS = { root: "C", minor: false, chromatic: false, tonicEach: true, speed: 1, count: 1, min: 2, bars: 1 };
 let S = loadS();
 function loadS() {
   const s = Object.assign({}, S_DEFAULTS, store.getJSON("earNote.v1") || {}, store.getJSON(`ear.${mode}.v1`) || {});
@@ -182,6 +187,13 @@ function renderSettings() {
   $("earSpeed").style.setProperty("--p", (S.speed / 3 * 100) + "%");   // 슬라이더에서 손잡이 왼쪽을 칠함
   [...$("earSpeedLabels").children].forEach((el, i) => el.classList.toggle("on", i === S.speed));
   $("earCount1").checked = S.count === 1; $("earCount2").checked = S.count === 2;
+  // 단음 ③만: 최소 박자(슬라이더 0·1·2 = 4분·8분·16분)·마디 수
+  $("earRhythmOpts").hidden = mode !== "note3";
+  const mi = [4, 2, 1].indexOf(S.min);
+  $("earMin").value = mi;
+  $("earMin").style.setProperty("--p", (mi / 2 * 100) + "%");
+  [...$("earMinLabels").children].forEach((el, i) => el.classList.toggle("on", i === mi));
+  $("earBars1").checked = S.bars === 1; $("earBars2").checked = S.bars === 2;
   $("earKeyName").textContent = keyLabel();
   setSignature(signature(key()));
 }
@@ -189,6 +201,7 @@ function renderSettings() {
 function keyChanged() {
   saveS();
   renderSettings();
+  n3Sample();
   if (N.phase !== "idle") newQuestion(true);
 }
 $("earRoot").onchange = e => { S.root = e.target.value; keyChanged(); };
@@ -203,6 +216,21 @@ const setSpeed = v => { S.speed = v; saveS(); renderSettings(); };
 $("earSpeed").oninput = e => setSpeed(+e.target.value);
 [...$("earSpeedLabels").children].forEach((el, i) => { el.onclick = () => setSpeed(i); });
 for (const n of [1, 2]) $("earCount" + n).onchange = () => { S.count = n; saveS(); };
+// 단음 ③: 최소 박자·마디 수 — 바꾸면 새 예시 (지금은 악보 미리보기만)
+const setMin = i => { S.min = [4, 2, 1][i]; saveS(); renderSettings(); n3Sample(); };
+$("earMin").oninput = e => setMin(+e.target.value);
+[...$("earMinLabels").children].forEach((el, i) => { el.onclick = () => setMin(i); });
+for (const n of [1, 2]) $("earBars" + n).onchange = () => { S.bars = n; saveS(); n3Sample(); };
+
+// ---------- 단음 ③ 멜로디 받아쓰기 (만드는 중 — 2단계: 악보 그리기 미리보기) ----------
+// 지금은 출제 설정대로 문제를 하나 만들어 정답 악보를 그대로 보여 줌. 재생·메트로놈·입력·채점은 다음 단계
+function n3Sample() {
+  if (mode !== "note3") return;
+  const d = makeDictation(key(), { chromatic: S.chromatic }, { bars: S.bars, min: S.min });
+  const perLine = window.innerWidth < 600 ? 1 : 2;   // 폰은 한 줄에 1마디
+  renderScore($("earScore"), d, { bars: S.bars, sig: signature(key()), perLine });
+}
+$("btnN3Sample").onclick = n3Sample;
 
 // ---------- 단음 ① 음 하나 ----------
 // phase: "idle"(시작 전) | "ask"(풀고 있음) | "done"(맞힘·정답 확인)
@@ -608,5 +636,5 @@ function renderMidi() {
 }
 
 setModeInUrl(mode);   // 주소에 mode가 없거나 모르는 값이면 지금 단계(처음엔 note1)로 고쳐 둠 (코드 초견과 같은 방식)
-renderInst(); renderSettings(); renderLevels(); resetNote(); renderMidi();
+renderInst(); renderSettings(); renderLevels(); resetNote(); renderMidi(); n3Sample();
 onLangChange(() => { renderInst(); renderLevels(); renderNoteButtons(); renderMidi(); });

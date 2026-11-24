@@ -126,3 +126,69 @@ test("ear level 2: two notes to answer → 5-note melody with the same rules", (
     assert.ok(m.every(n => n.midi >= LOW && n.midi <= HIGH));
   }
 });
+
+// ---------- 단음 ③ 리듬 (ear/rhythm.js) ----------
+import { generateRhythm, rhythmProblem, makeDictation, mergeable, notate, isCanonical, BAR } from "../src/assets/js/ear/rhythm.js";
+
+test("ear level 3: every generated rhythm follows the placement rules (all minimums, 1 and 2 bars)", () => {
+  for (const min of [4, 2, 1]) for (const bars of [1, 2]) {
+    for (let i = 0; i < 1500; i++) {
+      const r = generateRhythm(bars, min);
+      assert.strictEqual(rhythmProblem(r, min, bars), "", JSON.stringify(r));
+    }
+  }
+});
+
+test("ear level 3: minimum value limits the lengths (quarter → only half/quarter, eighth → no 16ths or dotted eighths)", () => {
+  const lens = min => new Set(Array.from({ length: 800 }, () => generateRhythm(2, min)).flat().map(x => (x.rest ? "r" : "n") + x.dur));
+  assert.deepStrictEqual([...lens(4)].sort(), ["n4", "n8", "r4"].filter(x => lens(4).has(x)).sort());
+  assert.ok([...lens(2)].every(x => !["n1", "r1", "n3"].includes(x)));
+  const all16 = lens(1);
+  for (const x of ["n1", "n2", "n3", "n4", "n6", "n8", "r1", "r2", "r4"]) assert.ok(all16.has(x), x);   // 16분이면 모든 길이가 나옴
+});
+
+test("ear level 3: starts mostly with a note on beat 1 (rests first a bit more from eighth minimum), rest-heavy rhythms are rare", () => {
+  const N = 3000;
+  const share = min => { let f = 0; for (let i = 0; i < N; i++) if (generateRhythm(1, min)[0].rest) f++; return f / N; };
+  assert.ok(share(4) < 0.08, "quarter minimum");
+  for (const min of [2, 1]) { const s = share(min); assert.ok(s > 0.06 && s < 0.3, `min ${min}: ${s}`); }
+  let heavy = 0;
+  for (let i = 0; i < N; i++) {
+    const r = generateRhythm(1, 1), rest = r.filter(x => x.rest).reduce((a, x) => a + x.dur, 0);
+    if (rest > BAR - rest) heavy++;
+  }
+  assert.ok(heavy < N * 0.05, `rest-heavy ${heavy}/${N}`);
+});
+
+test("ear level 3: dictation gives a pitch to every note and none to rests", () => {
+  for (let i = 0; i < 300; i++) {
+    const d = makeDictation({ root: "G", minor: false }, {}, { bars: 2, min: 1 });
+    assert.ok(d.every(x => (x.rest ? !x.note : x.note && x.note.midi >= LOW && x.note.midi <= HIGH)));
+    const ms = d.filter(x => !x.rest).map(x => x.note.midi);
+    for (let j = 1; j < ms.length; j++) assert.ok(Math.abs(ms[j] - ms[j - 1]) <= 12);
+  }
+});
+
+test("ear level 3: rests may follow each other (up to 3) only when they cannot be merged", () => {
+  assert.ok(mergeable([{ pos: 0, dur: 2 }, { pos: 2, dur: 2 }]));     // 정박의 8분쉼표 둘 → 4분쉼표
+  assert.ok(mergeable([{ pos: 0, dur: 4 }, { pos: 4, dur: 4 }]));     // 1·2박 4분쉼표 둘 → 2분쉼표
+  assert.ok(!mergeable([{ pos: 4, dur: 4 }, { pos: 8, dur: 4 }]));    // 2·3박은 마디 가운데를 넘어 그대로
+  assert.ok(!mergeable([{ pos: 0, dur: 4 }, { pos: 4, dur: 2 }]));    // 4분 + 8분 (점4분쉼표는 따지지 않음)
+  assert.ok(!mergeable([{ pos: 2, dur: 2 }, { pos: 4, dur: 2 }]));    // 반박 8분 + 정박 8분: 박을 넘어서 그대로
+  let runs = 0;
+  for (let i = 0; i < 3000; i++) {
+    const r = generateRhythm(2, 1);
+    for (let j = 1; j < r.length; j++) if (r[j].rest && r[j - 1].rest) runs++;
+  }
+  assert.ok(runs > 0, "consecutive rests should appear sometimes");
+});
+
+test("ear level 3: one notation per sound — notes last until the next attack, rests only where a note can't go on", () => {
+  const n = (set, min) => notate([new Set(set)], min).map(x => (x.rest ? "r" : "n") + x.dur).join(" ");
+  assert.strictEqual(n([0, 4, 8, 12], 2), "n4 n4 n4 n4");          // 정박마다 어택 → 4분음표 (8분 + 8분쉼표로 쓰지 않음)
+  assert.strictEqual(n([0, 8, 12], 2), "n8 n4 n4");             // 1박 4분 + 4분쉼표 → 2분음표
+  assert.strictEqual(n([2, 6, 8, 12], 2), "r2 n4 n2 n4 n4");     // 0.5박의 엇박 음은 4분음표로 이어 씀
+  assert.strictEqual(n([0, 6, 8, 12], 2), "n6 n2 n4 n4");        // 점4분
+  assert.strictEqual(n([3, 5, 8, 12], 1), "r2 r1 n1 r1 n3 n4 n4"); // 0.75박 16분은 박을 못 넘어서 16분쉼표가 남음
+  for (const min of [4, 2, 1]) for (let i = 0; i < 1500; i++) assert.ok(isCanonical(generateRhythm(2, min), min));
+});

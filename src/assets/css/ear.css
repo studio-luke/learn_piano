@@ -141,6 +141,20 @@
 .ear-range-labels span:nth-child(1) { left: 0; } .ear-range-labels span:nth-child(2) { left: 33.333%; }
 .ear-range-labels span:nth-child(3) { left: 66.667%; } .ear-range-labels span:nth-child(4) { left: 100%; }
 .ear-range-labels span.on { color: var(--ink); font-weight: 600; }
+/* 3칸 슬라이더(단음 ③ 최소 박자): 0 · ½ · 1 */
+.ear-range-labels.three span:nth-child(2) { left: 50%; } .ear-range-labels.three span:nth-child(3) { left: 100%; }
+
+/* ---------- 단음 ③ 리듬 악보 (ear/score.js) — 높이 = 줄 수 × 한 줄 ---------- */
+.ear-score svg { display: block; height: calc(var(--score-lines, 1) * 120px); width: auto; max-width: 100%; margin: 0 auto; color: var(--ink); }   /* 줄마다 120px, 폭이 넘치면 줄여서 맞춤 */
+.ear-score .st-line, .ear-score .st-ledger, .ear-score .st-bar { stroke: currentColor; stroke-width: 1; }
+.ear-score .st-ledger { stroke-width: 1.2; }
+.ear-score .st-stem { stroke: currentColor; stroke-width: 1.3; }
+.ear-score .st-bar-end, .ear-score .st-head, .ear-score .st-acc, .ear-score .st-beam, .ear-score .st-flag, .ear-score .st-rest, .ear-score .st-dot { fill: currentColor; }
+.ear-score .st-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 40px; fill: currentColor; }
+.ear-score .st-time { font-family: var(--font-display); font-size: 22px; font-weight: 700; fill: currentColor; }
+.ear-score .good { fill: var(--ok); stroke: var(--ok); }
+.ear-score .bad { fill: var(--warn); stroke: var(--warn); }
+.ear-score .ref { fill: var(--ref); stroke: var(--ref); }
 .ear .group[hidden] { display: none; }
 
 /* ---------- 출제 설정의 조성 고르기 (코드 초견 improv.css .key-pick과 같은 모양) ---------- */

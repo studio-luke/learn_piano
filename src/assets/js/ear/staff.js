@@ -21,15 +21,15 @@ const SIG_X = 40, SIG_W = 9;      // 조표 시작 x, 변화표 하나의 폭
 export const STEP_LOW = 24, STEP_HIGH = 38;   // F3 ~ F5 (줄·칸 번호: C4 = 28, 옥타브 × 7 + 글자)
 
 // 조표 자리 (줄·칸 번호) — 높은음자리표의 표준 위치
-const SHARP_STEPS = [38, 35, 39, 36, 33, 37, 34];   // F C G D A E B
-const FLAT_STEPS = [34, 37, 33, 36, 32, 35, 31];    // B E A D G C F
+export const SHARP_STEPS = [38, 35, 39, 36, 33, 37, 34];   // F C G D A E B
+export const FLAT_STEPS = [34, 37, 33, 36, 32, 35, 31];    // B E A D G C F
 
 const yOf = step => TOP + (38 - step) * HALF;
 const stepOfY = y => 38 - Math.round((y - TOP) / HALF);
 
 // 제자리표 ♮ (가운데가 음 높이, 오선 간격 10 기준) — naming/staff.js에는 없어서 여기서 그림
 const poly = pts => "M" + pts.map(p => p.join(",")).join("L") + "Z";
-const NATURAL_PATH = poly([[-3, -11], [-1.9, -11], [-1.9, 6], [-3, 6]]) + poly([[1.9, -6], [3, -6], [3, 11], [1.9, 11]])
+export const NATURAL_PATH = poly([[-3, -11], [-1.9, -11], [-1.9, 6], [-3, 6]]) + poly([[1.9, -6], [3, -6], [3, 11], [1.9, 11]])
   + poly([[-3, -2.2], [3, -4.2], [3, -1.6], [-3, 0.4]]) + poly([[-3, 4.2], [3, 2.2], [3, 4.8], [-3, 6.8]]);
 
 let sig = { a: 0, count: 0, letters: new Set() };
