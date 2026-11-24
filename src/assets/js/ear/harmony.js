@@ -84,12 +84,25 @@ export const PER_BAR = { high: 1, mid: 2, low: 4 };
  * @returns [chord × n]
  */
 export function makeProgression(key, n, chromatic = false, rnd = Math.random) {
+  // 조 밖의 음을 허용하면 조 밖 코드가 하나 이상 들어간 진행만 (2026-11-25 사용자 결정 — 개연성 높음·중간에서 코드가 적어
+  // 조 밖 코드가 거의 안 나오던 문제). 맞을 때까지 진행부터 다시 뽑아서 끼워 넣기 종류의 비율은 그대로.
+  // 끝내 못 만들면(단조 + 코드 하나처럼 끼워 넣을 자리가 없을 때) 마지막 진행을 그대로
+  let prog;
+  for (let tries = 0; tries < 80; tries++) {
+    prog = diatonicProgression(key, n, rnd);
+    if (!chromatic) return prog;
+    insertChromatic(key, prog, rnd);
+    if (prog.some(c => c.chromatic)) return prog;
+  }
+  return prog;
+}
+
+/** 머니코드 패턴에서 n개를 이어서 (다이아토닉만) */
+function diatonicProgression(key, n, rnd) {
   const pats = MONEY[key.minor ? "minor" : "major"];
   const degs = pats[Math.floor(rnd() * pats.length)].split("-").map(Number);
   const start = rnd() < 0.6 ? 0 : Math.floor(rnd() * degs.length);   // 패턴 처음부터를 더 많이
-  const prog = Array.from({ length: n }, (_, i) => diatonic(key, degs[(start + i) % degs.length], rnd));
-  if (chromatic) insertChromatic(key, prog, rnd);
-  return prog;
+  return Array.from({ length: n }, (_, i) => diatonic(key, degs[(start + i) % degs.length], rnd));
 }
 
 /**
@@ -98,10 +111,11 @@ export function makeProgression(key, n, chromatic = false, rnd = Math.random) {
  *   - 리딩톤 디미니시드: x 앞 자리를 x 근음 반음 아래의 °7로
  *   - Related II–V: x 앞 두 자리를 IIm7(x가 단조 코드면 IIm7(♭5)) – V7/x로
  *   - 모달 인터체인지(장조): IV → IVm7·IVmM7, VI → ♭VIM7, V → ♭VII7
- * 조 밖 코드가 하나도 안 생기기도 함 (확률)
+ * 한 번에 조 밖 코드가 하나도 안 생기기도 함 (확률) — makeProgression이 생길 때까지 다시 뽑음
  */
 function insertChromatic(key, prog, rnd) {
   const { scale } = keyNotes(key);
+  if (key.minor && prog.length === 1) return minorSingle(scale[0], prog, rnd);
   for (let i = prog.length - 1; i >= 1; i--) {
     const x = prog[i];
     if (x.chromatic || prog[i - 1].chromatic || x.type === "m7b5" || x.type === "dim7") continue;
@@ -124,6 +138,22 @@ function insertChromatic(key, prog, rnd) {
     else if (c.degree === 6) prog[i] = { ...chord(above(scale[0], 8, 5), "M7"), chromatic: true };                 // ♭VIM7
     else if (c.degree === 5) prog[i] = { ...chord(above(scale[0], 10, 6), "7", [5]), chromatic: true };            // ♭VII7
   });
+}
+
+// 단조 + 코드 하나(1마디 · 개연성 높음)는 끼워 넣을 앞 자리가 없어서, 그 코드를 같은 근음의 세컨더리 도미넌트나
+// 모달 인터체인지 코드로 바꿈 (2026-11-25 사용자 결정). 도수별 후보 [반음(으뜸음부터), 글자, 종류, 어보이드] —
+// 5도(V7은 이미 화성단음계)·6도는 후보가 없어서 makeProgression이 진행을 다시 뽑음
+const MINOR_SINGLE = {
+  1: [[0, 0, "M7", [5]], [0, 0, "7", [5]]],                    // IM7(피카르디) · I7(V7/iv)
+  2: [[2, 1, "m7", []], [2, 1, "7", [5]], [1, 1, "M7", []]],   // IIm7(도리안) · II7(V7/V) · ♭IIM7(나폴리)
+  3: [[3, 2, "7", [5]]],                                       // III7(V7/VI)
+  4: [[5, 3, "7", [5]]],                                       // IV7(도리안)
+};
+function minorSingle(tonic, prog, rnd) {
+  const c = prog[0], opts = MINOR_SINGLE[c.degree];
+  if (!opts) return;
+  const [semis, letters, type, avoid] = opts[Math.floor(rnd() * opts.length)];
+  prog[0] = { ...chord(above(tonic, semis, letters), type, avoid), chromatic: true, degree: c.degree };
 }
 
 // ---------- 멜로디 ----------

@@ -292,7 +292,13 @@ test("ear level 3 harmony: progressions use only the allowed 7th-chord types, ch
     assert.strictEqual(p.length, 4);
     assert.ok(p.every(c => allowed.has(c.type)), p.map(c => c.name).join(" "));
     if (!chromatic) assert.ok(p.every(c => !c.chromatic));
+    else assert.ok(p.some(c => c.chromatic), "조 밖 음을 허용하면 조 밖 코드가 하나 이상");
     assert.ok(p.every(c => c.type !== "mM7" || c.degree === 4), "mM7 only on the 4th degree");
+  }
+  for (const minor of [false, true]) for (const n of [1, 2]) for (let i = 0; i < 300; i++) {   // 코드가 적어도 (1마디 개연성 높음 = 코드 하나)
+    const p = makeProgression({ root: minor ? "A" : "C", minor }, n, true);
+    assert.ok(p.some(c => c.chromatic), p.map(c => c.name).join(" "));
+    if (minor && n === 1) assert.ok(["AM7", "A7", "Bm7", "B7", "B♭M7", "C7", "D7"].includes(p[0].name), p[0].name);   // 단조 코드 하나: 세컨더리·모달
   }
 });
 
