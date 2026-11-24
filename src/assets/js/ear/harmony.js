@@ -172,6 +172,8 @@ const AVOID_W = 0.5;          // 비화성음 중 어보이드 노트의 가중�
 //   - 도약 뒤 반대 방향으로 또 도약해서 비화성음 ×OPP_LEAP_NCT (2026-11-25 사용자 결정)
 const LEAP = 5, GAP_FILL = 3, GAP_FILL_BIG = 5, ARP_W = 0.4, INERTIA = 1.4, OPP_LEAP_NCT = 0.4;
 const AWKWARD = { 6: 0.25, 10: 0.3, 11: 0.3 };
+// 한 문제의 음역: 가장 높은 음과 가장 낮은 음이 완전11도(17반음) 이내 (2026-11-25 사용자 결정) — 벗어나는 음은 후보에서 뺌
+const RANGE = 17;
 
 /** 코드 위에서 고를 수 있는 음: 조의 음계(단조는 자연단음계) 글자마다, 코드 구성음과 글자가 같으면 코드 철자로 바꿈 → F3~F5 모든 옥타브 */
 function notesFor(key, ch) {
@@ -201,13 +203,14 @@ function weighted(items, ws, rnd) {
  */
 export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random) {
   const center = scaleMidis(key)[0] + 5;   // 첫 음은 가운데쯤
-  let prev = null, prev2 = null, nctRun = 0, prevAvoid = false;
+  let prev = null, prev2 = null, nctRun = 0, prevAvoid = false, hi = -Infinity, lo = Infinity;
   const notes = rhythm.filter(x => !x.rest);
   const out = [];
   for (let k = 0; k < notes.length; k++) {
     const x = notes[k], ch = chords[Math.min(chords.length - 1, Math.floor(x.pos / slot))];
     const strong = x.pos % 4 === 0, last = k === notes.length - 1;
-    const cands = notesFor(key, ch).filter(n => !prev || Math.abs(n.midi - prev.midi) <= 12);
+    const cands = notesFor(key, ch).filter(n => (!prev || Math.abs(n.midi - prev.midi) <= 12) &&
+      Math.max(hi, n.midi) - Math.min(lo, n.midi) <= RANGE);
     const kind = n => (ch.pcs.has(n.pc) ? "ct" : ch.avoid.has(n.pc) ? "avoid" : "nct");
     let pool = cands;
     // 어보이드 노트 다음: 반드시 순차 화성음
@@ -244,6 +247,7 @@ export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random) {
     prevAvoid = kd === "avoid";
     prev2 = prev;
     prev = pick;
+    hi = Math.max(hi, pick.midi); lo = Math.min(lo, pick.midi);
   }
   let i = 0;
   return rhythm.map(x => (x.rest ? x : { ...x, note: out[i++] }));

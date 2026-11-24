@@ -393,3 +393,11 @@ test("ear level 3 harmony: melody direction — leaps are usually answered by a 
   assert.ok(sameLeap / leaps < 0.08, `same-way leap ${sameLeap}/${leaps}`);
   assert.ok(awkward / ints < 0.035, `awkward ${awkward}/${ints}`);
 });
+
+test("ear level 3 harmony: one question stays within a perfect 11th (high · mid · low)", () => {
+  for (const chance of ["high", "mid", "low"]) for (let i = 0; i < 600; i++) {
+    const d = makeDictation({ root: "G", minor: i % 2 === 1 }, { chromatic: i % 3 === 0 }, { bars: 2, min: 1, chance });
+    const m = d.filter(x => !x.rest).map(x => x.note.midi);
+    assert.ok(Math.max(...m) - Math.min(...m) <= 17, m.join(" "));
+  }
+});
