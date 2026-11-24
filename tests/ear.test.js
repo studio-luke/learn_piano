@@ -372,3 +372,24 @@ test("ear level 3: motif repetition — beat 3 echoes beat 1 and beat 4 echoes b
   const front = at => beat(at, 0) === beat(at, 4) && beat(at, 1) === beat(at, 5);
   assert.ok(count("high", 2, 2, front) > count("random", 2, 2, front) * 1.4);
 });
+
+test("ear level 3 harmony: melody direction — leaps are usually answered by a step back, rarely followed by another leap the same way, awkward leaps rare", () => {
+  let leaps = 0, recover = 0, sameLeap = 0, ints = 0, awkward = 0;
+  for (let i = 0; i < 1500; i++) {
+    const d = makeDictation({ root: "C", minor: i % 2 === 1 }, {}, { bars: 2, min: 2, chance: "mid" });
+    const m = d.filter(x => !x.rest).map(x => x.note.midi);
+    for (let k = 1; k < m.length; k++) {
+      const a = m[k] - m[k - 1];
+      ints++; if ([6, 10, 11].includes(Math.abs(a))) awkward++;
+      if (k < 2) continue;
+      const b = m[k - 1] - m[k - 2];
+      if (Math.abs(b) < 5) continue;
+      leaps++;
+      if (Math.sign(a) === -Math.sign(b) && Math.abs(a) >= 1 && Math.abs(a) <= 2) recover++;
+      if (Math.sign(a) === Math.sign(b) && Math.abs(a) >= 3) sameLeap++;
+    }
+  }
+  assert.ok(recover / leaps > 0.35, `recover ${recover}/${leaps}`);
+  assert.ok(sameLeap / leaps < 0.08, `same-way leap ${sameLeap}/${leaps}`);
+  assert.ok(awkward / ints < 0.035, `awkward ${awkward}/${ints}`);
+});

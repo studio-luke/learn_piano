@@ -163,6 +163,15 @@ const P_CHORD = [0.6, 0.85, 0.97];
 const STEP_W = s => (s === 0 ? 0.15 : s <= 2 ? 1 : s <= 4 ? 0.75 : s <= 7 ? 0.45 : s <= 11 ? 0.2 : s === 12 ? 0.08 : 0);
 const AFTER_NCT_STEP = 2.5;   // 비화성음 다음 음은 순차(반음 1~2개)일 가중치 배수
 const AVOID_W = 0.5;          // 비화성음 중 어보이드 노트의 가중치 배수 (나오면 반드시 해결)
+// 방향성 (2026-11-25 사용자 결정 — 멜로디 다듬기 ② 1단계). 앞 음정(prev2 → prev)을 보고 다음 음정의 가중치를 곱함:
+//   - 도약 후 반진행(gap-fill): 완전4도(5반음) 이상 도약한 뒤 반대 방향 순차는 ×GAP_FILL(6도 이상 도약이면 ×GAP_FILL_BIG),
+//     같은 방향 순차는 ×0.5, 같은 방향으로 또 도약(3반음 이상)은 안 함 — 앞 세 음과 이 음이 모두 지금 코드 구성음이면
+//     (아르페지오) ×ARP_W로 허용
+//   - 관성: 순차로 가던 방향으로 또 순차면 ×INERTIA
+//   - 어색한 도약: 증4도 ×0.25, 단7·장7도 ×0.3
+//   - 도약 뒤 반대 방향으로 또 도약해서 비화성음 ×OPP_LEAP_NCT (2026-11-25 사용자 결정)
+const LEAP = 5, GAP_FILL = 3, GAP_FILL_BIG = 5, ARP_W = 0.4, INERTIA = 1.4, OPP_LEAP_NCT = 0.4;
+const AWKWARD = { 6: 0.25, 10: 0.3, 11: 0.3 };
 
 /** 코드 위에서 고를 수 있는 음: 조의 음계(단조는 자연단음계) 글자마다, 코드 구성음과 글자가 같으면 코드 철자로 바꿈 → F3~F5 모든 옥타브 */
 function notesFor(key, ch) {
@@ -192,7 +201,7 @@ function weighted(items, ws, rnd) {
  */
 export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random) {
   const center = scaleMidis(key)[0] + 5;   // 첫 음은 가운데쯤
-  let prev = null, nctRun = 0, prevAvoid = false;
+  let prev = null, prev2 = null, nctRun = 0, prevAvoid = false;
   const notes = rhythm.filter(x => !x.rest);
   const out = [];
   for (let k = 0; k < notes.length; k++) {
@@ -210,22 +219,52 @@ export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random) {
     const wantCT = rnd() < P_CHORD[Math.min(nctRun, 2)];
     let side = pool.filter(n => (kind(n) === "ct") === wantCT);
     if (!side.length) side = pool;
-    const ws = side.map(n => {
+    const wOf = n => {
       let w = prev ? STEP_W(Math.abs(n.midi - prev.midi)) : Math.max(0.05, 1 - Math.abs(n.midi - center) / 14);
       if (prev && nctRun > 0 && Math.abs(n.midi - prev.midi) >= 1 && Math.abs(n.midi - prev.midi) <= 2) w *= AFTER_NCT_STEP;
       if (kind(n) === "avoid") w *= AVOID_W;
+      if (prev) w *= AWKWARD[Math.abs(n.midi - prev.midi)] ?? 1;
+      // 아르페지오 = 앞 두 음과 이 음이 모두 지금 코드의 구성음
+      if (prev && prev2) w *= directionW(prev.midi - prev2.midi, n.midi - prev.midi, kind(n) === "ct", ch.pcs.has(prev.pc) && ch.pcs.has(prev2.pc));
       return w;
-    });
-    const pick = weighted(side, ws, rnd);
+    };
+    let pick = weighted(side, side.map(wOf), rnd);
     if (!pick) return null;
+    // 도약 뒤 반대 방향으로 또 도약해서 비화성음이면 (1 − OPP_LEAP_NCT) 확률로 그런 음을 빼고 다시 고름 — 화성음·비화성음을
+    // 먼저 정하는 방식이라 가중치만 곱하면 비화성음끼리만 바뀌어서, 전체 비율이 OPP_LEAP_NCT배가 되게 다시 고름
+    const oppLeapNct = n => prev && prev2 && Math.abs(prev.midi - prev2.midi) >= LEAP && kind(n) !== "ct" &&
+      Math.abs(n.midi - prev.midi) >= 3 && Math.sign(n.midi - prev.midi) === -Math.sign(prev.midi - prev2.midi);
+    if (oppLeapNct(pick) && rnd() >= OPP_LEAP_NCT) {
+      const alt = pool.filter(n => !oppLeapNct(n));
+      pick = weighted(alt, alt.map(wOf), rnd) || pick;
+    }
     out.push({ l: pick.l, a: pick.a, oct: pick.oct, midi: pick.midi });
     const kd = kind(pick);
     nctRun = kd === "ct" ? 0 : nctRun + 1;
     prevAvoid = kd === "avoid";
+    prev2 = prev;
     prev = pick;
   }
   let i = 0;
   return rhythm.map(x => (x.rest ? x : { ...x, note: out[i++] }));
+}
+
+/**
+ * 방향성 가중치 (위 LEAP·GAP_FILL·INERTIA 설명).
+ * @param last  앞 음정 (반음, 위 +)
+ * @param next  다음 음정 후보
+ * @param ct    이 후보가 지금 코드 구성음인지
+ * @param prevCT  앞 두 음이 모두 지금 코드 구성음인지 (ct와 함께면 아르페지오 — 같은 방향 연속 도약 예외)
+ */
+function directionW(last, next, ct, prevCT) {
+  const L = Math.abs(last), N = Math.abs(next), same = Math.sign(last) === Math.sign(next) && next !== 0;
+  if (L >= LEAP) {
+    if (N >= 1 && N <= 2) return same ? 0.5 : L >= 8 ? GAP_FILL_BIG : GAP_FILL;
+    if (same && N >= 3) return ct && prevCT ? ARP_W : 0;
+    return 1;
+  }
+  if (L >= 1 && L <= 2 && same && N <= 2) return INERTIA;
+  return 1;
 }
 
 /**
