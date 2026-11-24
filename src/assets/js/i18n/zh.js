@@ -592,6 +592,7 @@ export default {
   earBarsH: "小节数",
   earBars1: "1小节",
   earBars2: "2小节",
+  earDebug: "调试模式（显示和弦与答案）",
   earMidiOpt: "允许 MIDI 输入",
   earChrom: "包括调外音",
   earChromSub: "半音阶的所有音",

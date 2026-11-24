@@ -92,6 +92,7 @@
           <!-- 단음 ③: 카운트인("Ready" "Start")과 리듬 악보 (ear/score.js) -->
           <div class="ear-count" id="earCount" aria-live="polite"></div>
           <div class="ear-score" id="earScore" role="img" aria-label="악보" data-i18n-aria="earScoreAria" hidden></div>
+          <pre class="ear-debug" id="earDebugOut" hidden></pre>
           <!-- 단음 ③ 길이 고르기 (2026-11-24 사용자 결정): 음표 글자는 모두 악보 기호 영역(𝅗𝅥 𝅘𝅥 𝅘𝅥𝅮 𝅘𝅥𝅯 — ♩♪는 다른 글꼴로 작게 보여서), [.]은 점. 음표 버튼은 고른 채로 남고 건반을 누르면 그 길이로 적힘, [점]은 다음 음표 하나에만,
                쉼표 버튼은 누르면 바로 그 쉼표가 적힘(점 없이). 2분쉼표는 출제하지 않아 늘 틀림. 음높이만 받아쓸 때는 숨김 (pages/ear.js) -->
           <div class="ear-durs" id="earDurs" hidden>
@@ -208,6 +209,8 @@
           </div>
         </div>
         <div class="opt">
+          <!-- 관리자만: 디버그 모드 — 단음 ③ 문제의 코드 진행을 악보 아래에 글자로 (2026-11-24 사용자 요청) -->
+          <label class="check" id="earDebugLabel" hidden><input type="checkbox" id="earDebugOpt"><span data-i18n="earDebug">디버그 모드 (코드·정답 보기)</span></label>
           <!-- 컴퓨터에서만 보임(practice.css .pc-only): MIDI 건반으로 답 고르기, 처음 꺼짐. 켤 때 권한 요청 (pages/ear.js, 2026-11-24 사용자 요청) -->
           <label class="check pc-only" id="earMidiLabel"><input type="checkbox" id="earMidiOpt"><span><span data-i18n="earMidiOpt">MIDI 입력 허용</span> <small class="midi-status" id="midiStatus"></small></span></label>
         </div>

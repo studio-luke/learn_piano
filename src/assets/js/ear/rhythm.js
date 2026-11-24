@@ -38,12 +38,11 @@ const REST_OK = {
 };
 const NOTE_LENS = [8, 6, 4, 3, 2, 1], REST_LENS = [4, 2, 1];   // 긴 것부터 (표기할 때 가장 긴 것을 먼저 시도)
 
-// 어택이 생길 확률 — 자리의 박 세기별 (정박 > 반박 > 16분 자리). 최소 박자보다 촘촘한 자리는 쓰지 않음.
+// 어택이 생길 확률 (최소 4분·8분) — 자리의 박 세기별 (정박 > 반박). 최소 16분은 아래 한 박 모양 규칙(BEAT16).
 // 평균 음표 수가 예전(길이로 뽑던 방식)과 비슷하게 맞춘 값 — 화면에는 비율을 쓰지 않음
 const ONSET_P = {
   4: { beat: 0.8 },
   2: { beat: 0.78, half: 0.5 },
-  1: { beat: 0.75, half: 0.5, sixteenth: 0.3 },
 };
 // 문제 맨 처음(1박)에 어택이 있을 확률 — 1박에서 음으로 시작하는 쪽을 더 많이, 8분·16분이면 쉼표로 시작하는 경우를 조금 더
 // (2026-11-24 사용자 요청)
@@ -64,18 +63,108 @@ export function mergeable(run) {
 
 /**
  * 어택 자리 뽑기 (마디마다, 마디 안 자리 0~15). 최소 박자의 배수 자리만.
+ * 최소 4분·8분은 자리마다 확률로, 최소 16분은 한 박 모양 규칙으로 (pickOnsets16)
  * @returns [Set(pos) × bars]
  */
-export function pickOnsets(bars, min, rnd = Math.random) {
+export function pickOnsets(bars, min, rnd = Math.random, chance = "mid") {
+  if (min === 1) return pickOnsets16(bars, rnd, chance);
   const P = ONSET_P[min] || ONSET_P[2];
   return Array.from({ length: bars }, (_, b) => {
     const set = new Set();
     for (let p = 0; p < BAR; p += min) {
-      const prob = b === 0 && p === 0 ? (FIRST_ONSET[min] ?? 0.9) : p % 4 === 0 ? P.beat : p % 2 === 0 ? P.half : P.sixteenth;
+      const prob = b === 0 && p === 0 ? (FIRST_ONSET[min] ?? 0.9) : p % 4 === 0 ? P.beat : P.half;
       if (rnd() < prob) set.add(p);
     }
     return set;
   });
+}
+
+// ----- 최소 16분: 한 박 모양 규칙 (2026-11-24 사용자 설계) -----
+// 한 박을 16분 네 칸(0~3)으로 보고, 그 박에서 어택이 있는 칸의 조합(= 한 박 모양)을 고름. 표기는 notate가 정함
+// (박 시작에 어택이 없으면 쉼표로 시작하거나, 앞 음이 이어지는 것으로 적힘 — 규칙은 어택 기준).
+//   kind "free"  어디에나 올 수 있는 모양 (4분·8분 모양, [1], [2], [3], [4]-4·5)
+//   kind "back"  [4]-1·2·3 (16쉼으로 시작하는 당김): 강박(1·3박)에 못 옴. 앞 박의 마지막 어택에서 1박 안에 첫 어택이
+//                와야 함(= 앞 박 둘째 칸 이후에 어택) — 앞 박과 함께 두 박 패턴이 됨
+//   kind "pick"  [5] 점8쉼 16 (다음 박으로 들어가는 못갖춘 16분): 다음 박이 함께 두 박 패턴이 됨 — 다음 박에 [5]·빈 박은
+//                못 오고, 첫 어택이 0.5박 넘게 늦는 [4]-5·8쉼 8은 낮은 확률로. 문제의 마지막 박에는 못 옴. 강박에도 옴(낮게)
+//   w            상대 비중 (흔한 정도: 많이 1.6 · 보통 1 · 적게 0.4~0.6). 박 시작에 어택이 없는 모양은 강박에서 STRONG_EMPTY배
+const BEAT16 = [
+  { at: [], w: 0.6, kind: "free" },          // 빈 박 (앞 음이 이어지거나 4분쉼표)
+  { at: [0], w: 3.5, kind: "free" },         // 4분
+  { at: [0, 2], w: 2.5, kind: "free" },      // 8 8
+  { at: [2], w: 0.6, kind: "free" },         // 8쉼 8
+  { at: [0, 1, 2, 3], w: 1, kind: "free" },  // [1] 16 16 16 16
+  { at: [0, 1, 2], w: 1.6, kind: "free" },   // [2]-1 16 16 8
+  { at: [0, 1, 3], w: 1, kind: "free" },     // [2]-2 16 8 16
+  { at: [0, 2, 3], w: 1.6, kind: "free" },   // [2]-3 8 16 16
+  { at: [0, 1], w: 0.5, kind: "free", rare: true },   // [3]-1 16 점8
+  { at: [0, 3], w: 1.6, kind: "free" },      // [3]-2 점8 16
+  { at: [1, 3], w: 0.5, kind: "back" },      // [4]-1 16쉼 8 16
+  { at: [1, 2], w: 0.4, kind: "back", rare: true },   // [4]-2 16쉼 16 8
+  { at: [1], w: 0.4, kind: "back", rare: true },      // [4]-3 16쉼 점8
+  { at: [1, 2, 3], w: 0.4, kind: "free" },   // [4]-4 16쉼 16 16 16
+  { at: [2, 3], w: 0.5, kind: "free" },      // [4]-5 8쉼 16 16
+  { at: [3], w: 0.4, kind: "pick" },         // [5] 점8쉼 16
+];
+const STRONG_EMPTY = 0.2;     // 박 시작에 어택이 없는 모양이 강박에 올 때 비중 배수
+const AFTER_PICK_LATE = 0.3;  // [5] 다음 박의 첫 어택이 0.5박 넘게 늦는 모양([4]-5·8쉼 8)의 비중 배수
+// 흔한 두 박 패턴 — 반 마디 자리(1·3박)마다 CHUNK_P 확률로 통째로 넣음 (2026-11-24 사용자 지정, 자리는 16분 단위 0~7)
+const CHUNKS16 = [
+  [0, 1, 3, 5],      // 16 8 16 · 16쉼 점8
+  [0, 1, 3, 5, 7],   // 16 8 16 · 16쉼 8 16 (보컬 당김)
+  [0, 2, 3, 5, 7],   // 8 16 16 · 16쉼 8 16
+  [0, 2, 3, 5],      // 8 16 16 · 16쉼 점8
+  [0, 3, 5],         // 점8 16 · 16쉼 점8
+  [0, 3, 6],         // 점8 16 · 8쉼 8 (3-3-2)
+];
+// 멜로디 개연성별 (2026-11-25 사용자 요청): 높을수록 흔한 두 박 패턴이 더 자주(CHUNK_P),
+// 잘 안 쓰이는 한 박 모양(rare: [3]-1 16 점8, [4]-2 16쉼 16 8, [4]-3 16쉼 점8)은 덜(RARE_MUL 배).
+// 두 박 패턴 안에 든 16쉼 점8은 사용자가 고른 흔한 모양이라 RARE_MUL을 적용하지 않음. "random"(개연성 없음)이 가장 낮은 쪽
+const CHUNK_P = { high: 0.35, mid: 0.25, low: 0.15, random: 0.1 };
+const RARE_MUL = { high: 0.3, mid: 1, low: 1.3, random: 1.5 };
+
+/** 무게대로 하나 고르기 */
+function weighted(items, rnd) {
+  const total = items.reduce((a, x) => a + x.w, 0);
+  let r = rnd() * total;
+  for (const x of items) { if ((r -= x.w) < 0) return x; }
+  return items[items.length - 1];
+}
+
+/**
+ * 최소 16분 어택 뽑기 — 박마다 위 규칙에 맞는 한 박 모양을 고르고, 반 마디 자리엔 가끔 흔한 두 박 패턴을 통째로.
+ * 문제 맨 처음 박은 FIRST_ONSET 확률로 박 시작에 어택이 있는 모양 (강박 배수는 적용 안 함)
+ */
+function pickOnsets16(bars, rnd, chance = "mid") {
+  const chunkP = CHUNK_P[chance] ?? CHUNK_P.mid, rareMul = RARE_MUL[chance] ?? 1;
+  const beats = bars * 4, shapes = [];   // 박마다 어택 칸 배열
+  const firstHead = rnd() < FIRST_ONSET[1];   // 맨 처음 박을 박 시작 어택으로 시작할지
+  for (let i = 0; i < beats; i++) {
+    const strong = i % 2 === 0, prev = shapes[i - 1], last = i === beats - 1;
+    // 흔한 두 박 패턴 (모두 박 시작 어택으로 시작 — 쉼표로 시작할 맨 처음 박엔 안 넣음)
+    if (strong && (i > 0 || firstHead) && rnd() < chunkP) {
+      const c = CHUNKS16[Math.floor(rnd() * CHUNKS16.length)];
+      shapes.push(c.filter(p => p < 4), c.filter(p => p >= 4).map(p => p - 4));
+      i++;
+      continue;
+    }
+    const afterPick = !!prev && prev.length === 1 && prev[0] === 3;   // 앞 박이 [5] 점8쉼 16
+    const cands = BEAT16.filter(s => {
+      if (i === 0 && (s.at[0] === 0) !== firstHead) return false;
+      if (s.kind === "back" && (strong || !prev || !prev.length || Math.max(...prev) < 1)) return false;
+      if (s.kind === "pick" && last) return false;
+      if (afterPick && (s.kind === "pick" || !s.at.length)) return false;
+      return true;
+    }).map(s => {
+      let w = s.w * (s.rare ? rareMul : 1);
+      if (afterPick && s.at[0] >= 2) w *= AFTER_PICK_LATE;
+      if (strong && i > 0 && s.at[0] !== 0) w *= STRONG_EMPTY;
+      return { ...s, w };
+    });
+    shapes.push(weighted(cands, rnd).at);
+  }
+  return Array.from({ length: bars }, (_, b) =>
+    new Set(shapes.slice(b * 4, b * 4 + 4).flatMap((at, k) => at.map(p => k * BEAT + p))));
 }
 
 /**
@@ -112,11 +201,12 @@ export function notate(onsets, min) {
  * 리듬 만들기 — 어택을 뽑고(pickOnsets) 표기한 뒤(notate), 규칙(rhythmProblem)에 맞지 않으면 다시 뽑음.
  * @param bars  마디 수 (1 · 2)
  * @param min   최소 박자 (4 = 4분, 2 = 8분, 1 = 16분)
+ * @param chance  멜로디 개연성 "high" | "mid" | "low" | "random" — 최소 16분일 때 리듬 모양 비중에 씀
  * @returns [{ pos, dur, rest }] — 음표·쉼표가 순서대로, 마디를 빈틈없이 채움
  */
-export function generateRhythm(bars = 1, min = 2, rnd = Math.random) {
+export function generateRhythm(bars = 1, min = 2, rnd = Math.random, chance = "mid") {
   for (let tries = 0; tries < 300; tries++) {
-    const r = notate(pickOnsets(bars, min, rnd), min);
+    const r = notate(pickOnsets(bars, min, rnd, chance), min);
     if (!rhythmProblem(r, min, bars)) return r;
   }
   // 거의 일어나지 않지만, 못 만들면 4분음표로 채움
@@ -177,7 +267,7 @@ export function isCanonical(tokens, min = 1) {
  * @returns [{ pos, dur, rest, note?: { l, a, oct, midi } }] — 코드 위 멜로디면 배열에 chords(진행)도 붙임
  */
 export function makeDictation(key, opt = {}, { bars = 1, min = 2, chance = "random" } = {}, rnd = Math.random) {
-  const rhythm = generateRhythm(bars, min, rnd);
+  const rhythm = generateRhythm(bars, min, rnd, chance);
   if (chance !== "random") {
     const r = dictationOverChords(key, rhythm, bars, chance, !!opt.chromatic, rnd);
     if (r) return Object.assign(r.tokens, { chords: r.chords });

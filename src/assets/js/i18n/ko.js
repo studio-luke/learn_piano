@@ -593,6 +593,7 @@ export default {
   earBarsH: "마디 수",
   earBars1: "1마디",
   earBars2: "2마디",
+  earDebug: "디버그 모드 (코드·정답 보기)",
   earMidiOpt: "MIDI 입력 허용",
   earChrom: "조 밖의 음 포함",
   earChromSub: "반음계의 모든 음",

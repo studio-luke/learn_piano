@@ -20,10 +20,11 @@ import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
 import * as Ins from "../ear/instruments.js";
 import { Midi } from "../input/midi.js";
+import { Account } from "../account/account.js";
 import { initKeys, markKeys, refKey, setKeyLabels } from "../ear/keys.js";
 import { initStaff, setSignature, showNotes, setSlots, setAnswerSlot, setGhostEnabled } from "../ear/staff.js";
 import { renderScore, stepAtY } from "../ear/score.js";
-import { makeDictation, judgeToken } from "../ear/rhythm.js";
+import { makeDictation, judgeToken, BAR } from "../ear/rhythm.js";
 import { KEY_ROOTS, LOW, HIGH, signature, scaleMidis, pickNote, pickMelody, judgeNote, spellMidi, midiOf, sigAcc, fullName, otherKey, sameRoot } from "../ear/theory.js";
 
 startPage({ title: "navEar" });
@@ -331,6 +332,7 @@ function dictationNotes(at) {
  *   문제가 끝나면(다 맞힘·정답 확인) 전부. 지금 울리는 토큰은 파랗게
  */
 function drawScore() {
+  renderDebug();
   if (!dictation() || !N.dict) { $("earScore").innerHTML = ""; return; }
   const done = N.phase === "done";
   const toks = [];
@@ -347,6 +349,38 @@ function drawScore() {
   const ghost = cursor !== null && scoreGhost !== null && !refText && N.write !== "rhythm"
     ? { pos: cursor, dur: ghostDur(), step: scoreGhost, a: acc === "key" ? null : acc } : null;
   renderScore($("earScore"), toks, { bars: N.dictBars, sig: signature(key()), perLine, cursor, ghost });
+}
+// ---------- 디버그 모드 (관리자만, 기기에 저장 chordoven.earDebug) (2026-11-24 사용자 요청) ----------
+// 켜면: 정답을 글자로 바로 보여 줌(③은 코드 진행도), [다음 문제]·단축키는 문제를 안 끝내도 늘 됨
+let debugOn = store.get("earDebug") === "on";
+const debugMode = () => debugOn && Account.isAdmin();
+const DBG_DUR = { 8: "2", 6: "4.", 4: "4", 3: "8.", 2: "8", 1: "16" };   // 길이 → 짧은 글자 (관리자용이라 번역 안 함)
+function renderDebug() {
+  const el = $("earDebugOut");
+  let lines = [];
+  if (debugMode() && N.phase !== "idle") {
+    if (dictation() && N.dict) {
+      if (N.dict.chords) lines.push(N.dict.chords.map(c => c.name).join(" | "));
+      let bar = 0, out = "";
+      for (const x of N.dict) {
+        const b = Math.floor(x.pos / BAR);
+        if (b !== bar) { out += "| "; bar = b; }
+        out += (x.rest ? "r" + DBG_DUR[x.dur] : fullName(x.note) + ":" + DBG_DUR[x.dur]) + " ";
+      }
+      lines.push(out.trim());
+    } else if (melodic() && N.melody) lines.push(N.melody.slice(SHOWN).map(fullName).join(" · "));
+    else if (N.q) lines.push(fullName(N.q));
+  }
+  el.hidden = !lines.length;
+  el.textContent = lines.join("\n");
+}
+/** 다음 문제로 넘어갈 수 있는지 — 끝난 문제, 디버그 모드면 시작한 뒤 언제나 */
+const canNext = () => N.phase === "done" || (debugMode() && N.phase !== "idle");
+{
+  const showDebug = () => { $("earDebugLabel").hidden = !Account.isAdmin(); renderDebug(); renderNoteButtons(); };
+  $("earDebugOpt").checked = debugOn;
+  $("earDebugOpt").onchange = e => { debugOn = e.target.checked; store.set("earDebug", debugOn ? "on" : "off"); renderDebug(); renderNoteButtons(); };
+  Account.on("change", showDebug); showDebug();
 }
 const scorePerLine = () => (window.innerWidth < 600 ? 1 : 2);   // 폰은 한 줄에 1마디
 /** 흐린 음표·입력에 쓸 길이: 음높이만이면 정답 길이, 아니면 고른 길이(+점 — 그릴 수 없는 점2분·점16분은 가까운 모양으로) */
@@ -619,7 +653,8 @@ function renderNoteButtons() {
   $("btnTonic").disabled = $("btnScale").disabled = !!refText;
   $("btnReplay").disabled = !!refText;   // 문제 다시 듣기(큰 ▶)도 필수 재생 중에는 끔 — 생략은 [생략하기]로 (2026-11-24 사용자 요청)
   $("btnReveal").disabled = N.phase !== "ask" || !!refText;   // 필수 재생 중에도 막음 (2026-11-24 사용자 요청)
-  $("btnNext").disabled = N.phase !== "done";
+  $("btnNext").disabled = !canNext();   // 디버그 모드면 문제 도중에도
+  renderDebug();
   setGhostEnabled(N.phase !== "done");   // 끝난 문제(맞힘·정답 확인)에서는 악보에 마우스를 올려도 흐린 음표를 안 보임
   const lv = dictation() ? "earN3" : melodic() ? "earN2" : "earN1";
   // 단음 ②에서 맞힐 음이 2개인 문제는 "숨은 두 음을 순서대로…"
@@ -817,14 +852,14 @@ $("btnReveal").onclick = () => {
   listen([{ kind: "question" }]);
   renderNoteButtons();
 };
-$("btnNext").onclick = () => { if (N.phase === "done") newQuestion(false); };
+$("btnNext").onclick = () => { if (canNext()) newQuestion(false); };
 
 // 단축키 (물리 키 기준): Enter·N·→ 다음 문제(끝난 문제), Space 문제 다시 듣기. 입력칸·드롭다운·로그인 창에서는 안 함
 document.addEventListener("keydown", e => {
   if (!isNoteMode() || authOpen() || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = e.target && e.target.tagName;
   if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
-  if ((e.code === "Enter" || e.code === "KeyN" || e.code === "ArrowRight") && N.phase === "done") { e.preventDefault(); newQuestion(false); }
+  if ((e.code === "Enter" || e.code === "KeyN" || e.code === "ArrowRight") && canNext()) { e.preventDefault(); newQuestion(false); }
   else if (e.code === "Space" && N.phase !== "idle") { e.preventDefault(); if (!refText) listen([{ kind: "question" }]); }
 });
 

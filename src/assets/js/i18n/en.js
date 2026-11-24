@@ -592,6 +592,7 @@ export default {
   earBarsH: "Bars",
   earBars1: "1 bar",
   earBars2: "2 bars",
+  earDebug: "Debug mode (show chords and answer)",
   earMidiOpt: "Allow MIDI input",
   earChrom: "Include notes outside the key",
   earChromSub: "All chromatic notes",

@@ -592,6 +592,7 @@ export default {
   earBarsH: "小節数",
   earBars1: "1小節",
   earBars2: "2小節",
+  earDebug: "デバッグモード(コード・正解表示)",
   earMidiOpt: "MIDI入力を許可",
   earChrom: "調の外の音も出題",
   earChromSub: "半音階のすべての音",

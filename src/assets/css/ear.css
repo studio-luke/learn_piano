@@ -196,3 +196,7 @@
 .mode-btn { min-width: 76px; font-weight: 600; }
 
 .ear-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* 디버그 모드 출력 (관리자만) */
+.ear-debug { margin: 0; font-size: 12px; color: var(--muted); white-space: pre-wrap; text-align: center; }
+.ear-debug[hidden] { display: none; }
