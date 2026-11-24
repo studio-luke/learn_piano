@@ -16,7 +16,8 @@
 //     1·3박에서 시작하는 4분쉼표 둘은 2분쉼표 자리라서 그런 리듬은 다시 뽑음). 점쉼표로 합치는 것은 따지지 않음
 //   - 한 마디에서 쉬는 박의 합은 3박 미만. 음표는 문제 전체에서 최소 3개
 //   - 첫 어택은 1박 위주, 최소 박자가 8분·16분이면 쉼표로 시작하는 경우를 조금 더
-import { pickMelody } from "./theory.js";
+import { pickMelody, signature } from "./theory.js";
+import { fitsBar } from "./layout.js";
 import { dictationOverChords } from "./harmony.js";
 
 export const BAR = 16, BEAT = 4;
@@ -335,6 +336,17 @@ export function isCanonical(tokens, min = 1) {
  * @returns [{ pos, dur, rest, note?: { l, a, oct, midi } }] — 코드 위 멜로디면 배열에 chords(진행)도 붙임
  */
 export function makeDictation(key, opt = {}, { bars = 1, min = 2, chance = "random" } = {}, rnd = Math.random) {
+  // 악보 마디에 다 들어가는 문제만 — 16분이 빽빽하고 임시표가 많으면 마디줄을 넘어서 다시 뽑음 (2026-11-25 사용자 요청, layout.js)
+  const sig = signature(key);
+  let d;
+  for (let tries = 0; tries < 40; tries++) {
+    d = dictationOnce(key, opt, bars, min, chance, rnd);
+    if (fitsBar(d, sig)) return d;
+  }
+  return d;
+}
+
+function dictationOnce(key, opt, bars, min, chance, rnd) {
   const rhythm = generateRhythm(bars, min, rnd, chance);
   if (chance !== "random") {
     const r = dictationOverChords(key, rhythm, bars, chance, !!opt.chromatic, rnd);

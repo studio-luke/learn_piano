@@ -7,13 +7,15 @@
 //   - 쉼표: 4분 · 8분 · 16분 (도형으로 그림 — 글꼴마다 모양·자리가 달라서)
 //   - 임시표: 조표와 다르면 붙이고, 같은 마디 안 같은 자리에서는 앞 음의 임시표가 이어짐(다시 바뀔 때만 다시 붙임)
 //   - 폭: 시간에 비례 — 마디 폭은 늘 같고 음표는 박 위치에 놓임(받아쓰는 중에 아직 안 적은 음의 길이·개수가 간격으로 드러나지
-//     않게, 2026-11-24). 한 줄에 perLine마디 — 폰은 1마디씩
+//     않게, 2026-11-24). 다만 임시표·점·꼬리가 앞 음과 겹치면 그만큼 밀어 놓음 — 앞에서부터 차례로 정해서 이미 적은 음은 안 움직임
+//     (layout.js, 2026-11-25). 한 줄에 perLine마디 — 폰은 1마디씩
 //   - 입력 자리 표시(cursor): 다음에 적을 박 위치에 세로선
 // 화면 크기는 ear.css의 .ear-score (높이 = 줄 수 × 한 줄 높이). 색은 토큰마다 cls(good·bad·ref)로.
 import { ACC_PATH } from "../naming/staff.js";
 import { SHARP_STEPS, FLAT_STEPS, NATURAL_PATH } from "./staff.js";
 import { sigAcc } from "./theory.js";
-import { BAR, BEAT } from "./rhythm.js";
+import { BAR } from "./rhythm.js";
+import { BAR_W, layoutBar, beamGroups, shownAccidentals } from "./layout.js";
 
 const SP = 10, HALF = SP / 2;
 const LINE_H = 110;          // 한 줄(오선 하나)의 높이
@@ -21,9 +23,6 @@ const TOP = 34;              // 한 줄 안에서 맨 윗줄(F5)의 y
 const STEM = 33;             // 기둥 길이
 const BEAM_W = 4.6;          // 빔 두께
 const BEAM_GAP = 7.5;        // 첫째·둘째 빔 사이
-const COL = 15;              // 16분음표 하나의 폭 (시간 비례 배치)
-const BAR_PAD = 14;          // 마디 안 왼쪽 여백 (마디줄과 첫 음 사이)
-const BAR_W = BAR_PAD + 16 * COL + 6;   // 마디 폭 (늘 같음)
 const SIG_X = 40, SIG_W = 9;
 
 const stepOf = n => n.oct * 7 + n.l;
@@ -31,7 +30,6 @@ const stepOf = n => n.oct * 7 + n.l;
 /** 악보 그림 좌표 y → 줄·칸 번호 (line번째 줄 기준) — 마우스를 올린 높이를 음으로 바꿀 때 (pages/ear.js) */
 export const stepAtY = (y, line) => 38 - Math.round((y - line * LINE_H - TOP) / HALF);
 const yOf = (step, line) => line * LINE_H + TOP + (38 - step) * HALF;
-const isBeamable = t => !t.rest && t.dur <= 3;   // 8분·점8분·16분
 
 /** 비스듬한 타원 (머리 그리기) */
 function ellipse(cx, cy, rx, ry, deg, steps = 24) {
@@ -78,10 +76,11 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
     }
     x += 6;
     for (let b = first; b <= last; b++) {
-      for (const t of byBar[b]) headX.set(t, x + BAR_PAD + (t.pos % BAR) * COL);
+      const lay = layoutBar(byBar[b], sig);
+      for (const t of byBar[b]) headX.set(t, x + lay.x.get(t));
       // 입력 자리 세로선 (이 마디 안이면)
       if (cursor !== null && Math.floor(cursor / BAR) === b && cursor < bars * BAR) {
-        const cx = x + BAR_PAD + (cursor % BAR) * COL;
+        const cx = x + lay.at(cursor);
         svgBody += `<line class="st-cursor" x1="${cx}" x2="${cx}" y1="${yOf(40, line)}" y2="${yOf(27, line)}"/>`;
       }
       x += BAR_W;
@@ -95,7 +94,9 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
       if (ghost && Math.floor(ghost.pos / BAR) === b) {
         const l = ((ghost.step % 7) + 7) % 7, a = ghost.a ?? sigAcc(sig, l);   // a: 임시표 버튼으로 고른 변화(없으면 조표대로)
         const gt = { pos: ghost.pos, dur: ghost.dur, rest: false, cls: "ghost", note: { l, a, oct: Math.floor(ghost.step / 7) } };
-        headX.set(gt, x - BAR_W + BAR_PAD + (gt.pos % BAR) * COL);
+        // 자리: 그 앞 토큰들 뒤에 이어서 (임시표가 붙을 흐린 음표면 그만큼 밀어서)
+        const before = byBar[b].filter(t => t.pos < gt.pos);
+        headX.set(gt, x - BAR_W + layoutBar([...before, gt], sig).x.get(gt));
         svgBody += barSVG([gt], headX, sig, line);
       }
     }
@@ -111,17 +112,8 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
 /** 한 마디의 음표·쉼표 SVG */
 function barSVG(list, headX, sig, line) {
   let s = "";
-  const accNow = new Map();   // 이 마디에서 줄·칸(step)마다 지금 적용 중인 변화 (임시표가 마디 끝까지 이어짐)
-  // 빔 묶음: 같은 박 안에서 이어진 8분·점8분·16분음표 (쉼표에서 끊김)
-  const groups = [];
-  let cur = [];
-  const flush = () => { if (cur.length) groups.push(cur); cur = []; };
-  for (const t of list) {
-    if (isBeamable(t) && cur.length && Math.floor(cur[0].pos / BEAT) === Math.floor(t.pos / BEAT) && Math.floor((t.pos + t.dur - 1) / BEAT) === Math.floor(t.pos / BEAT)) cur.push(t);
-    else { flush(); if (isBeamable(t) && Math.floor((t.pos + t.dur - 1) / BEAT) === Math.floor(t.pos / BEAT)) cur.push(t); }
-    if (!isBeamable(t)) flush();
-  }
-  flush();
+  const accs = shownAccidentals(list, sig);   // 임시표를 붙일 음 (조표·같은 마디 앞 임시표와 다를 때)
+  const groups = beamGroups(list);             // 빔 묶음: 같은 박 안에서 이어진 8분·점8분·16분음표
   const groupOf = new Map();
   for (const g of groups) for (const t of g) groupOf.set(t, g);
 
@@ -135,13 +127,9 @@ function barSVG(list, headX, sig, line) {
     for (let k = 28; k >= step; k -= 2) s += `<line class="st-ledger ${cls}" x1="${x - 9}" x2="${x + 9}" y1="${yOf(k, line)}" y2="${yOf(k, line)}"/>`;
     for (let k = 40; k <= step; k += 2) s += `<line class="st-ledger ${cls}" x1="${x - 9}" x2="${x + 9}" y1="${yOf(k, line)}" y2="${yOf(k, line)}"/>`;
     // 임시표: 이 마디에서 이 자리에 적용 중인 변화와 다를 때만
-    if (t.note) {
-      const now = accNow.has(step) ? accNow.get(step) : sigAcc(sig, n.l);
-      if (n.a !== now) {
-        const d = n.a === 0 ? NATURAL_PATH : ACC_PATH[String(n.a)];
-        s += `<path class="st-acc ${cls}" transform="translate(${x - 14},${y})" d="${d}"/>`;
-        accNow.set(step, n.a);
-      }
+    if (accs.has(t)) {
+      const d = n.a === 0 ? NATURAL_PATH : ACC_PATH[String(n.a)];
+      s += `<path class="st-acc ${cls}" transform="translate(${x - 14},${y})" d="${d}"/>`;
     }
     // 머리
     s += t.dur >= 8 ? `<path class="st-head ${cls}" fill-rule="evenodd" d="${hollowHead(x, y)}"/>` : `<path class="st-head ${cls}" d="${solidHead(x, y)}"/>`;

@@ -332,3 +332,30 @@ test("ear level 3 harmony: mostly chord tones, and mostly diatonic when chromati
   }
   assert.ok(ct / all > 0.6, `chord tones ${ct}/${all}`);
 });
+
+import { layoutBar, fitsBar, shownAccidentals, BAR_W } from "../src/assets/js/ear/layout.js";
+
+test("ear level 3 layout: accidentals push a note right instead of hitting the one before; written notes never move", () => {
+  const sig = signature({ root: "C", minor: false });
+  const n = (pos, dur, l, a = 0, oct = 4) => ({ pos, dur, rest: false, note: { l, a, oct } });
+  // 16분 넷, 둘째·셋째에 임시표: 시간 비례(15)보다 넓게, 그 뒤 긴 음은 다시 제자리
+  const list = [n(0, 1, 0), n(1, 1, 1, 1), n(2, 1, 3, 1), n(3, 1, 4), n(4, 4, 0), n(8, 8, 2)];
+  const lay = layoutBar(list, sig), xs = list.map(t => lay.x.get(t));
+  assert.ok(xs[1] - xs[0] >= 6 + 19 + 2 && xs[2] - xs[1] >= 6 + 19 + 2, xs.join(","));
+  assert.strictEqual(xs[5], 14 + 8 * 15);   // 3박 2분음표는 시간 비례 자리 그대로
+  // 앞에서부터 정함: 뒤 음을 더해도 앞 음 자리는 그대로
+  for (let k = 1; k < list.length; k++) {
+    const part = layoutBar(list.slice(0, k), sig);
+    for (const t of list.slice(0, k)) assert.strictEqual(part.x.get(t), lay.x.get(t));
+  }
+  assert.strictEqual(shownAccidentals([n(0, 4, 3, 1), n(4, 4, 3, 1)], sig).size, 1);   // 같은 마디 같은 자리는 이어짐
+});
+
+test("ear level 3 layout: generated questions always fit the bar (busy 16ths with many accidentals are redrawn)", () => {
+  for (const chance of ["high", "random"]) for (let i = 0; i < 300; i++) {
+    const key = { root: "F♯", minor: false };
+    const d = makeDictation(key, { chromatic: true }, { bars: 2, min: 1, chance });
+    assert.ok(fitsBar(d, signature(key)));
+    for (const b of [0, 1]) assert.ok(layoutBar(d.filter(t => Math.floor(t.pos / BAR) === b), signature(key)).right <= BAR_W - 4);
+  }
+});
