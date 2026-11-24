@@ -51,10 +51,19 @@ test("ear: candidates stay in F3–F5, diatonic only unless chromatic is on", ()
   assert.ok(candidates({ root: "B", minor: false }).every(n => n.midi === midiOf(n)));
 });
 
-test("ear: the same note is not asked twice in a row", () => {
-  const k = { root: "C", minor: false };
-  let prev = null;
-  for (let i = 0; i < 200; i++) { const q = pickNote(k, {}, prev); assert.notStrictEqual(q.midi, prev); prev = q.midi; }
+test("ear: the same note is not asked twice in a row, and the next note is at most a major 10th away", () => {
+  for (const chromatic of [false, true]) {
+    const k = { root: "C", minor: false };
+    let prev = null;
+    for (let i = 0; i < 400; i++) {
+      const q = pickNote(k, { chromatic }, prev);
+      assert.notStrictEqual(q.midi, prev);
+      if (prev !== null) assert.ok(Math.abs(q.midi - prev) <= 16, `${prev} → ${q.midi}`);
+      prev = q.midi;
+    }
+  }
+  // 범위 끝(F3)에서도 E5(76)처럼 먼 음은 안 나옴
+  for (let i = 0; i < 200; i++) assert.ok(pickNote({ root: "C", minor: false }, {}, 53).midi <= 69);
 });
 
 test("ear: judging — octave must match, same name in another octave is a hint, enharmonic is fine", () => {
