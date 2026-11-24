@@ -370,7 +370,7 @@ function dictationOnce(key, opt, bars, min, chance, rnd) {
   const rhythm = generateRhythm(bars, min, rnd, chance);
   if (chance !== "random") {
     const r = dictationOverChords(key, rhythm, bars, chance, !!opt.chromatic, rnd);
-    if (r) return Object.assign(r.tokens, { chords: r.chords });
+    if (r) return Object.assign(r.tokens, { chords: r.chords, contour: r.contour });
   }
   const pitches = pickMelody(key, opt, rnd, rhythm.filter(x => !x.rest).length);
   let i = 0;

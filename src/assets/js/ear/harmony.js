@@ -175,6 +175,39 @@ const AWKWARD = { 6: 0.25, 10: 0.3, 11: 0.3 };
 // 한 문제의 음역: 가장 높은 음과 가장 낮은 음이 완전11도(17반음) 이내 (2026-11-25 사용자 결정) — 벗어나는 음은 후보에서 뺌
 const RANGE = 17;
 
+// 윤곽 (2026-11-25 사용자 결정): 문제마다 하나를 골라 그 모양 쪽으로 약하게 끎. 점 [문제 안 위치 0~1, 높이 0~1]을 이은 선이
+// 목표 높이가 되고, 음 후보마다 목표에서 멀수록 가중치를 exp(−거리/세기)로 줄임 (반드시 따라가지는 않음 — 다른 규칙과 함께).
+// "free"는 끌지 않음(예전과 같음). w = 고를 비중
+export const CONTOURS = {
+  arch:   { w: 28, pts: [[0, 0.15], [0.6, 1], [1, 0.4]] },                              // 아치: 올라갔다 내려옴
+  desc:   { w: 22, pts: [[0, 1], [1, 0.1]] },                                          // 하행
+  asc:    { w: 18, pts: [[0, 0.1], [1, 1]] },                                          // 상행 (빌드업)
+  valley: { w: 10, pts: [[0, 0.85], [0.55, 0], [1, 0.7]] },                            // 역아치
+  M:      { w: 5, pts: [[0, 0.2], [0.25, 1], [0.5, 0.45], [0.75, 1], [1, 0.2]] },     // M형
+  W:      { w: 5, pts: [[0, 0.8], [0.25, 0], [0.5, 0.55], [0.75, 0], [1, 0.8]] },     // W형
+  free:   { w: 12, pts: null },                                                        // 끌지 않음
+};
+const CONTOUR_S = { high: 3, mid: 4.5, low: 7 };   // 끄는 세기 (작을수록 셈) — 개연성이 높을수록 모양이 뚜렷
+const CONTOUR_SPAN = { 1: 7, 2: 10 };              // 목표 선의 높낮이 폭 (반음) — 1마디는 좁게
+
+/** 윤곽 하나 고르기 → { name, pts, base(목표 선의 가장 낮은 midi), span, s } */
+export function pickContour(key, bars, chance, rnd = Math.random) {
+  const names = Object.keys(CONTOURS);
+  const name = weighted(names, names.map(k => CONTOURS[k].w), rnd);
+  const span = CONTOUR_SPAN[bars] ?? 10;
+  const base = scaleMidis(key)[0] + 5 - span / 2 + Math.round(rnd() * 4 - 2);   // 가운데쯤 (조마다 조금씩 위아래로)
+  return { name, pts: CONTOURS[name].pts, base: Math.max(LOW + 2, Math.min(HIGH - 2 - span, base)), span, s: CONTOUR_S[chance] ?? 4.5 };
+}
+
+/** 윤곽 목표 높이 (midi) — t: 문제 안 위치 0~1 */
+function contourAt(c, t) {
+  const p = c.pts;
+  let k = 0;
+  while (k < p.length - 2 && t > p[k + 1][0]) k++;
+  const [t0, v0] = p[k], [t1, v1] = p[k + 1];
+  return c.base + c.span * (v0 + (v1 - v0) * Math.max(0, Math.min(1, (t - t0) / (t1 - t0))));
+}
+
 /** 코드 위에서 고를 수 있는 음: 조의 음계(단조는 자연단음계) 글자마다, 코드 구성음과 글자가 같으면 코드 철자로 바꿈 → F3~F5 모든 옥타브 */
 function notesFor(key, ch) {
   const { scale } = keyNotes(key);
@@ -201,8 +234,10 @@ function weighted(items, ws, rnd) {
  * @param chords  코드 진행, 코드 하나의 길이 = slot (16분 단위)
  * @returns [{ ..., note? }] 또는 실패하면 null (어보이드 노트를 해결할 음이 없는 등 — 다시 뽑음)
  */
-export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random) {
-  const center = scaleMidis(key)[0] + 5;   // 첫 음은 가운데쯤
+export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random, contour = null) {
+  const center = scaleMidis(key)[0] + 5;   // 첫 음은 가운데쯤 (윤곽이 있으면 윤곽의 시작 높이 쪽으로도 끎)
+  const total = rhythm.length ? rhythm[rhythm.length - 1].pos + rhythm[rhythm.length - 1].dur : 16;
+  const pull = contour && contour.pts ? contour : null;
   let prev = null, prev2 = null, nctRun = 0, prevAvoid = false, hi = -Infinity, lo = Infinity;
   const notes = rhythm.filter(x => !x.rest);
   const out = [];
@@ -228,6 +263,7 @@ export function melodyOverChords(key, rhythm, chords, slot, rnd = Math.random) {
       if (kind(n) === "avoid") w *= AVOID_W;
       if (prev) w *= AWKWARD[Math.abs(n.midi - prev.midi)] ?? 1;
       // 아르페지오 = 앞 두 음과 이 음이 모두 지금 코드의 구성음
+      if (pull) w *= Math.exp(-Math.abs(n.midi - contourAt(pull, x.pos / total)) / pull.s);   // 윤곽 쪽으로 약하게
       if (prev && prev2) w *= directionW(prev.midi - prev2.midi, n.midi - prev.midi, kind(n) === "ct", ch.pcs.has(prev.pc) && ch.pcs.has(prev2.pc));
       return w;
     };
@@ -273,14 +309,15 @@ function directionW(last, next, ct, prevCT) {
 
 /**
  * 받아쓰기 문제 (개연성 높음·중간·낮음): 진행을 만들고 리듬 위에 멜로디. 실패하면 진행부터 다시
- * @returns { tokens, chords, slot }
+ * @returns { tokens, chords, slot, contour: 윤곽 이름 }
  */
 export function dictationOverChords(key, rhythm, bars, chance, chromatic, rnd = Math.random) {
   const per = PER_BAR[chance] || 2, slot = 16 / per;
+  const contour = pickContour(key, bars, chance, rnd);
   for (let tries = 0; tries < 60; tries++) {
     const chords = makeProgression(key, per * bars, chromatic, rnd);
-    const tokens = melodyOverChords(key, rhythm, chords, slot, rnd);
-    if (tokens) return { tokens, chords, slot };
+    const tokens = melodyOverChords(key, rhythm, chords, slot, rnd, contour);
+    if (tokens) return { tokens, chords, slot, contour: contour.name };
   }
   return null;
 }

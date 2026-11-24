@@ -401,3 +401,16 @@ test("ear level 3 harmony: one question stays within a perfect 11th (high · mid
     assert.ok(Math.max(...m) - Math.min(...m) <= 17, m.join(" "));
   }
 });
+
+test("ear level 3 harmony: contours pull the melody their way (rising questions end higher, falling ones lower)", () => {
+  const diff = { asc: 0, desc: 0 }, n = { asc: 0, desc: 0 };
+  for (let i = 0; i < 2500; i++) {
+    const d = makeDictation({ root: "C", minor: false }, {}, { bars: 2, min: 2, chance: "high" });
+    if (!(d.contour in diff)) continue;
+    const ns = d.filter(x => !x.rest), avg = a => a.reduce((p, q) => p + q, 0) / a.length;
+    const first = ns.filter(x => x.pos < 8).map(x => x.note.midi), last = ns.filter(x => x.pos >= 24).map(x => x.note.midi);
+    if (!first.length || !last.length) continue;
+    diff[d.contour] += avg(last) - avg(first); n[d.contour]++;
+  }
+  assert.ok(diff.asc / n.asc > 2 && diff.desc / n.desc < -2, JSON.stringify({ diff, n }));
+});
