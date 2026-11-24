@@ -11,7 +11,7 @@
 //   - 쓰는 길이: 2분(8) · 점4분(6) · 4분(4) · 점8분(3) · 8분(2) · 16분(1) 음표, 4분(4) · 8분(2) · 16분(1) 쉼표.
 //     최소 박자(min: 4 = 4분, 2 = 8분, 1 = 16분)의 배수인 길이만 (점4분은 8분 이상, 점8분은 16분일 때)
 //   - 박 경계를 넘지 않음. 예외는 아래 NOTE_OK (2분음표 1박→3박, 4분음표 0.5·2.5박, 점4분음표 0·0.5·2·2.5박)
-//   - 2분음표는 한 마디에 최대 1개. 2분쉼표·점2분·점16분은 출제 안 함
+//   - 2분음표는 한 마디에 최대 1개, 바로 앞·뒤에 한 박 이상 쉬기 없음(2026-11-25). 2분쉼표·점2분·점16분은 출제 안 함
 //   - 쉼표: 4분쉼표는 정박, 8분쉼표는 정박·반박, 16분쉼표는 어디서나. 이어진 쉼표는 3개까지, 합칠 수 있으면 안 됨(mergeable —
 //     1·3박에서 시작하는 4분쉼표 둘은 2분쉼표 자리라서 그런 리듬은 다시 뽑음). 점쉼표로 합치는 것은 따지지 않음
 //   - 한 마디에서 쉬는 박의 합은 3박 미만. 음표는 문제 전체에서 최소 3개
@@ -338,6 +338,12 @@ export function rhythmProblem(tokens, min = 1, bars = 1) {
     if (inBar.filter(x => x.rest).reduce((a, x) => a + x.dur, 0) >= 3 * BEAT) return `rests ≥ 3 beats in bar ${b}`;
   }
   if (tokens.filter(x => !x.rest).length < MIN_NOTES) return "fewer than 3 notes";
+  // 2분음표 바로 앞·뒤에 한 박(4) 이상 쉬기 없음 — 점2분음표처럼 들려서 3박 동안 어택이 하나뿐 (2026-11-25 사용자 결정, 마디를 넘어서도)
+  const restRun = (from, step) => { let sum = 0; for (let j = from; j >= 0 && j < tokens.length && tokens[j].rest; j += step) sum += tokens[j].dur; return sum; };
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].rest || tokens[i].dur !== 8) continue;
+    if (restRun(i - 1, -1) >= BEAT || restRun(i + 1, 1) >= BEAT) return `beat of rest next to a half note at ${tokens[i].pos}`;
+  }
   return "";
 }
 

@@ -38,8 +38,9 @@
 .ear-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 @media (max-width: 900px) { .ear-layout { grid-template-columns: minmax(0, 1fr); } }
 .ear-layout.no-sheet { grid-template-columns: minmax(0, 1fr); }
-.ear-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 20px clamp(14px, 3vw, 28px) 22px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.ear-panel { display: flex; flex-direction: column; gap: 14px; }
+.ear-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 16px clamp(14px, 3vw, 28px) 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* 세로 간격은 폰에서 버튼이 잘리지 않게 조금씩 좁힘 (2026-11-25 사용자 요청 — 예전 카드 20/16, 패널 14) */
+.ear-panel { display: flex; flex-direction: column; gap: 10px; }
 .ear-panel[hidden], .ear-soon[hidden] { display: none; }
 .ear-soon { padding: 40px 0; text-align: center; color: var(--muted); }
 
@@ -63,7 +64,7 @@
    (2026-11-24 사용자 요청, 처음 쓴 파란색은 너무 튀어서 바꿈) */
 #btnScale { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); font-weight: 600; }
 #btnScale:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
-.ear-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.ear-hint { margin: 0; font-size: 13px; line-height: 1.45; min-height: 1.45em; color: var(--muted); }   /* 문구가 비어도 한 줄 자리는 남김 — 재생 중 문구가 생겼다 사라질 때 아래가 들썩이지 않게 */
 .ear-hint .ear-skip { font-size: 13px; font-weight: 600; color: var(--accent); margin-left: 4px; }   /* 필수 재생 건너뛰기 — 안내 문구와 다른 색 */
 
 /* 문제 다시 듣기: 안내 문구와 오선지 사이 가운데의 큰 동그란 재생 버튼 */
@@ -200,3 +201,15 @@
 /* 디버그 모드 출력 (관리자만) */
 .ear-debug { margin: 0; font-size: 12px; color: var(--muted); white-space: pre-wrap; text-align: center; }
 .ear-debug[hidden] { display: none; }
+
+/* ---------- 맞았다/틀렸다 안내 (악보 바로 밑 — pages/ear.js resetNote가 자리를 옮김, 2026-11-25 사용자 요청) ----------
+   비어 있어도 한 줄 자리는 남김: 건반을 누를 때마다 안내가 생겼다 사라지며 건반이 위아래로 움직이지 않게 */
+.ear-panel .feedback { margin-top: 0; min-height: calc(13px * 1.45 + 12px); }
+.ear-panel .feedback:empty { display: flex; visibility: hidden; }
+
+/* ---------- 폰·태블릿 (마우스 없음): 오선지·악보를 눌러 고르기가 없어서 임시표 버튼도 없음 (2026-11-25 사용자 요청) ---------- */
+@media not all and (hover: hover) and (pointer: fine) {
+  .ear-accs { display: none; }
+  .ear-staff-wrap:has(> .ear-staff[hidden]) { display: none; }   /* ③: 오선지가 숨겨져 임시표뿐인 줄 → 줄째로 없앰 */
+  .ear-staff svg, .ear-score svg { cursor: default; }
+}

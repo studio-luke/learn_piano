@@ -167,7 +167,7 @@ Ins.load(inst);   // 고른 악기 녹음은 페이지를 열 때 받기 시작 
 //   write 받아쓸 것 "both" 음높이와 리듬(처음) · "pitch" 음높이만 · "rhythm" 리듬만,
 //   chance 멜로디 개연성 "high"·"mid"(처음)·"low"·"random" (min·bars·bpm·write·chance는 단음 ③만)
 // 예전에 단음 단계끼리 같이 쓰던 값(chordoven.earNote.v1)이 있으면 그 레벨을 처음 열 때 시작값으로 씀
-const S_DEFAULTS = { root: "C", minor: false, chromatic: false, tonicEach: true, speed: 1, count: 1, min: 2, bars: 1, bpm: 60, write: "both", chance: "mid" };
+const S_DEFAULTS = { root: "C", minor: false, chromatic: false, tonicEach: true, speed: 1, count: 1, min: 2, bars: 1, bpm: 60, write: "both", chance: "high" };   // 멜로디 개연성 처음 "높음" (2026-11-25 사용자 결정)
 let S = loadS();
 function loadS() {
   const s = Object.assign({}, S_DEFAULTS, store.getJSON("earNote.v1") || {}, store.getJSON(`ear.${mode}.v1`) || {});
@@ -403,6 +403,7 @@ function scoreStep(e) {
   return st >= 23 && st <= 39 ? Math.max(24, Math.min(38, st)) : null;
 }
 function scorePick(st) {
+  if (!IS_PC) return;   // 폰·태블릿: 악보를 눌러 적기 없음 (건반으로만 — 2026-11-25 사용자 요청)
   if (!dictation() || N.phase !== "ask" || refText || N.write === "rhythm") return;
   // 변화표는 ①·②의 오선지처럼 [♯ ♮ ♭ 해제] 중 고른 것 (한 번 쓰고 해제로) — 2026-11-24 사용자 요청
   const l = st % 7, a = acc === "key" ? sigAcc(signature(key()), l) : acc;
@@ -488,12 +489,18 @@ function submitToken(input) {
       // 리듬만: 음높이를 고르지 않으니 그 칸의 실제 음 높이에 그림(쉼표 칸이면 가운데 줄) — 2026-11-24 사용자 요청
       note: input.rest ? undefined : N.write === "rhythm" ? target.note : input.note || spellMidi(key(), input.midi) };
     if (input.midi !== undefined) markKeys(new Map([[input.midi, "bad"]]));
-    const msg = r === "len" ? t("earN3LenOk") : r === "pitch" ? t("earN3PitchOk") : r === "octUp" ? t("earOctUp") : r === "octDown" ? t("earOctDown") : t("earWrong");
+    // 음높이가 틀렸으면 정답이 더 높은지·낮은지 힌트를 덧붙임 (옥타브 힌트가 아닐 때, 리듬만 받아쓸 때는 없음 — 2026-11-25 사용자 요청)
+    const pitchOff = !target.rest && input.midi !== undefined && N.write !== "rhythm" && (r === "pitch" || r === "no") && input.midi !== target.note.midi;
+    const dir = pitchOff ? " " + t(target.note.midi > input.midi ? "earHigher" : "earLower") : "";
+    const msg = (r === "len" ? t("earN3LenOk") : r === "pitch" ? t("earN3PitchOk") : r === "octUp" ? t("earOctUp") : r === "octDown" ? t("earOctDown") : t("earWrong")) + dir;
     // 쉼표 자리에 음표: 기회(첫 오답 봐주기)를 쓰지 않고 바로 오답 + "쉼표가 와야 할 자리예요." (2026-11-24 사용자 요청)
     if (target.rest && !input.rest) { N.wrong = true; setFeedback("no", t("earN3NeedRest")); }
     // 음표 자리에 쉼표도 마찬가지로 바로 오답 + "음표가 와야 할 자리예요." (2026-11-24 사용자 요청)
     else if (!target.rest && input.rest) { N.wrong = true; setFeedback("no", t("earN3NeedNote")); }
-    else if (N.life) { N.life = false; setFeedback("no", t("earLife") + (r === "no" ? "" : " " + msg)); }
+    // 쉼표 자리에 길이가 다른 쉼표: 기회를 쓰지 않고 바로 오답 + 더 짧은/긴 쉼표 안내 — 기회는 첫 음을 못 듣고 시작했을 때
+    // 음을 잘못 짚는 경우를 봐주려는 것이라 쉼표에는 안 맞음 (2026-11-25 사용자 요청)
+    else if (target.rest) { N.wrong = true; setFeedback("no", t(input.dur > target.dur ? "earN3RestShorter" : "earN3RestLonger")); }
+    else if (N.life) { N.life = false; setFeedback("no", t("earLife") + (r === "no" ? dir : " " + msg)); }
     else { N.wrong = true; setFeedback("no", msg); }
   }
   drawScore();
@@ -659,9 +666,9 @@ function renderNoteButtons() {
   setGhostEnabled(N.phase !== "done");   // 끝난 문제(맞힘·정답 확인)에서는 악보에 마우스를 올려도 흐린 음표를 안 보임
   const lv = dictation() ? "earN3" : melodic() ? "earN2" : "earN1";
   // 단음 ②에서 맞힐 음이 2개인 문제는 "숨은 두 음을 순서대로…"
-  const ask = dictation() ? "earN3Ask" + N.write[0].toUpperCase() + N.write.slice(1)
-    : melodic() && N.melody && N.melody.length - SHOWN > 1 ? "earN2Ask2" : lv + "Ask";
-  $("earHintText").textContent = refText || t(!started ? lv + "Intro" : ask);
+  const ask = melodic() && N.melody && N.melody.length - SHOWN > 1 ? "earN2Ask2" : lv + "Ask";
+  // ③은 문제를 푸는 동안 안내 문구를 비움 — 폰에서 세로 공간이 모자라서 (2026-11-25 사용자 요청, 줄 높이는 남김)
+  $("earHintText").textContent = refText || (!started ? t(lv + "Intro") : dictation() ? "" : t(ask));
   $("btnSkip").hidden = !refSkip;
 }
 
@@ -704,6 +711,8 @@ function resetNote() {
   $("earScore").hidden = !dictation();
   N.dAns = 0; N.dTry = null; N.write = S.write;
   $("earStaff").hidden = dictation();   // ③은 악보에서 고름 — 임시표 줄은 ③에서도 씀(오선지만 숨김)
+  // 맞았다/틀렸다 안내는 악보 바로 밑 (2026-11-25 사용자 요청): ③은 리듬 악보 밑, ①·②는 오선지(+임시표) 줄 밑
+  (dictation() ? $("earScore") : document.querySelector(".ear-staff-wrap")).after($("earFeedback"));
   applyWriteMode();
   drawScore(); setCount("");
   setSlots(melodic() ? SHOWN + S.count : 1, melodic());
@@ -785,6 +794,7 @@ function pick(m, spelled) {
 
 initKeys(LOW, HIGH, m => pick(m));
 initStaff(({ l, oct }) => {
+  if (!IS_PC) return;   // 폰·태블릿: 오선지를 눌러 고르기 없음 — 줄·칸을 정확히 누르기 어려워서, 건반으로만 (2026-11-25 사용자 요청)
   // 끝난 문제(맞힘·정답 확인)에서는 오선지를 눌러도 아무것도 안 함 — 소리도 없음 (2026-11-24 사용자 요청, 건반은 지금처럼 소리)
   if (N.phase === "done") return;
   const a = acc === "key" ? sigAcc(signature(key()), l) : acc;

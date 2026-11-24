@@ -444,3 +444,16 @@ test("ear level 3 harmony: pitch motifs — repeated or sequenced from an earlie
     }
   }
 });
+
+test("ear level 3: no beat of rest right before or after a half note (it would sound like a dotted half)", () => {
+  assert.ok(rhythmProblem([{ pos: 0, dur: 8, rest: false }, { pos: 8, dur: 4, rest: true }, { pos: 12, dur: 4, rest: false }, { pos: 16, dur: 4, rest: false }, { pos: 20, dur: 4, rest: false }, { pos: 24, dur: 8, rest: false }], 4, 2).startsWith("beat of rest"));
+  for (const min of [4, 2, 1]) for (let i = 0; i < 1500; i++) {
+    const r = generateRhythm(2, min);
+    r.forEach((x, k) => {
+      if (x.rest || x.dur !== 8) return;
+      let a = 0; for (let j = k - 1; j >= 0 && r[j].rest; j--) a += r[j].dur;
+      let b = 0; for (let j = k + 1; j < r.length && r[j].rest; j++) b += r[j].dur;
+      assert.ok(a < 4 && b < 4, JSON.stringify(r));
+    });
+  }
+});
