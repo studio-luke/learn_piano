@@ -163,9 +163,10 @@ Ins.load(inst);   // 고른 악기 녹음은 페이지를 열 때 받기 시작 
 //   root·minor 조성, chromatic 조 밖의 음 포함, tonicEach 문제마다 기준음 재생(처음 켜짐),
 //   speed 멜로디 재생 속도 0 느리게·1 보통·2 빠르게·3 매우 빠르게, count 맞힐 음 개수 1·2 (speed·count는 단음 ②만)
 //   min 최소 박자 4·2·1(4분·8분·16분, 처음 8분), bars 마디 수 1·2, bpm 40~160(처음 60 — 2026-11-24 사용자 요청, 처음엔 80),
-//   write 받아쓸 것 "both" 음높이와 리듬(처음) · "pitch" 음높이만 · "rhythm" 리듬만 (min·bars·bpm·write는 단음 ③만)
+//   write 받아쓸 것 "both" 음높이와 리듬(처음) · "pitch" 음높이만 · "rhythm" 리듬만,
+//   chance 멜로디 개연성 "high"·"mid"(처음)·"low"·"random" (min·bars·bpm·write·chance는 단음 ③만)
 // 예전에 단음 단계끼리 같이 쓰던 값(chordoven.earNote.v1)이 있으면 그 레벨을 처음 열 때 시작값으로 씀
-const S_DEFAULTS = { root: "C", minor: false, chromatic: false, tonicEach: true, speed: 1, count: 1, min: 2, bars: 1, bpm: 60, write: "both" };
+const S_DEFAULTS = { root: "C", minor: false, chromatic: false, tonicEach: true, speed: 1, count: 1, min: 2, bars: 1, bpm: 60, write: "both", chance: "mid" };
 let S = loadS();
 function loadS() {
   const s = Object.assign({}, S_DEFAULTS, store.getJSON("earNote.v1") || {}, store.getJSON(`ear.${mode}.v1`) || {});
@@ -197,6 +198,7 @@ function renderSettings() {
   $("earBars1").checked = S.bars === 1; $("earBars2").checked = S.bars === 2;
   $("earBpm").value = S.bpm;
   for (const w of ["Both", "Pitch", "Rhythm"]) $("earWrite" + w).checked = S.write === w.toLowerCase();
+  for (const c of ["High", "Mid", "Low", "Random"]) $("earChance" + c).checked = S.chance === c.toLowerCase();
   $("earKeyName").textContent = keyLabel();
   setSignature(signature(key()));
 }
@@ -231,6 +233,8 @@ $("earBpmDown").onclick = () => setBpm(S.bpm - 1);
 $("earBpmUp").onclick = () => setBpm(S.bpm + 1);
 // 받아쓸 것: 다음 문제부터
 for (const w of ["Both", "Pitch", "Rhythm"]) $("earWrite" + w).onchange = () => { S.write = w.toLowerCase(); saveS(); };
+// 멜로디 개연성: 다음 문제부터
+for (const c of ["High", "Mid", "Low", "Random"]) $("earChance" + c).onchange = () => { S.chance = c.toLowerCase(); saveS(); };
 
 // ---------- 단음 ① 음 하나 ----------
 // phase: "idle"(시작 전) | "ask"(풀고 있음) | "done"(맞힘·정답 확인)
@@ -579,7 +583,7 @@ function newQuestion(withScale) {
   N.ans = 0;
   if (dictation()) {
     // 단음 ③: 문제를 만들고 처음 자리부터 순서대로 받아씀
-    N.dict = makeDictation(key(), { chromatic: S.chromatic }, { bars: S.bars, min: S.min });
+    N.dict = makeDictation(key(), { chromatic: S.chromatic }, { bars: S.bars, min: S.min, chance: S.chance });
     N.dictBars = S.bars;   // 이 문제의 마디 수 (재생·악보는 이것을 씀)
     N.write = S.write;     // 이 문제의 받아쓸 것
     N.melody = null; N.q = null;

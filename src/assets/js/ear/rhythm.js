@@ -17,6 +17,7 @@
 //   - 한 마디에서 쉬는 박의 합은 3박 미만. 음표는 문제 전체에서 최소 3개
 //   - 첫 어택은 1박 위주, 최소 박자가 8분·16분이면 쉼표로 시작하는 경우를 조금 더
 import { pickMelody } from "./theory.js";
+import { dictationOverChords } from "./harmony.js";
 
 export const BAR = 16, BEAT = 4;
 
@@ -171,11 +172,16 @@ export function isCanonical(tokens, min = 1) {
 }
 
 /**
- * 받아쓰기 문제: 리듬 + 음표마다 음높이 (②의 멜로디 규칙 — theory.js pickMelody).
- * @returns [{ pos, dur, rest, note?: { l, a, oct, midi } }]
+ * 받아쓰기 문제: 리듬 + 음표마다 음높이.
+ *   멜로디 개연성(chance) "high"·"mid"·"low" → 코드 진행 위의 멜로디(harmony.js), "random" → ②의 멜로디 규칙(theory.js pickMelody)
+ * @returns [{ pos, dur, rest, note?: { l, a, oct, midi } }] — 코드 위 멜로디면 배열에 chords(진행)도 붙임
  */
-export function makeDictation(key, opt = {}, { bars = 1, min = 2 } = {}, rnd = Math.random) {
+export function makeDictation(key, opt = {}, { bars = 1, min = 2, chance = "random" } = {}, rnd = Math.random) {
   const rhythm = generateRhythm(bars, min, rnd);
+  if (chance !== "random") {
+    const r = dictationOverChords(key, rhythm, bars, chance, !!opt.chromatic, rnd);
+    if (r) return Object.assign(r.tokens, { chords: r.chords });
+  }
   const pitches = pickMelody(key, opt, rnd, rhythm.filter(x => !x.rest).length);
   let i = 0;
   return rhythm.map(x => (x.rest ? x : { ...x, note: pitches[i++] }));

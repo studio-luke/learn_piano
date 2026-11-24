@@ -211,3 +211,48 @@ test("ear level 3: judging one slot — pitch and length, rests, write modes", (
   assert.strictEqual(judgeToken({ dur: 6, rest: false, note: { midi: 60 } }, { dur: 6, midi: 60 }), "ok");   // 점4분
   assert.strictEqual(judgeToken({ dur: 8, rest: false, note: { midi: 60 } }, { dur: 12, midi: 60 }), "len"); // 점2분은 늘 틀림
 });
+
+// ---------- 단음 ③ 멜로디 개연성 (ear/harmony.js) ----------
+import { makeProgression, dictationOverChords, PER_BAR } from "../src/assets/js/ear/harmony.js";
+
+test("ear level 3 harmony: progressions use only the allowed 7th-chord types, chromatic chords only when asked", () => {
+  const allowed = new Set(["M7", "7", "m7", "m7b5", "7sus4", "mM7", "dim7"]);
+  for (const minor of [false, true]) for (const chromatic of [false, true]) for (let i = 0; i < 400; i++) {
+    const p = makeProgression({ root: minor ? "A" : "C", minor }, 4, chromatic);
+    assert.strictEqual(p.length, 4);
+    assert.ok(p.every(c => allowed.has(c.type)), p.map(c => c.name).join(" "));
+    if (!chromatic) assert.ok(p.every(c => !c.chromatic));
+    assert.ok(p.every(c => c.type !== "mM7" || c.degree === 4), "mM7 only on the 4th degree");
+  }
+});
+
+test("ear level 3 harmony: melody over chords — avoid notes never on a beat, always resolved by step to a chord tone", () => {
+  for (const chance of ["high", "mid", "low"]) for (const chromatic of [false, true]) for (let i = 0; i < 300; i++) {
+    const key = { root: ["C", "G", "E♭"][i % 3], minor: i % 2 === 1 };
+    const rhythm = generateRhythm(2, 1);
+    const r = dictationOverChords(key, rhythm, 2, chance, chromatic);
+    assert.ok(r, "should find a melody");
+    const notes = r.tokens.filter(x => !x.rest);
+    notes.forEach((x, k) => {
+      assert.ok(x.note.midi >= LOW && x.note.midi <= HIGH);
+      if (k) assert.ok(Math.abs(x.note.midi - notes[k - 1].note.midi) <= 12);
+      const ch = r.chords[Math.floor(x.pos / r.slot)];
+      if (!ch.avoid.has(((x.note.midi % 12) + 12) % 12) || ch.pcs.has(x.note.midi % 12)) return;
+      assert.ok(x.pos % 4 !== 0, "avoid note on a beat");
+      const nx = notes[k + 1];
+      assert.ok(nx, "avoid note can't be last");
+      const ch2 = r.chords[Math.floor(nx.pos / r.slot)], d = Math.abs(nx.note.midi - x.note.midi);
+      assert.ok(ch2.pcs.has(nx.note.midi % 12) && d >= 1 && d <= 2, "avoid note resolves by step to a chord tone");
+    });
+    assert.strictEqual(r.chords.length, PER_BAR[chance] * 2);
+  }
+});
+
+test("ear level 3 harmony: mostly chord tones, and mostly diatonic when chromatic is off", () => {
+  let ct = 0, all = 0;
+  for (let i = 0; i < 500; i++) {
+    const r = dictationOverChords({ root: "C", minor: false }, generateRhythm(1, 2), 1, "mid", false);
+    for (const x of r.tokens) if (!x.rest) { all++; if (r.chords[Math.floor(x.pos / r.slot)].pcs.has(x.note.midi % 12)) ct++; assert.strictEqual(x.note.a, 0); }
+  }
+  assert.ok(ct / all > 0.6, `chord tones ${ct}/${all}`);
+});

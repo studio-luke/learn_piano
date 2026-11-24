@@ -176,6 +176,16 @@
               <button class="im-step" id="earBpmUp" type="button" aria-label="BPM +">+</button>
             </div>
           </div>
+          <!-- 멜로디 개연성: 높음 · 중간(처음) · 낮음 · 랜덤 — 높음~낮음은 코드 진행 위의 멜로디(ear/harmony.js), 랜덤은 예전 방식 (2026-11-24 사용자 결정) -->
+          <div class="opt">
+            <h3 data-i18n="earChanceH">멜로디 개연성</h3>
+            <div class="chips radios" role="radiogroup" aria-label="멜로디 개연성" data-i18n-aria="earChanceH">
+              <label class="chip"><input type="radio" name="earChance" id="earChanceHigh" value="high"><span data-i18n="earChanceHigh">높음</span></label>
+              <label class="chip"><input type="radio" name="earChance" id="earChanceMid" value="mid"><span data-i18n="earChanceMid">중간</span></label>
+              <label class="chip"><input type="radio" name="earChance" id="earChanceLow" value="low"><span data-i18n="earChanceLow">낮음</span></label>
+              <label class="chip"><input type="radio" name="earChance" id="earChanceRandom" value="random"><span data-i18n="earChanceRandom">랜덤</span></label>
+            </div>
+          </div>
           <div class="opt">
             <h3 data-i18n="earWriteH">받아쓸 것</h3>
             <div class="chips radios" role="radiogroup" aria-label="받아쓸 것" data-i18n-aria="earWriteH">
