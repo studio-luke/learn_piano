@@ -3,7 +3,8 @@
 //   - 변화표는 [♯ | ♮ | ♭ | 해제] 중 고른 것 — 기본은 해제(조표대로), 다른 것을 골랐으면 한 번 쓰고 조표대로로 돌아감 (페이지가 정함)
 //   - 고를 수 있는 높이: F3 ~ F5 (건반과 같은 범위)
 //   - 마우스를 올리면 그 자리에 흐린 음표(어디를 고르게 되는지)
-// 음표 자리(slot)는 단계마다: 단음 ①은 한 자리에 온음표, 단음 ②는 네 자리에 4분음표(마지막 자리가 문제 — 고른 음·"?"가 여기).
+// 음표 자리(slot)는 단계마다: 단음 ①은 한 자리에 온음표, 단음 ②는 4~5자리에 4분음표(앞 3자리는 보여 주는 음, 그 뒤가 문제 —
+// 지금 고르는 자리(answerSlot)에 고른 음·흐린 음표, 아직 안 고른 문제 자리는 "?").
 // 조표와 다른 변화표만 음표 앞에 그림(조표대로인 음은 변화표 없음, 조표를 지우는 음은 ♮) — 음마다 따로(마디줄이 없어서 이어지지 않음).
 // 임시표·음표 머리 도형은 코드 추론하기 악보(naming/staff.js)와 같은 것. 모양(색)은 ear.css의 .ear-staff
 import { $ } from "../common/dom.js";
@@ -36,7 +37,7 @@ let shown = [];        // 그려 둔 것 [{ note: {l,a,oct}, cls: "good" | "bad"
 let slots = 1, quarter = false;   // 음표 자리 수, 4분음표로 그릴지 (아니면 온음표)
 const xOf = i => FIRST_X + i * GAP;
 const width = () => xOf(slots - 1) + 40;
-const last = () => slots - 1;      // 답을 고르는 자리
+let answerSlot = 0;                // 답을 고르는 자리 (흐린 음표·고른 음이 여기) — 보통 마지막, 맞힐 음이 2개면 차례대로
 let ghost = null;      // 마우스를 올린 자리의 줄·칸 번호 (없으면 null)
 let onPick = () => {};
 
@@ -86,10 +87,13 @@ export function initStaff(pick) {
 export function setSignature(s) { sig = s; draw(); }
 
 /** 음표 자리 수와 모양 (단음 ①: 1, 온음표 / 단음 ②: 4, 4분음표) */
-export function setSlots(n, q) { slots = n; quarter = q; shown = []; draw(); }
+export function setSlots(n, q) { slots = n; quarter = q; answerSlot = n - 1; shown = []; draw(); }
+
+/** 답을 고르는 자리 바꾸기 (단음 ②에서 맞힐 음이 2개일 때 — 첫 번째를 맞히면 다음 자리로) */
+export function setAnswerSlot(i) { answerSlot = i; }
 
 /**
- * 그릴 것 바꾸기: [{ note: {l,a,oct}, cls, slot }] 또는 { placeholder: true, slot }("?") — slot을 안 주면 마지막 자리.
+ * 그릴 것 바꾸기: [{ note: {l,a,oct}, cls, slot }] 또는 { placeholder: true, slot }("?") — slot을 안 주면 답 자리.
  * 같은 자리에 겹치면 나중 것이 위
  */
 export function showNotes(list) { shown = list; draw(); }
@@ -107,16 +111,19 @@ function draw() {
     svg += `<path class="st-acc" transform="translate(${SIG_X + i * SIG_W + SIG_W / 2},${yOf(steps[i])})" d="${ACC_PATH[String(sig.a)]}"/>`;
   }
   // 답 자리의 것: "?"는 마우스를 올리면 흐린 음표로 바뀜
-  const atLast = x => (x.slot ?? last()) === last();
-  const lastNote = shown.find(x => atLast(x) && x.note);
+  const atAnswer = x => (x.slot ?? answerSlot) === answerSlot;
+  const lastNote = shown.find(x => atAnswer(x) && x.note);
   // 흐린 음표 (마우스를 올린 답 자리) — 이미 같은 높이의 음이 그려져 있으면 안 그림
-  const showGhost = ghost !== null && !(lastNote && lastNote.note.oct * 7 + lastNote.note.l === ghost);
+  // 잠겨 있을 때(필수 재생 중)는 흐린 음표를 그리지 않음 — 마우스가 악보 위에 있던 채로 잠기면 답 자리의 "?"를 가려서
+  // 첫 번째 "?"가 울릴 때 파랗게 보이지 않았음 (2026-11-24)
+  const showGhost = ghost !== null && !$("earStaff").classList.contains("locked")
+    && !(lastNote && lastNote.note.oct * 7 + lastNote.note.l === ghost);
   for (const x of shown) {
-    const slot = x.slot ?? last();
-    if (x.placeholder) { if (!showGhost) svg += `<text class="st-q" x="${xOf(slot)}" y="${yOf(34) + 8}" text-anchor="middle">?</text>`; }
+    const slot = x.slot ?? answerSlot;
+    if (x.placeholder) { if (!(showGhost && slot === answerSlot && x.cls !== "ref")) svg += `<text class="st-q ${x.cls || ""}" x="${xOf(slot)}" y="${yOf(34) + 8}" text-anchor="middle">?</text>`; }
     else svg += noteSVG(x.note, x.cls, slot);
   }
-  if (showGhost) svg += noteSVG({ l: ghost % 7, oct: Math.floor(ghost / 7), a: null }, "ghost", last());
+  if (showGhost) svg += noteSVG({ l: ghost % 7, oct: Math.floor(ghost / 7), a: null }, "ghost", answerSlot);
   svg += `</svg>`;
   $("earStaff").innerHTML = svg;
 }

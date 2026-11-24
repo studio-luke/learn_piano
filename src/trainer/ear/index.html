@@ -124,6 +124,23 @@
         <div class="opt">
           <label class="check"><input type="checkbox" id="earTonicEach"><span><span data-i18n="earTonicEach">문제마다 기준음 재생</span><small data-i18n="earTonicEachSub">문제 음 앞에 으뜸음을 먼저 들려줘요</small></span></label>
           <label class="check"><input type="checkbox" id="earChrom"><span><span data-i18n="earChrom">조 밖의 음 포함</span><small data-i18n="earChromSub">반음계의 모든 음</small></span></label>
+        </div>
+        <!-- 단음 ②만: 멜로디 재생 속도(느리게·보통·빠르게, 처음 보통) · 맞힐 음 개수(1·2개, 처음 1개) (2026-11-24 사용자 요청) -->
+        <div class="group" id="earMelodyOpts" style="gap: 16px" hidden>
+          <div class="opt">
+            <h3 id="earSpeedH" data-i18n="earSpeedH">재생 속도</h3>
+            <input class="ear-range" type="range" id="earSpeed" min="0" max="2" step="1" aria-labelledby="earSpeedH">
+            <div class="ear-range-labels" id="earSpeedLabels"><span data-i18n="earSpeedSlow">느리게</span><span data-i18n="earSpeedMid">보통</span><span data-i18n="earSpeedFast">빠르게</span></div>
+          </div>
+          <div class="opt">
+            <h3 data-i18n="earCountH">맞힐 음 개수</h3>
+            <div class="chips radios" role="radiogroup" aria-label="맞힐 음 개수" data-i18n-aria="earCountH">
+              <label class="chip"><input type="radio" name="earCount" id="earCount1" value="1"><span data-i18n="earCount1">1개</span></label>
+              <label class="chip"><input type="radio" name="earCount" id="earCount2" value="2"><span data-i18n="earCount2">2개</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="opt">
           <!-- 컴퓨터에서만 보임(practice.css .pc-only): MIDI 건반으로 답 고르기, 처음 꺼짐. 켤 때 권한 요청 (pages/ear.js, 2026-11-24 사용자 요청) -->
           <label class="check pc-only" id="earMidiLabel"><input type="checkbox" id="earMidiOpt"><span><span data-i18n="earMidiOpt">MIDI 입력 허용</span> <small class="midi-status" id="midiStatus"></small></span></label>
         </div>

@@ -87,6 +87,8 @@
 .ear-staff .st-q { font-size: 22px; font-weight: 700; fill: var(--muted); }   /* 단음 ②의 문제 자리 "?" */
 .ear-staff .good { fill: var(--ok); stroke: var(--ok); }
 .ear-staff .bad { fill: var(--warn); stroke: var(--warn); }
+.ear-staff .ref { fill: var(--ref); stroke: var(--ref); }   /* 단음 ② 멜로디: 울리는 동안 그 음표(숨은 음은 "?")를 건반과 같은 파란색으로 */
+.ear-staff .st-q.ref { fill: var(--ref); }
 .ear-staff .ghost { fill: var(--muted); stroke: var(--muted); opacity: 0.45; }
 .ear-accs { display: flex; align-items: center; gap: 4px; }
 .ear-acc-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
@@ -113,13 +115,24 @@
 .ear-kb .key { transition: none; }
 
 /* 기준(스케일·기준음)을 들려주는 동안: 건반·오선지·변화표 버튼을 회색으로, 누를 수 없게 (pages/ear.js setRef) */
-.ear-staff.locked, .ear-accs.locked { filter: grayscale(1); opacity: 0.4; pointer-events: none; transition: opacity 120ms; }
+.ear-accs.locked { filter: grayscale(1); opacity: 0.4; pointer-events: none; transition: opacity 120ms; }
+/* 악보도 묶음 전체가 아니라 그림 조각마다 흐리게 — 지금 울리는 음표·"?"(.ref)는 흐리지 않아 파란색이 잘 보이게 (2026-11-24 사용자 요청,
+   건반과 같은 방식) */
+.ear-staff.locked { pointer-events: none; }
+.ear-staff.locked svg > :not(.ref):not(.st-hit) { opacity: 0.4; }
 /* 건반은 묶음 전체가 아니라 건반마다 회색으로 — 지금 울리는 건반(.ref)은 색을 그대로 둬서 잘 보이게 (2026-11-24 사용자 요청).
    투명하게(opacity) 하면 뒤의 흰 건반이 검은 건반을 비쳐 보여서, 투명도 없이 회색·어둡게만 */
 .ear-kb.locked { pointer-events: none; }
 /* 전환 효과(transition)는 넣지 않음: 울리던 건반이 다음 건반에 색을 넘길 때, 바탕은 바로 흰색이 되는데 회색은 천천히 덮여서
    건반이 하얗게 번쩍였음 (2026-11-24) */
 .ear-kb.locked .key:not(.ref) { filter: grayscale(1) brightness(0.55); }
+
+/* ---------- 출제 설정: 단음 ② 재생 속도 슬라이더 (3칸, 글자를 눌러도 고름 — 고른 칸 글자는 진하게) ---------- */
+.ear-range { width: 100%; accent-color: var(--accent); margin: 0; }
+.ear-range-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.ear-range-labels span { cursor: pointer; }
+.ear-range-labels span.on { color: var(--ink); font-weight: 600; }
+.ear .group[hidden] { display: none; }
 
 /* ---------- 출제 설정의 조성 고르기 (코드 초견 improv.css .key-pick과 같은 모양) ---------- */
 .key-pick { display: flex; align-items: center; gap: 8px; }

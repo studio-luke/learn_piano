@@ -139,21 +139,21 @@ function weighted(items, weights, rnd) {
 const STEP_WEIGHT = s => s === 0 ? 0.15 : s <= 2 ? 1 : s <= 4 ? 1 : s <= 7 ? 0.6 : s <= 12 ? 0.3 : 0;
 
 /**
- * 단음 ② 마지막 음 — 4음 멜로디 만들기 (앞 3음은 보여 주고 4번째가 문제).
+ * 단음 ② 마지막 음 — 멜로디 만들기. 앞 3음은 보여 주고 그 뒤가 문제: 맞힐 음 1개면 4음, 2개면 5음 (len).
  *   첫 음: 옵션과 상관없이 다이아토닉. 으뜸화음 음(1·3·5도 — 옥타브 위 1도, 1도 아래 5도 포함)을 3배로, 다른 다이아토닉 음도 가끔.
  *          자리는 스케일 재생의 으뜸음(scaleMidis[0]) 기준 아래 5도 ~ 옥타브 위 1도 사이
  *   둘째 음부터: "조 밖의 음 포함"(opt.chromatic)을 따름, 앞 음과의 음정은 STEP_WEIGHT
  *   모든 음 F3~F5 안
- * @returns [{ l, a, oct, midi } × 4]
+ * @returns [{ l, a, oct, midi } × len]
  */
-export function pickMelody(key, opt = {}, rnd = Math.random) {
+export function pickMelody(key, opt = {}, rnd = Math.random, len = 4) {
   const t0 = scaleMidis(key)[0];
   const { scale } = keyNotes(key);
   const triad = new Set([0, 2, 4].map(i => pcOf(scale[i])));
   const firstPool = candidates(key).filter(n => n.midi >= t0 - 5 && n.midi <= t0 + 12);
   const melody = [weighted(firstPool, firstPool.map(n => triad.has(pcOf(n)) ? 3 : 1), rnd)];
   const pool = candidates(key, opt);
-  while (melody.length < 4) {
+  while (melody.length < len) {
     const prev = melody[melody.length - 1].midi;
     const ws = pool.map(n => STEP_WEIGHT(Math.abs(n.midi - prev)));
     melody.push(weighted(pool, ws, rnd));

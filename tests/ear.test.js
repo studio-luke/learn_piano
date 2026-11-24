@@ -108,3 +108,12 @@ test("ear level 2: leaps are not the majority", () => {
   }
   assert.ok(leaps / total < 0.5, `leaps ${leaps}/${total}`);
 });
+
+test("ear level 2: two notes to answer → 5-note melody with the same rules", () => {
+  for (let i = 0; i < 200; i++) {
+    const m = pickMelody({ root: "E♭", minor: true }, {}, Math.random, 5);
+    assert.strictEqual(m.length, 5);
+    for (let j = 1; j < 5; j++) assert.ok(Math.abs(m[j].midi - m[j - 1].midi) <= 12);
+    assert.ok(m.every(n => n.midi >= LOW && n.midi <= HIGH));
+  }
+});
