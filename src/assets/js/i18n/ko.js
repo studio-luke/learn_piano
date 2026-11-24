@@ -548,7 +548,7 @@ export default {
   earSpeedSlow: "느리게",
   earSpeedMid: "보통",
   earSpeedFast: "빠르게",
-  earSpeedVeryFast: "매우 빠르게",
+  earSpeedVeryFast: "매우\n빠르게",
   earCountH: "맞힐 음 개수",
   earCount1: "1개",
   earCount2: "2개",

@@ -89,6 +89,10 @@ export function setSignature(s) { sig = s; draw(); }
 /** 음표 자리 수와 모양 (단음 ①: 1, 온음표 / 단음 ②: 4, 4분음표) */
 export function setSlots(n, q) { slots = n; quarter = q; answerSlot = n - 1; shown = []; draw(); }
 
+/** 마우스를 올렸을 때 흐린 음표를 보일지 — 문제가 끝나면(맞힘·정답 확인) 끔 (2026-11-24 사용자 요청) */
+let ghostOn = true;
+export function setGhostEnabled(on) { if (ghostOn !== on) { ghostOn = on; draw(); } }
+
 /** 답을 고르는 자리 바꾸기 (단음 ②에서 맞힐 음이 2개일 때 — 첫 번째를 맞히면 다음 자리로) */
 export function setAnswerSlot(i) { answerSlot = i; }
 
@@ -116,7 +120,7 @@ function draw() {
   // 흐린 음표 (마우스를 올린 답 자리) — 이미 같은 높이의 음이 그려져 있으면 안 그림
   // 잠겨 있을 때(필수 재생 중)는 흐린 음표를 그리지 않음 — 마우스가 악보 위에 있던 채로 잠기면 답 자리의 "?"를 가려서
   // 첫 번째 "?"가 울릴 때 파랗게 보이지 않았음 (2026-11-24)
-  const showGhost = ghost !== null && !$("earStaff").classList.contains("locked")
+  const showGhost = ghostOn && ghost !== null && !$("earStaff").classList.contains("locked")
     && !(lastNote && lastNote.note.oct * 7 + lastNote.note.l === ghost);
   for (const x of shown) {
     const slot = x.slot ?? answerSlot;

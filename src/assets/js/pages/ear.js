@@ -21,7 +21,7 @@ import { store } from "../common/storage.js";
 import * as Ins from "../ear/instruments.js";
 import { Midi } from "../input/midi.js";
 import { initKeys, markKeys, refKey, setKeyLabels } from "../ear/keys.js";
-import { initStaff, setSignature, showNotes, setSlots, setAnswerSlot } from "../ear/staff.js";
+import { initStaff, setSignature, showNotes, setSlots, setAnswerSlot, setGhostEnabled } from "../ear/staff.js";
 import { KEY_ROOTS, LOW, HIGH, signature, scaleMidis, pickNote, pickMelody, judgeNote, spellMidi, midiOf, sigAcc, fullName, otherKey, sameRoot } from "../ear/theory.js";
 
 startPage({ title: "navEar" });
@@ -379,6 +379,7 @@ function renderNoteButtons() {
   $("btnReplay").disabled = !!refText;   // 문제 다시 듣기(큰 ▶)도 필수 재생 중에는 끔 — 생략은 [생략하기]로 (2026-11-24 사용자 요청)
   $("btnReveal").disabled = N.phase !== "ask" || !!refText;   // 필수 재생 중에도 막음 (2026-11-24 사용자 요청)
   $("btnNext").disabled = N.phase !== "done";
+  setGhostEnabled(N.phase !== "done");   // 끝난 문제(맞힘·정답 확인)에서는 악보에 마우스를 올려도 흐린 음표를 안 보임
   const lv = melodic() ? "earN2" : "earN1";
   // 단음 ②에서 맞힐 음이 2개인 문제는 "숨은 두 음을 순서대로…"
   const ask = melodic() && N.melody && N.melody.length - SHOWN > 1 ? "earN2Ask2" : lv + "Ask";
@@ -476,6 +477,8 @@ function pick(m, spelled) {
 
 initKeys(LOW, HIGH, m => pick(m));
 initStaff(({ l, oct }) => {
+  // 끝난 문제(맞힘·정답 확인)에서는 오선지를 눌러도 아무것도 안 함 — 소리도 없음 (2026-11-24 사용자 요청, 건반은 지금처럼 소리)
+  if (N.phase === "done") return;
   const a = acc === "key" ? sigAcc(signature(key()), l) : acc;
   const note = { l, a, oct };
   setAcc("key");   // 변화표 버튼은 한 번 쓰고 조표대로로

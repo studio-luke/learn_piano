@@ -547,7 +547,7 @@ export default {
   earSpeedSlow: "Slow",
   earSpeedMid: "Normal",
   earSpeedFast: "Fast",
-  earSpeedVeryFast: "Very fast",
+  earSpeedVeryFast: "Very\nfast",
   earCountH: "Notes to name",
   earCount1: "1",
   earCount2: "2",

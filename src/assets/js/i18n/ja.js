@@ -547,7 +547,7 @@ export default {
   earSpeedSlow: "ゆっくり",
   earSpeedMid: "ふつう",
   earSpeedFast: "速く",
-  earSpeedVeryFast: "とても速く",
+  earSpeedVeryFast: "とても\n速く",
   earCountH: "当てる音の数",
   earCount1: "1つ",
   earCount2: "2つ",

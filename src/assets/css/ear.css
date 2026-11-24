@@ -135,8 +135,9 @@
 .ear-range::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line) var(--p, 0%)); }
 .ear-range::-webkit-slider-thumb { -webkit-appearance: none; box-sizing: border-box; width: var(--thumb); height: var(--thumb); margin-top: -7px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
 .ear-range::-moz-range-thumb { box-sizing: border-box; width: var(--thumb); height: var(--thumb); border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
-.ear-range-labels { position: relative; height: 18px; margin: 2px 10px 0; font-size: 12px; color: var(--muted); }   /* 좌우 10px = 손잡이 폭의 절반 */
-.ear-range-labels span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; cursor: pointer; }
+.ear-range-labels { position: relative; height: 32px; margin: 2px 10px 0; font-size: 12px; line-height: 1.25; color: var(--muted); }   /* 좌우 10px = 손잡이 폭의 절반 */
+/* 긴 이름은 문구에서 두 줄로("매우\n빠르게") — 오른쪽 끝 글자가 카드 경계에 붙어 보여서 (2026-11-24 사용자 요청) */
+.ear-range-labels span { position: absolute; top: 0; transform: translateX(-50%); white-space: pre-line; width: max-content; text-align: center; cursor: pointer; }
 .ear-range-labels span:nth-child(1) { left: 0; } .ear-range-labels span:nth-child(2) { left: 33.333%; }
 .ear-range-labels span:nth-child(3) { left: 66.667%; } .ear-range-labels span:nth-child(4) { left: 100%; }
 .ear-range-labels span.on { color: var(--ink); font-weight: 600; }
