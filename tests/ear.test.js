@@ -359,3 +359,16 @@ test("ear level 3 layout: generated questions always fit the bar (busy 16ths wit
     for (const b of [0, 1]) assert.ok(layoutBar(d.filter(t => Math.floor(t.pos / BAR) === b), signature(key)).right <= BAR_W - 4);
   }
 });
+
+test("ear level 3: motif repetition — beat 3 echoes beat 1 and beat 4 echoes beat 2 more with higher chance (16th); 8th 2-bar questions sometimes repeat the first two beats", () => {
+  const beat = (at, b) => at.filter(p => p >= b * 4 && p < b * 4 + 4).map(p => p - b * 4).join(",");
+  const count = (chance, bars, min, same) => {
+    let k = 0;
+    for (let i = 0; i < 4000; i++) if (same(generateRhythm(bars, min, Math.random, chance).filter(x => !x.rest).map(x => x.pos))) k++;
+    return k;
+  };
+  const echo = at => beat(at, 2) === beat(at, 0);
+  assert.ok(count("high", 1, 1, echo) > count("low", 1, 1, echo) * 1.6);
+  const front = at => beat(at, 0) === beat(at, 4) && beat(at, 1) === beat(at, 5);
+  assert.ok(count("high", 2, 2, front) > count("random", 2, 2, front) * 1.4);
+});

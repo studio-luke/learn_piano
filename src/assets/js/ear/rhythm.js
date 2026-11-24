@@ -72,7 +72,7 @@ export function mergeable(run) {
 export function pickOnsets(bars, min, rnd = Math.random, chance = "mid") {
   if (min === 1 && chance !== "random") return pickOnsets16(bars, rnd, chance);
   const P = ONSET_P[min] || ONSET_P[2];
-  return Array.from({ length: bars }, (_, b) => {
+  const sets = Array.from({ length: bars }, (_, b) => {
     const set = new Set();
     for (let p = 0; p < BAR; p += min) {
       const prob = b === 0 && p === 0 ? (FIRST_ONSET[min] ?? 0.9) : p % 4 === 0 ? P.beat : p % 2 === 0 ? P.half : P.sixteenth;
@@ -80,7 +80,15 @@ export function pickOnsets(bars, min, rnd = Math.random, chance = "mid") {
     }
     return set;
   });
+  // 2마디 + 최소 8분: 가끔 둘째 마디 1·2박을 첫 마디 1·2박 그대로 (따라 하지 않을 때는 제약 없음 — 우연히 같아도 됨)
+  if (min === 2 && bars === 2 && rnd() < (COPY8[chance] ?? 0)) {
+    for (const p of [...sets[1]]) if (p < 8) sets[1].delete(p);
+    for (const p of sets[0]) if (p < 8) sets[1].add(p);
+  }
+  return sets;
 }
+// 2마디 + 최소 8분에서 둘째 마디 앞 두 박이 첫 마디 앞 두 박을 따라 할 확률 (2026-11-25 사용자 결정, 랜덤은 없음)
+const COPY8 = { high: 0.15, mid: 0.1, low: 0.05 };
 
 // ----- 최소 16분: 한 박 모양 규칙 (2026-11-24 사용자 설계) -----
 // 한 박을 16분 네 칸(0~3)으로 보고, 그 박에서 어택이 있는 칸의 조합(= 한 박 모양)을 고름. 표기는 notate가 정함
@@ -155,6 +163,9 @@ const COPY_SETS = [
   [[[0, 1]], 0.4, [[0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]],
   [[[0]], 0.4, [[1], [2], [3]]],
 ];
+// 마디 안 모티브 반복 (최소 16분, 2026-11-25 사용자 결정): 개연성별 [3박이 1박을 따라 할, 4박이 2박을 따라 할] 확률 —
+// 마디마다 따로 정함. 둘째 마디에서 이미 첫 마디를 따라 하기로 한 박은 그쪽이 먼저
+const INNER16 = { high: [0.35, 0.30], mid: [0.20, 0.15], low: [0.08, 0.06] };
 // 첫 마디가 박 시작 어택 없이(쉼표로) 시작하면 둘째 마디도 그렇게 시작할 확률 (사용자 결정)
 const REST_START_AGAIN = 0.8;
 
@@ -180,6 +191,9 @@ function pickOnsets16(bars, rnd, chance = "mid") {
   const note = at => { if (has16(at)) used.add(at.join(",")); };
   const firstHead = rnd() < FIRST_ONSET[1];   // 맨 처음 박을 박 시작 어택으로 시작할지
   const copy = bars === 2 ? pickCopySet(chance, rnd) : new Set();   // 둘째 마디에서 따라 할 박
+  // 마디 안에서 앞 반 마디 같은 자리 박(i − 2)을 따라 할 박 i
+  const inner = new Set(), IP = INNER16[chance] || INNER16.mid;
+  for (let b = 0; b < bars; b++) { if (rnd() < IP[0]) inner.add(b * 4 + 2); if (rnd() < IP[1]) inner.add(b * 4 + 3); }
   let head2 = null;   // 둘째 마디 첫 박을 박 시작 어택으로 시작할지 (첫 마디가 쉼표로 시작했을 때만 정함)
 
   /** i번째 박에 올 수 있는 모양인지 — 한 박 모양 규칙 (앞 박·마지막 박·문제 처음) */
@@ -201,13 +215,19 @@ function pickOnsets16(bars, rnd, chance = "mid") {
       if (head2) copy.delete(0);           // 박 시작 어택으로 시작하기로 했으면 첫 박은 따라 하지 않음
     }
     // 첫 마디 같은 자리의 박을 따라 함 — 앞뒤 박과 규칙이 맞지 않으면 그 박만 새로 고름
-    if (i >= 4 && copy.has(i - 4)) {
+    const fromBar = i >= 4 && copy.has(i - 4);
+    if (fromBar) {
       const s = shapeOf(shapes[i - 4]);
+      if (s && fits(s, i)) { shapes.push(s.at); continue; }
+    }
+    // 같은 마디 앞 반의 같은 자리 박을 따라 함 (모티브 반복) — 규칙에 안 맞으면 새로 고름
+    if (!fromBar && inner.has(i)) {
+      const s = shapeOf(shapes[i - 2]);
       if (s && fits(s, i)) { shapes.push(s.at); continue; }
     }
     const strong = i % 2 === 0, prev = shapes[i - 1];
     // 흔한 두 박 패턴 (모두 박 시작 어택으로 시작 — 쉼표로 시작할 맨 처음 박·둘째 마디 첫 박엔 안 넣음, 따라 할 박 자리엔 안 넣음)
-    const free2 = !(i >= 4 && (copy.has(i - 4) || copy.has(i - 3)));
+    const free2 = !(i >= 4 && (copy.has(i - 4) || copy.has(i - 3))) && !inner.has(i) && !inner.has(i + 1);
     if (strong && free2 && (i > 0 || firstHead) && !(i === 4 && head2 === false) && rnd() < chunkP) {
       const c = CHUNKS16[Math.floor(rnd() * CHUNKS16.length)];
       const pair = [c.filter(p => p < 4), c.filter(p => p >= 4).map(p => p - 4)];
