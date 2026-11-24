@@ -57,7 +57,7 @@ const REST_PATH = {
  * @param el      그릴 상자 (안을 SVG로 채움)
  * @param tokens  [{ pos, dur, rest, note?: {l,a,oct}, cls? }] — rhythm.js makeDictation 모양. note가 없는 음표는 가운데 줄(B4)에 (리듬만 보여 줄 때)
  * @param opt     { bars, sig: theory.js signature(), perLine: 한 줄 마디 수, cursor: 입력 자리(문제 처음부터 16분 단위, 없으면 null),
- *                  ghost: 마우스를 올린 자리의 흐린 음표 { pos, dur, step } (없으면 null — 조표대로의 음, 빔 없이 혼자) }
+ *                  ghost: 마우스를 올린 자리의 흐린 음표 { pos, dur, step, a? } (없으면 null — a가 없으면 조표대로, 빔 없이 혼자) }
  */
 export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2, cursor = null, ghost = null } = {}) {
   const lines = Math.ceil(bars / perLine);
@@ -93,7 +93,8 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
       svgBody += barSVG(byBar[b], headX, sig, line);
       // 흐린 음표 (마우스를 올린 자리 — 다음에 적을 자리에 지금 고른 길이로)
       if (ghost && Math.floor(ghost.pos / BAR) === b) {
-        const l = ((ghost.step % 7) + 7) % 7, gt = { pos: ghost.pos, dur: ghost.dur, rest: false, cls: "ghost", note: { l, a: sigAcc(sig, l), oct: Math.floor(ghost.step / 7) } };
+        const l = ((ghost.step % 7) + 7) % 7, a = ghost.a ?? sigAcc(sig, l);   // a: 임시표 버튼으로 고른 변화(없으면 조표대로)
+        const gt = { pos: ghost.pos, dur: ghost.dur, rest: false, cls: "ghost", note: { l, a, oct: Math.floor(ghost.step / 7) } };
         headX.set(gt, x - BAR_W + BAR_PAD + (gt.pos % BAR) * COL);
         svgBody += barSVG([gt], headX, sig, line);
       }

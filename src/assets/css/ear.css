@@ -48,6 +48,7 @@
 .ear-inst { margin-left: auto; }   /* 조 표시가 없는 단계에서도 오른쪽 끝 */
 .ear-inst { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .ear-inst select { font-size: 14px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.ear-inst select:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .ear-key-row { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
 .ear-key-now { font-size: 15px; color: var(--muted); }
@@ -166,7 +167,11 @@
 .ear-count { text-align: center; font-family: var(--font-display); font-size: 30px; line-height: 1; color: var(--accent); min-height: 30px; }
 .ear-count:empty { display: none; }
 .ear-count.go { color: var(--ok); }
-.ear-score[hidden], .ear-staff-wrap[hidden], .ear-kb[hidden] { display: none; }
+.ear-score[hidden], .ear-staff-wrap[hidden], .ear-staff[hidden], .ear-kb[hidden] { display: none; }
+/* 단음 ③ 리듬만: 건반·임시표를 회색으로 꺼 둠 (잠금과 같은 모양, 따로 켜고 꺼서 잠금이 풀려도 그대로) */
+.ear-kb.disabled { pointer-events: none; }
+.ear-kb.disabled .key { filter: grayscale(1) brightness(0.55); }
+.ear-accs.disabled { filter: grayscale(1); opacity: 0.4; pointer-events: none; }
 
 /* ---------- 단음 ③ 리듬 악보 (ear/score.js) — 높이 = 줄 수 × 한 줄 ---------- */
 .ear-score svg { display: block; height: calc(var(--score-lines, 1) * 120px); width: auto; max-width: 100%; margin: 0 auto; color: var(--ink); }   /* 줄마다 120px, 폭이 넘치면 줄여서 맞춤 */

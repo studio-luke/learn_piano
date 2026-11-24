@@ -244,7 +244,8 @@ for (const w of ["Both", "Pitch", "Rhythm"]) $("earWrite" + w).onchange = () => 
 // dict = 단음 ③ 문제(rhythm.js makeDictation — 리듬 + 음높이), playTok = 지금 울리는 ③ 악보의 토큰 번호(파랗게), 없으면 -1
 // dAns = 단음 ③에서 다음에 적을 토큰 번호(앞에서부터 순서대로), dTry = 방금 틀린 입력(악보에 빨갛게, 없으면 null)
 // dictBars = 지금 ③ 문제의 마디 수, replaying = 큰 ▶로 다시 듣는 중(버튼이 ■ 중지로 바뀜)
-const N = { phase: "idle", q: null, wrong: false, life: false, melody: null, ans: 0, revealed: 0, playing: -1, dict: null, playTok: -1, dAns: 0, dTry: null, dictBars: 1, replaying: false };
+// write = 지금 ③ 문제의 받아쓸 것 (출제 설정을 바꿔도 지금 문제는 그대로 — 마디 수와 같음)
+const N = { write: "both", phase: "idle", q: null, wrong: false, life: false, melody: null, ans: 0, revealed: 0, playing: -1, dict: null, playTok: -1, dAns: 0, dTry: null, dictBars: 1, replaying: false };
 const SHOWN = 3;           // 단음 ②에서 보여 주는 앞 음 수
 const SCALE_STEP = 0.42;   // 스케일 음 사이 간격(초)
 const Q_DUR = 1.4;         // 문제 음 길이(초)
@@ -327,24 +328,26 @@ function dictationNotes(at) {
  */
 function drawScore() {
   if (!dictation() || !N.dict) { $("earScore").innerHTML = ""; return; }
-  const done = N.phase === "done", rhythmOnly = S.write === "rhythm";
+  const done = N.phase === "done";
   const toks = [];
   N.dict.forEach((x, i) => {
     const answered = i < N.dAns, ref = i === N.playTok ? "ref" : "";
-    if (done || answered) toks.push({ ...x, note: rhythmOnly && !done ? undefined : x.note, cls: ref || (answered ? "good" : "") });
-    else if (S.write === "pitch") toks.push({ ...x, note: undefined, cls: ref || (x.rest ? "" : "hint") });
+    // 맞힌 칸은 들려준 음 그대로(리듬만 받아쓸 때도 — 2026-11-24 사용자 요청, 처음엔 가운데 줄에 그렸음)
+    if (done || answered) toks.push({ ...x, cls: ref || (answered ? "good" : "") });
+    else if (N.write === "pitch") toks.push({ ...x, note: undefined, cls: ref || (x.rest ? "" : "hint") });
   });
   if (N.dTry && !done) toks.push(N.dTry);
   const perLine = scorePerLine();
   const cursor = !done && N.phase === "ask" && N.dAns < N.dict.length ? N.dict[N.dAns].pos : null;
   // 흐린 음표: 마우스를 올린 높이에, 다음 자리에 지금 고른 길이로 (음높이만 받아쓰면 정답 길이) — 잠겨 있으면 안 보임
-  const ghost = cursor !== null && scoreGhost !== null && !refText ? { pos: cursor, dur: ghostDur(), step: scoreGhost } : null;
+  const ghost = cursor !== null && scoreGhost !== null && !refText && N.write !== "rhythm"
+    ? { pos: cursor, dur: ghostDur(), step: scoreGhost, a: acc === "key" ? null : acc } : null;
   renderScore($("earScore"), toks, { bars: N.dictBars, sig: signature(key()), perLine, cursor, ghost });
 }
 const scorePerLine = () => (window.innerWidth < 600 ? 1 : 2);   // 폰은 한 줄에 1마디
 /** 흐린 음표·입력에 쓸 길이: 음높이만이면 정답 길이, 아니면 고른 길이(+점 — 그릴 수 없는 점2분·점16분은 가까운 모양으로) */
 function ghostDur() {
-  if (S.write === "pitch") return N.dict[N.dAns].dur;
+  if (N.write === "pitch") return N.dict[N.dAns].dur;
   const d = dotOn ? curDur * 1.5 : curDur;
   return d === 12 ? 8 : d === 1.5 ? 1 : d;
 }
@@ -361,14 +364,16 @@ function scoreStep(e) {
   return st >= 23 && st <= 39 ? Math.max(24, Math.min(38, st)) : null;
 }
 function scorePick(st) {
-  if (!dictation() || N.phase !== "ask" || refText) return;
-  const l = st % 7, note = { l, a: sigAcc(signature(key()), l), oct: Math.floor(st / 7) };
-  pick(midiOf(note));
+  if (!dictation() || N.phase !== "ask" || refText || N.write === "rhythm") return;
+  // 변화표는 ①·②의 오선지처럼 [♯ ♮ ♭ 해제] 중 고른 것 (한 번 쓰고 해제로) — 2026-11-24 사용자 요청
+  const l = st % 7, a = acc === "key" ? sigAcc(signature(key()), l) : acc;
+  setAcc("key");
+  pick(midiOf({ l, a, oct: Math.floor(st / 7) }), { l, a, oct: Math.floor(st / 7) });
 }
 {
   const box = $("earScore");
   box.addEventListener("pointermove", e => {
-    if (e.pointerType !== "mouse" || !dictation() || N.phase !== "ask") return;
+    if (e.pointerType !== "mouse" || !dictation() || N.phase !== "ask" || N.write === "rhythm") return;   // 리듬만이면 악보에서 음을 고르지 않음
     const st = scoreStep(e);
     if (st !== scoreGhost) { scoreGhost = st; drawScore(); }
   });
@@ -391,21 +396,33 @@ function scorePick(st) {
 // ---------- 단음 ③ 답 입력: 길이 버튼(+점) 고른 뒤 건반, 쉼표 버튼은 바로 (2026-11-24 사용자 결정) ----------
 let curDur = 4, dotOn = false;   // 고른 음표 길이(16분 단위), 점(다음 음표 하나에만)
 function renderDurs() {
-  for (const b of document.querySelectorAll(".ear-dur")) b.setAttribute("aria-pressed", String(+b.dataset.dur === curDur));
+  // 리듬만이면 고른 길이를 남겨 두지 않음 (누르면 바로 적히므로 — 선택 표시 없음)
+  const keep = !(dictation() && N.write === "rhythm");
+  for (const b of document.querySelectorAll(".ear-dur")) b.setAttribute("aria-pressed", String(keep && +b.dataset.dur === curDur));
   $("earDot").setAttribute("aria-pressed", String(dotOn));
   if (scoreGhost !== null) drawScore();   // 흐린 음표의 길이도 바뀜
 }
-for (const b of document.querySelectorAll(".ear-dur")) b.onclick = () => { curDur = +b.dataset.dur; renderDurs(); };
+// 리듬만 받아쓸 때는 음표 버튼을 누르는 것이 곧 제출 (건반·임시표는 꺼짐 — 2026-11-24 사용자 요청), 그 밖에는 길이 고르기
+for (const b of document.querySelectorAll(".ear-dur")) b.onclick = () => {
+  if (dictation() && N.write === "rhythm") {
+    if (N.phase !== "ask" || refText) return;
+    const d = +b.dataset.dur;
+    submitToken({ rest: false, dur: dotOn ? d * 1.5 : d });
+    dotOn = false; renderDurs();
+    return;
+  }
+  curDur = +b.dataset.dur; renderDurs();
+};
 $("earDot").onclick = () => { dotOn = !dotOn; renderDurs(); };
 // 쉼표: 점 없이 그 길이 그대로 (점이 켜져 있어도 쉼표에는 쓰지 않고 다음 음표를 위해 남겨 둠)
 for (const b of document.querySelectorAll(".ear-rest")) b.onclick = () => {
-  if (!dictation() || N.phase !== "ask" || refText || S.write === "pitch") return;
+  if (!dictation() || N.phase !== "ask" || refText || N.write === "pitch") return;
   submitToken({ rest: true, dur: +b.dataset.rest });
 };
 
 /** 음높이만 받아쓸 때: 쉼표는 악보에 있으니 건너뜀 */
 function skipRests() {
-  if (S.write !== "pitch") return;
+  if (N.write !== "pitch") return;
   while (N.dAns < N.dict.length && N.dict[N.dAns].rest) N.dAns++;
 }
 
@@ -416,21 +433,28 @@ function skipRests() {
  */
 function submitToken(input) {
   const target = N.dict[N.dAns];
-  const r = judgeToken(target, input, S.write);
+  const r = judgeToken(target, input, N.write);
   if (r === "ok") {
     N.dAns++; N.dTry = null;
     skipRests();
     if (input.midi !== undefined) markKeys(new Map([[input.midi, "good"]]));
+    // 리듬만: 맞힌 음표의 실제 음을 들려줌 (건반을 누르지 않으니 — 2026-11-24 사용자 요청)
+    if (N.write === "rhythm" && !target.rest) playPicked(target.note.midi);
     if (N.dAns >= N.dict.length) { N.phase = "done"; setFeedback("ok", t("earN3Done")); }
     else setFeedback("ok", t("earN3Next"));
   } else {
     // 틀린 입력을 그 자리에 빨갛게 (그릴 수 없는 길이 — 점2분·점16분 — 는 가까운 모양으로)
     const shown = input.dur === 12 ? 8 : input.dur === 1.5 ? 1 : input.dur;
     N.dTry = { pos: target.pos, dur: shown, rest: !!input.rest, cls: "bad",
-      note: input.rest || S.write === "rhythm" ? undefined : spellMidi(key(), input.midi) };
+      // 리듬만: 음높이를 고르지 않으니 그 칸의 실제 음 높이에 그림(쉼표 칸이면 가운데 줄) — 2026-11-24 사용자 요청
+      note: input.rest ? undefined : N.write === "rhythm" ? target.note : input.note || spellMidi(key(), input.midi) };
     if (input.midi !== undefined) markKeys(new Map([[input.midi, "bad"]]));
     const msg = r === "len" ? t("earN3LenOk") : r === "pitch" ? t("earN3PitchOk") : r === "octUp" ? t("earOctUp") : r === "octDown" ? t("earOctDown") : t("earWrong");
-    if (N.life) { N.life = false; setFeedback("no", t("earLife") + (r === "no" ? "" : " " + msg)); }
+    // 쉼표 자리에 음표: 기회(첫 오답 봐주기)를 쓰지 않고 바로 오답 + "쉼표가 와야 할 자리예요." (2026-11-24 사용자 요청)
+    if (target.rest && !input.rest) { N.wrong = true; setFeedback("no", t("earN3NeedRest")); }
+    // 음표 자리에 쉼표도 마찬가지로 바로 오답 + "음표가 와야 할 자리예요." (2026-11-24 사용자 요청)
+    else if (!target.rest && input.rest) { N.wrong = true; setFeedback("no", t("earN3NeedNote")); }
+    else if (N.life) { N.life = false; setFeedback("no", t("earLife") + (r === "no" ? "" : " " + msg)); }
     else { N.wrong = true; setFeedback("no", msg); }
   }
   drawScore();
@@ -448,6 +472,7 @@ function setCount(text) {
 function stopListening() {
   listenTok++;
   setReplaying(false);
+  setSounding(false);
   timers.forEach(clearTimeout); timers = [];
   Ins.stopAll();
   refKey(null);
@@ -489,12 +514,14 @@ function listen(parts, required = false) {
     }
     at = seg.end + GAP;
   }
-  const endAt = at - GAP;   // 마지막 소리가 끝나는 시각 (큰 ▶ → ■ 되돌리기에 씀)
+  const endAt = at - GAP;   // 마지막 소리가 끝나는 시각 (큰 ▶ → ■ 되돌리기, 악기 고르기 다시 켜기에 씀)
+  setSounding(true);
   const locking = required && spans.length > 0;
   if (locking) setRef(spans[0].text, spans[0].skip);   // 소리가 준비되기 전부터 잠금
   Ins.play(inst, notes).then(() => {
     if (tok !== listenTok) return;
     if (N.replaying) timers.push(setTimeout(() => { if (tok === listenTok) setReplaying(false); }, endAt * 1000));
+    timers.push(setTimeout(() => { if (tok === listenTok) setSounding(false); }, endAt * 1000 + 300));
     // 울리는 동안 그 건반을 파란색으로 (2026-11-24 사용자 요청 — 필수 재생이든 버튼으로 다시 듣든)
     // 스케일 음은 소리가 살짝 겹치므로(다음 음 시작 뒤 0.05초) 색은 다음 음이 시작될 때 넘겨줌 — 두 건반이 함께 칠해지지 않게.
     // 단음 ②의 앞 3음은 울리기 시작할 때 악보에도 나타남(처음 들려줄 때)
@@ -554,10 +581,11 @@ function newQuestion(withScale) {
     // 단음 ③: 문제를 만들고 처음 자리부터 순서대로 받아씀
     N.dict = makeDictation(key(), { chromatic: S.chromatic }, { bars: S.bars, min: S.min });
     N.dictBars = S.bars;   // 이 문제의 마디 수 (재생·악보는 이것을 씀)
+    N.write = S.write;     // 이 문제의 받아쓸 것
     N.melody = null; N.q = null;
     N.phase = "ask"; N.wrong = false; N.life = !S.tonicEach; N.playTok = -1; N.dAns = 0; N.dTry = null;
     skipRests(); dotOn = false; renderDurs();
-    $("earDurs").hidden = S.write === "pitch";   // 받아쓸 것을 바꿨을 수 있어서
+    applyWriteMode();   // 받아쓸 것을 바꿨을 수 있어서
     markKeys(); setFeedback("", ""); drawScore();
     listen([...(withScale ? [{ kind: "scale" }] : []), ...(S.tonicEach ? [{ kind: "tonic" }] : []), { kind: "question" }], true);
     return;
@@ -591,7 +619,7 @@ function renderNoteButtons() {
   setGhostEnabled(N.phase !== "done");   // 끝난 문제(맞힘·정답 확인)에서는 악보에 마우스를 올려도 흐린 음표를 안 보임
   const lv = dictation() ? "earN3" : melodic() ? "earN2" : "earN1";
   // 단음 ②에서 맞힐 음이 2개인 문제는 "숨은 두 음을 순서대로…"
-  const ask = dictation() ? "earN3Ask" + S.write[0].toUpperCase() + S.write.slice(1)
+  const ask = dictation() ? "earN3Ask" + N.write[0].toUpperCase() + N.write.slice(1)
     : melodic() && N.melody && N.melody.length - SHOWN > 1 ? "earN2Ask2" : lv + "Ask";
   $("earHintText").textContent = refText || t(!started ? lv + "Intro" : ask);
   $("btnSkip").hidden = !refSkip;
@@ -634,13 +662,25 @@ function resetNote() {
   N.phase = "idle"; N.q = null; N.melody = null; N.wrong = false; N.revealed = 0; N.ans = 0; N.dict = null; N.playTok = -1;
   // 단음 ③은 리듬 악보, ①·②는 눌러서 고르는 오선지 (③의 답 입력은 다음 단계에서 — 지금은 건반 소리만)
   $("earScore").hidden = !dictation();
-  $("earDurs").hidden = !dictation() || S.write === "pitch";   // 음높이만 받아쓸 때는 길이를 고르지 않음
-  N.dAns = 0; N.dTry = null;
-  document.querySelector(".ear-staff-wrap").hidden = dictation();
+  N.dAns = 0; N.dTry = null; N.write = S.write;
+  $("earStaff").hidden = dictation();   // ③은 악보에서 고름 — 임시표 줄은 ③에서도 씀(오선지만 숨김)
+  applyWriteMode();
   drawScore(); setCount("");
   setSlots(melodic() ? SHOWN + S.count : 1, melodic());
   markKeys(); setFeedback("", "");
   renderNoteButtons();
+}
+
+/**
+ * 단음 ③ 받아쓸 것에 따라 입력 도구 켜고 끄기:
+ *   음높이만 — 길이 버튼 숨김 / 리듬만 — 건반·임시표를 회색으로 꺼 두고 음표 버튼을 누르면 바로 적힘 / 그 밖(①·②, 음높이와 리듬)은 모두 켬
+ */
+function applyWriteMode() {
+  const rhythmOnly = dictation() && N.write === "rhythm";
+  $("earDurs").hidden = !dictation() || N.write === "pitch";
+  $("keyboard").classList.toggle("disabled", rhythmOnly);
+  document.querySelector(".ear-accs").classList.toggle("disabled", rhythmOnly);
+  renderDurs();
 }
 
 function setFeedback(cls, html) {
@@ -656,13 +696,14 @@ function pick(m, spelled) {
   if (refText) return;   // 기준을 들려주는 중에는 입력 안 받음 (건반·오선지가 회색)
   if (dictation()) {
     // 단음 ③: 고른 길이(+점)로 다음 자리에 — 음높이만 받아쓸 때는 길이를 보지 않으니 정답 길이 그대로
+    if (N.write === "rhythm") return;   // 리듬만: 건반은 꺼져 있음 (키보드·MIDI도 받지 않음)
     if (m < LOW || m > HIGH) { playPicked(m); toast(t("earOutOfRange")); return; }
     playPicked(m);
     if (N.phase !== "ask") return;
     const target = N.dict[N.dAns];
-    const dur = S.write === "pitch" ? target.dur : dotOn ? curDur * 1.5 : curDur;
+    const dur = N.write === "pitch" ? target.dur : dotOn ? curDur * 1.5 : curDur;
     dotOn = false; renderDurs();   // 점은 음표 하나에만
-    submitToken({ rest: false, dur, midi: m });
+    submitToken({ rest: false, dur, midi: m, note: spelled });
     return;
   }
   // MIDI 건반은 범위 밖 음도 올 수 있음 → 소리만 내고 안내 (화면 건반·컴퓨터 키보드는 늘 범위 안)
@@ -716,6 +757,7 @@ initStaff(({ l, oct }) => {
 
 function setAcc(v) {
   acc = v;
+  if (dictation() && scoreGhost !== null) drawScore();   // ③ 악보의 흐린 음표에도 변화표 반영
   for (const b of document.querySelectorAll(".ear-acc")) {
     const bv = b.dataset.acc === "key" ? "key" : +b.dataset.acc;
     b.setAttribute("aria-pressed", String(bv === v));
@@ -738,6 +780,9 @@ $("btnReplay").onclick = () => {
   listen([{ kind: "question" }]);
   setReplaying(true);
 };
+/** 들려주는 동안(스케일·기준음·문제 모두) 악기 고르기를 끔 — 도중에 바꾸면 소리가 섞여서 (2026-11-24 사용자 요청) */
+function setSounding(on) { $("earInst").disabled = on; }
+
 /** 큰 ▶ ↔ ■ 바꾸기 */
 function setReplaying(on) {
   N.replaying = on;
