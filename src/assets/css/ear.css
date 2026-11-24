@@ -127,10 +127,18 @@
    건반이 하얗게 번쩍였음 (2026-11-24) */
 .ear-kb.locked .key:not(.ref) { filter: grayscale(1) brightness(0.55); }
 
-/* ---------- 출제 설정: 단음 ② 재생 속도 슬라이더 (3칸, 글자를 눌러도 고름 — 고른 칸 글자는 진하게) ---------- */
-.ear-range { width: 100%; accent-color: var(--accent); margin: 0; }
-.ear-range-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
-.ear-range-labels span { cursor: pointer; }
+/* ---------- 출제 설정: 단음 ② 재생 속도 슬라이더 (4칸, 글자를 눌러도 고름 — 고른 칸 글자는 진하게) ----------
+   글자 가운데 = 손잡이가 멈추는 자리: 손잡이 폭(--thumb)을 정해 두고 글자 줄을 그 절반씩 안쪽에서 시작해 0·⅓·⅔·1에 놓음
+   (2026-11-24 — 글자를 고르게 벌려 두면 글자 길이 때문에 손잡이 자리와 어긋났음. 코드 초견 .pg-range.stops와 같은 방식) */
+.ear-range { --thumb: 20px; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; height: 24px; background: transparent; cursor: pointer; }
+.ear-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line) var(--p, 0%)); }
+.ear-range::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line) var(--p, 0%)); }
+.ear-range::-webkit-slider-thumb { -webkit-appearance: none; box-sizing: border-box; width: var(--thumb); height: var(--thumb); margin-top: -7px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+.ear-range::-moz-range-thumb { box-sizing: border-box; width: var(--thumb); height: var(--thumb); border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+.ear-range-labels { position: relative; height: 18px; margin: 2px 10px 0; font-size: 12px; color: var(--muted); }   /* 좌우 10px = 손잡이 폭의 절반 */
+.ear-range-labels span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; cursor: pointer; }
+.ear-range-labels span:nth-child(1) { left: 0; } .ear-range-labels span:nth-child(2) { left: 33.333%; }
+.ear-range-labels span:nth-child(3) { left: 66.667%; } .ear-range-labels span:nth-child(4) { left: 100%; }
 .ear-range-labels span.on { color: var(--ink); font-weight: 600; }
 .ear .group[hidden] { display: none; }
 

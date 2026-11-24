@@ -125,12 +125,12 @@
           <label class="check"><input type="checkbox" id="earTonicEach"><span><span data-i18n="earTonicEach">문제마다 기준음 재생</span><small data-i18n="earTonicEachSub">문제 음 앞에 으뜸음을 먼저 들려줘요</small></span></label>
           <label class="check"><input type="checkbox" id="earChrom"><span><span data-i18n="earChrom">조 밖의 음 포함</span><small data-i18n="earChromSub">반음계의 모든 음</small></span></label>
         </div>
-        <!-- 단음 ②만: 멜로디 재생 속도(느리게·보통·빠르게, 처음 보통) · 맞힐 음 개수(1·2개, 처음 1개) (2026-11-24 사용자 요청) -->
+        <!-- 단음 ②만: 멜로디 재생 속도(느리게·보통·빠르게·매우 빠르게, 처음 보통) · 맞힐 음 개수(1·2개, 처음 1개) (2026-11-24 사용자 요청) -->
         <div class="group" id="earMelodyOpts" style="gap: 16px" hidden>
           <div class="opt">
             <h3 id="earSpeedH" data-i18n="earSpeedH">재생 속도</h3>
-            <input class="ear-range" type="range" id="earSpeed" min="0" max="2" step="1" aria-labelledby="earSpeedH">
-            <div class="ear-range-labels" id="earSpeedLabels"><span data-i18n="earSpeedSlow">느리게</span><span data-i18n="earSpeedMid">보통</span><span data-i18n="earSpeedFast">빠르게</span></div>
+            <input class="ear-range" type="range" id="earSpeed" min="0" max="3" step="1" aria-labelledby="earSpeedH">
+            <div class="ear-range-labels" id="earSpeedLabels"><span data-i18n="earSpeedSlow">느리게</span><span data-i18n="earSpeedMid">보통</span><span data-i18n="earSpeedFast">빠르게</span><span data-i18n="earSpeedVeryFast">매우 빠르게</span></div>
           </div>
           <div class="opt">
             <h3 data-i18n="earCountH">맞힐 음 개수</h3>

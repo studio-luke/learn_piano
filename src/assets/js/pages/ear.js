@@ -157,7 +157,7 @@ Ins.load(inst);   // 고른 악기 녹음은 페이지를 열 때 받기 시작 
 
 // ---------- 단음 출제 설정 — 레벨마다 따로 기억 (기기에 저장: chordoven.ear.<mode>.v1, 2026-11-24 사용자 결정) ----------
 //   root·minor 조성, chromatic 조 밖의 음 포함, tonicEach 문제마다 기준음 재생(처음 켜짐),
-//   speed 멜로디 재생 속도 0 느리게·1 보통·2 빠르게, count 맞힐 음 개수 1·2 (speed·count는 단음 ②만)
+//   speed 멜로디 재생 속도 0 느리게·1 보통·2 빠르게·3 매우 빠르게, count 맞힐 음 개수 1·2 (speed·count는 단음 ②만)
 // 예전에 단음 단계끼리 같이 쓰던 값(chordoven.earNote.v1)이 있으면 그 레벨을 처음 열 때 시작값으로 씀
 const S_DEFAULTS = { root: "C", minor: false, chromatic: false, tonicEach: true, speed: 1, count: 1 };
 let S = loadS();
@@ -179,6 +179,7 @@ function renderSettings() {
   // 단음 ②만: 멜로디 재생 속도(슬라이더)·맞힐 음 개수
   $("earMelodyOpts").hidden = !melodic();
   $("earSpeed").value = S.speed;
+  $("earSpeed").style.setProperty("--p", (S.speed / 3 * 100) + "%");   // 슬라이더에서 손잡이 왼쪽을 칠함
   [...$("earSpeedLabels").children].forEach((el, i) => el.classList.toggle("on", i === S.speed));
   $("earCount1").checked = S.count === 1; $("earCount2").checked = S.count === 2;
   $("earKeyName").textContent = keyLabel();
@@ -218,8 +219,9 @@ const SCALE_STEP = 0.42;   // 스케일 음 사이 간격(초)
 const Q_DUR = 1.4;         // 문제 음 길이(초)
 const TONIC_DUR = 1.0;     // 기준음 길이(초)
 const GAP = 0.5;           // 스케일·기준음과 다음 소리 사이 쉼(초)
-// 단음 ② 멜로디 음 사이 간격(초) — 모든 음 같은 길이. 출제 설정 "재생 속도": 느리게·보통(처음 값, 처음 만든 속도)·빠르게 (2026-11-24 사용자 결정)
-const MEL_STEPS = [0.85, 0.6, 0.4];
+// 단음 ② 멜로디 음 사이 간격(초) — 모든 음 같은 길이. 출제 설정 "재생 속도": 느리게·보통(처음 값, 처음 만든 속도)·빠르게·매우 빠르게
+// (2026-11-24 사용자 결정, 매우 빠르게는 같은 날 추가)
+const MEL_STEPS = [0.85, 0.6, 0.4, 0.2];   // 매우 빠르게: 0.28 → 0.2초 (2026-11-24 사용자 요청 — 더 빠르게)
 const melStep = () => MEL_STEPS[S.speed] ?? 0.6;
 let acc = "key";           // 오선지 변화표: "key"(조표대로) | 1 | 0 | -1
 

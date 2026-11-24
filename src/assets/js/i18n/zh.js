@@ -547,6 +547,7 @@ export default {
   earSpeedSlow: "慢",
   earSpeedMid: "正常",
   earSpeedFast: "快",
+  earSpeedVeryFast: "很快",
   earCountH: "要答的音数",
   earCount1: "1个",
   earCount2: "2个",
