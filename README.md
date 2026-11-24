@@ -69,7 +69,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     naming/settings.js keys.js keypad.js staff.js quiz.js   코드 추론하기의 출제 설정·건반(보기만)·코드 입력 키패드·오선지 악보(SVG)·문제 흐름(기록·타이머·다시 풀기)
     pages/naming.js         코드 추론하기 페이지 (trainer/chords-name/)
     pages/ear.js            청음 연습 페이지 (trainer/ear/, 모양은 css/ear.css)
-    ear/theory.js instruments.js keys.js staff.js   청음 연습의 조성·출제·채점(순수 함수)·연주 악기(피아노 외 FluidR3 GM)·답 고르는 건반(G3~G5)·눌러서 음을 고르는 오선지
+    ear/theory.js instruments.js keys.js staff.js   청음 연습의 조성·출제·채점(순수 함수)·연주 악기(피아노 외 FluidR3 GM)·답 고르는 건반(F3~F5)·눌러서 음을 고르는 오선지
     pages/improv.js         코드 초견 페이지 (trainer/chord-improv/, 모양은 css/improv.css)
     improv/metronome.js keys.js   코드 초견의 메트로놈(박을 소리 장치 시계에 미리 예약, 카운트인)·88건반(누르는 동안만 선택, 컴퓨터만)
     improv/random.js settings.js timing.js slash.js   코드 초견의 무작위 코드 모드(이전·현재·다음 코드)·출제 설정·마디수 계산·분수코드 출제

@@ -1,4 +1,4 @@
-// ===== 청음 연습 — 답 고르는 건반 (단음 ①: G3~G5) =====
+// ===== 청음 연습 — 답 고르는 건반 (단음 ①: F3~F5) =====
 // 건반을 누르면 그 음이 답 — 페이지(pages/ear.js)가 바로 채점해요. 누를 때마다 소리도 페이지가 냄(고른 악기로).
 //   - 마우스: 누르는 순간 입력
 //   - 터치: 손을 뗄 때 입력, 10px 넘게 움직이면 스크롤로 보고 입력 안 함 (랜덤 코드 연습 practice/keyboard.js와 같은 규칙)
@@ -67,4 +67,14 @@ export function markKeys(marks = new Map()) {
     el.classList.toggle("bad", k === "bad");
     el.classList.toggle("ans", k === "ans");
   }
+}
+
+/**
+ * 스케일·기준음이 울리는 동안 그 건반에 점 (정답 표시와 다른 색 — ear.css .key.ref).
+ * @param m   MIDI 번호 (범위 밖이면 아무것도 안 함), null이면 모든 건반의 점을 지움
+ */
+export function refKey(m, on) {
+  if (m === null) { for (const el of keyEls.values()) el.classList.remove("ref"); return; }
+  const el = keyEls.get(m);
+  if (el) el.classList.toggle("ref", on);
 }

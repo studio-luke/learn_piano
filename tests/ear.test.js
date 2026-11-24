@@ -34,19 +34,19 @@ test("ear: key signatures", () => {
   for (const minor of [false, true]) for (const root of KEY_ROOTS[minor ? "minor" : "major"]) assert.ok(signature({ root, minor }).count <= 7);
 });
 
-test("ear: scale playback starts on the tonic between G3 and F♯4 and spans one octave", () => {
+test("ear: scale playback starts on the tonic between F3 and E4 and spans one octave", () => {
   for (const minor of [false, true]) for (const root of KEY_ROOTS[minor ? "minor" : "major"]) {
     const ms = scaleMidis({ root, minor });
     assert.strictEqual(ms.length, 8);
-    assert.ok(ms[0] >= 55 && ms[0] <= 66, root);
+    assert.ok(ms[0] >= 53 && ms[0] <= 64, root);
     assert.strictEqual(ms[7] - ms[0], 12);
   }
 });
 
-test("ear: candidates stay in G3–G5, diatonic only unless chromatic is on", () => {
+test("ear: candidates stay in F3–F5, diatonic only unless chromatic is on", () => {
   const c = candidates({ root: "C", minor: false });
   assert.ok(c.every(n => n.midi >= LOW && n.midi <= HIGH && n.a === 0));
-  assert.strictEqual(c.length, 15);   // G3 ~ G5의 흰 건반
+  assert.strictEqual(c.length, 15);   // F3 ~ F5의 흰 건반
   assert.strictEqual(candidates({ root: "C", minor: false }, { chromatic: true }).length, 25);
   assert.ok(candidates({ root: "B", minor: false }).every(n => n.midi === midiOf(n)));
 });

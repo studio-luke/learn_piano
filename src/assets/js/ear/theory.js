@@ -17,8 +17,8 @@ export const KEY_ROOTS = {
   minor: ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "G♯", "A", "B♭", "B"],
 };
 
-/** 단음 ①의 건반·출제 범위 G3~G5 (MIDI 번호) */
-export const LOW = 55, HIGH = 79;
+/** 단음 ①의 건반·출제 범위 F3~F5 (MIDI 번호) — G3부터 보이면 첫 건반이 도처럼 보여서 F부터 (2026-11-24 사용자 요청) */
+export const LOW = 53, HIGH = 77;
 
 const ACC = { "-2": "𝄫", "-1": "♭", "0": "", "1": "♯", "2": "𝄪" };
 
@@ -86,7 +86,7 @@ export function sigAcc(sig, l) { return sig.letters.has(l) ? sig.a : 0; }
 
 /**
  * 스케일 재생용 음 (MIDI 번호, 으뜸음부터 한 옥타브 위 으뜸음까지 8개). 자연음계.
- * 으뜸음은 G3~F♯4 안에서 — 스케일이 출제 범위(G3~G5) 가운데쯤에 오게
+ * 으뜸음은 F3~E4 안에서 — 스케일이 출제 범위(F3~F5) 가운데쯤에 오게
  */
 export function scaleMidis(key) {
   const { tonic, scale } = keyNotes(key);

@@ -3,7 +3,7 @@
 // 지금 만든 단계: 단음 ① 음 하나 — 나머지는 "준비 중"으로 보이기만 함. 규칙은 chordoven-spec.md "청음 연습".
 // 각 부분:
 //   ear/theory.js       조성·스케일·출제·채점 (순수 함수)      ear/instruments.js  연주 악기(피아노·목소리·EP·기타·현악기)
-//   ear/keys.js         답 고르는 건반 (G3~G5)                 ear/staff.js        눌러서 음을 고르는 오선지(조표 포함)
+//   ear/keys.js         답 고르는 건반 (F3~F5)                 ear/staff.js        눌러서 음을 고르는 오선지(조표 포함)
 //
 // 단음 ① 흐름 (2026-11-24 사용자 결정):
 //   [▶ 시작] → 스케일 → 기준음(으뜸음) → 문제 음. 그다음 문제부터는 기준음 → 문제 음 (문제마다 기준음을 먼저)
@@ -17,7 +17,7 @@ import { t, onLangChange } from "../i18n/index.js";
 import { $ } from "../common/dom.js";
 import { store } from "../common/storage.js";
 import * as Ins from "../ear/instruments.js";
-import { initKeys, markKeys } from "../ear/keys.js";
+import { initKeys, markKeys, refKey } from "../ear/keys.js";
 import { initStaff, setSignature, showNotes } from "../ear/staff.js";
 import { KEY_ROOTS, LOW, HIGH, signature, scaleMidis, pickNote, judgeNote, spellMidi, midiOf, sigAcc, fullName, otherKey, sameRoot } from "../ear/theory.js";
 
@@ -69,6 +69,7 @@ function renderLevels() {
   if (cur) cur.scrollIntoView({ block: "nearest", inline: "nearest" });
   // 패널: 만든 단계만 내용, 나머지는 "준비 중"
   $("panelNote1").hidden = mode !== "note1";
+  $("earKeyRow").hidden = mode !== "note1";   // 맨 윗줄의 조 표시는 단음 단계만
   $("earSoon").hidden = lv.ready;
   $("sheetNote").hidden = lv.track !== "note" || !lv.ready;
   document.querySelector(".ear-layout").classList.toggle("no-sheet", $("sheetNote").hidden);
@@ -94,7 +95,8 @@ $("earInst").onchange = e => { inst = e.target.value; store.set("earInstrument",
 Ins.load(inst);   // 고른 악기 녹음은 페이지를 열 때 받기 시작 (첫 소리가 늦지 않게)
 
 // ---------- 단음 출제 설정 (단음 단계끼리 같이 씀, 기기에 저장: chordoven.earNote.v1) ----------
-const S = Object.assign({ root: "C", minor: false, chromatic: false }, store.getJSON("earNote.v1") || {});
+// tonicEach = 문제마다 기준음 재생 (처음 켜짐, 2026-11-24 사용자 요청)
+const S = Object.assign({ root: "C", minor: false, chromatic: false, tonicEach: true }, store.getJSON("earNote.v1") || {});
 if (!KEY_ROOTS[S.minor ? "minor" : "major"].includes(S.root)) S.root = "C";
 const saveS = () => store.setJSON("earNote.v1", S);
 const key = () => ({ root: S.root, minor: S.minor });
@@ -105,6 +107,7 @@ function renderSettings() {
   $("earMode").textContent = S.minor ? "minor" : "Major";
   $("earMode").setAttribute("aria-pressed", String(S.minor));
   $("earChrom").checked = S.chromatic;
+  $("earTonicEach").checked = S.tonicEach;
   $("earKeyName").textContent = keyLabel();
   setSignature(signature(key()));
 }
@@ -119,6 +122,8 @@ $("earMode").onclick = () => { S.minor = !S.minor; S.root = sameRoot(S.root, S.m
 $("earOtherKey").onclick = () => { S.root = otherKey(key()).root; keyChanged(); };
 // 조 밖의 음은 다음 문제부터 (지금 문제는 그대로)
 $("earChrom").onchange = e => { S.chromatic = e.target.checked; saveS(); };
+// 문제마다 기준음 재생도 다음 문제부터
+$("earTonicEach").onchange = e => { S.tonicEach = e.target.checked; saveS(); };
 
 // ---------- 단음 ① 음 하나 ----------
 // phase: "idle"(시작 전) | "ask"(풀고 있음) | "done"(맞힘·정답 확인)
@@ -129,13 +134,15 @@ const TONIC_DUR = 1.0;     // 기준음 길이(초)
 const GAP = 0.5;           // 스케일·기준음과 다음 소리 사이 쉼(초)
 let acc = "key";           // 오선지 변화표: "key"(조표대로) | 1 | 0 | -1
 
-// ---------- 소리 예약과 기준 재생 중 잠금 ----------
-// 스케일·기준음을 들려주는 동안에는 건반·오선지를 회색으로 잠그고, 안내 문구를 "D Major 스케일의 첫 음을 재생 중이에요."처럼
-// 지금 들리는 것으로 바꿈 (2026-11-24 사용자 요청). 문제 음이 시작되면 풀림.
+// ---------- 소리 예약과 필수 재생 중 잠금 ----------
+// 필수 재생 = 새 문제를 낼 때 문제 음 앞에 저절로 들려주는 스케일(시작·조를 바꿨을 때)·기준음(문제마다 — 옵션).
+// 필수 재생 동안에는 건반·오선지를 회색으로 잠그고 [기준음 듣기]·[스케일 들어보기]도 끄며, 안내 문구를
+// "D Major 스케일의 첫 음을 재생 중이에요. 생략하기"처럼 바꿈 — [생략하기]는 남은 기준을 건너뛰고 바로 문제 음으로.
+// 문제 음이 시작되면 풀림. 사용자가 버튼으로 다시 듣는 기준음·스케일은 잠그지 않음 (2026-11-24 사용자 결정).
 // 소리는 악기 녹음이 준비된 뒤에 실제로 시작하므로(Ins.play가 돌려주는 Promise), 그때부터 시간을 잼
 let listenTok = 0;          // 새로 듣기를 시작하거나 멈추면 +1 → 앞의 예약(문구 바꾸기·잠금 풀기)은 무시
 let timers = [];
-let refText = "";           // 잠겨 있는 동안의 안내 문구 ("" = 잠기지 않음)
+let refText = "";           // 필수 재생 중의 안내 문구 ("" = 필수 재생 아님, 잠기지 않음)
 
 /** 스케일 음 목록(at초부터). { notes, end: 끝나는 시각 } */
 function scaleNotes(at) {
@@ -152,29 +159,38 @@ function stopListening() {
   listenTok++;
   timers.forEach(clearTimeout); timers = [];
   Ins.stopAll();
+  refKey(null);
   setRef("");
 }
 
 /**
  * 순서대로 들려주기.
- * @param parts  [{ kind: "scale" | "tonic" | "question" }] — 사이에 GAP초 쉼
- * 스케일·기준음을 들려주는 동안은 잠금 + 그 문구, 문제 음이 시작되면(또는 다 끝나면) 풀림
+ * @param parts     [{ kind: "scale" | "tonic" | "question" }] — 사이에 GAP초 쉼
+ * @param required  필수 재생인지 — 그러면 스케일·기준음 동안 잠금 + 그 문구, 문제 음이 시작되면 풀림
  */
-function listen(parts) {
+function listen(parts, required = false) {
   stopListening();
   const tok = listenTok;
   const notes = [], spans = [];   // spans: [{ start, end, text }] 잠그는 구간
+  const dots = [];                // 건반에 점을 찍을 스케일·기준음 (문제 음은 찍지 않음 — 답이 되므로)
   let at = 0;
   for (const p of parts) {
     const seg = p.kind === "scale" ? scaleNotes(at) : p.kind === "tonic" ? tonicNotes(at) : questionNotes(at);
     notes.push(...seg.notes);
+    if (p.kind !== "question") dots.push(...seg.notes);
     if (p.kind !== "question") spans.push({ start: at, end: seg.end, text: t(p.kind === "scale" ? "earPlayingScale" : "earPlayingTonic", { key: keyLabel() }) });
     at = seg.end + GAP;
   }
-  if (!spans.length) { Ins.play(inst, notes); return; }
-  setRef(spans[0].text);   // 소리가 준비되기 전부터 잠금
+  const locking = required && spans.length > 0;
+  if (locking) setRef(spans[0].text);   // 소리가 준비되기 전부터 잠금
   Ins.play(inst, notes).then(() => {
     if (tok !== listenTok) return;
+    // 스케일·기준음이 울리는 동안 그 건반에 점 (2026-11-24 사용자 요청 — 필수 재생이든 버튼으로 다시 듣든)
+    for (const n of dots) {
+      timers.push(setTimeout(() => tok === listenTok && refKey(n.m, true), n.at * 1000));
+      timers.push(setTimeout(() => tok === listenTok && refKey(n.m, false), (n.at + n.dur) * 1000));
+    }
+    if (!locking) return;
     spans.forEach((sp, i) => {
       if (i) timers.push(setTimeout(() => tok === listenTok && setRef(sp.text), sp.start * 1000));
     });
@@ -192,6 +208,9 @@ function setRef(text) {
   renderNoteButtons();
 }
 
+/** [생략하기]: 필수 재생의 남은 스케일·기준음을 건너뛰고 바로 문제 음 */
+$("btnSkip").onclick = () => { if (refText) listen([{ kind: "question" }]); };
+
 const playPicked = m => Ins.play(inst, [{ m, at: 0, dur: 0.9, vel: 0.5 }]);
 
 /** 새 문제. withScale = 스케일을 먼저 들려줌 (시작, 조를 바꿨을 때) */
@@ -201,7 +220,8 @@ function newQuestion(withScale) {
   markKeys(); showNotes([]);
   setFeedback("", "");
   // 문제마다 기준음을 먼저 (2026-11-24 사용자 요청), 시작·조를 바꿨을 때는 그 앞에 스케일
-  listen([...(withScale ? [{ kind: "scale" }] : []), { kind: "tonic" }, { kind: "question" }]);
+  // (기준음은 "문제마다 기준음 재생" 옵션 — 꺼져 있으면 스케일 뒤에도 바로 문제 음)
+  listen([...(withScale ? [{ kind: "scale" }] : []), ...(S.tonicEach ? [{ kind: "tonic" }] : []), { kind: "question" }], true);
 }
 
 function renderNoteButtons() {
@@ -211,9 +231,12 @@ function renderNoteButtons() {
   // 기준 듣기는 한 자리: 평소 [기준음 듣기], 이 문제를 한 번이라도 틀렸으면 [스케일 들어보기] (2026-11-24 사용자 결정)
   $("btnTonic").hidden = !started || N.wrong;
   $("btnScale").hidden = !started || !N.wrong;
-  $("btnReveal").disabled = N.phase !== "ask";
+  // 필수 재생 중에는 끔 (누르면 스케일이 끊겨서 — 2026-11-24 사용자 결정). 대신 안내 문구 옆 [생략하기]
+  $("btnTonic").disabled = $("btnScale").disabled = !!refText;
+  $("btnReveal").disabled = N.phase !== "ask" || !!refText;   // 필수 재생 중에도 막음 (2026-11-24 사용자 요청)
   $("btnNext").disabled = N.phase !== "done";
-  $("earHint").textContent = refText || (!started ? t("earN1Intro") : t("earN1Ask"));
+  $("earHintText").textContent = refText || (!started ? t("earN1Intro") : t("earN1Ask"));
+  $("btnSkip").hidden = !refText;
 }
 
 function setFeedback(cls, html) {
@@ -252,7 +275,7 @@ initStaff(({ l, oct }) => {
   const note = { l, a, oct };
   setAcc("key");   // 변화표 버튼은 한 번 쓰고 조표대로로
   const m = midiOf(note);
-  if (m < LOW - 1 || m > HIGH + 1) return;   // G3 아래 G♭3 등 건반 밖 (반음까지만 허용)
+  if (m < LOW - 1 || m > HIGH + 1) return;   // F3 아래 F♭3 등 건반 밖 (반음까지만 허용)
   pick(m, note);
 });
 
@@ -270,7 +293,7 @@ $("btnReplay").onclick = () => listen([{ kind: "question" }]);
 $("btnTonic").onclick = () => listen([{ kind: "tonic" }]);
 $("btnScale").onclick = () => listen([{ kind: "scale" }]);
 $("btnReveal").onclick = () => {
-  if (N.phase !== "ask") return;
+  if (N.phase !== "ask" || refText) return;
   N.phase = "done";
   markKeys(new Map([[N.q.midi, "ans"]]));
   showNotes([{ note: N.q, cls: "good" }]);

@@ -31,16 +31,21 @@
 .ear-panel[hidden], .ear-soon[hidden] { display: none; }
 .ear-soon { padding: 40px 0; text-align: center; color: var(--muted); }
 
-.ear-tools { display: flex; justify-content: flex-end; }
+.ear-tools { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.ear-tools .ear-key-row[hidden] { display: none; }
+.ear-inst { margin-left: auto; }   /* 조 표시가 없는 단계에서도 오른쪽 끝 */
 .ear-inst { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .ear-inst select { font-size: 14px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
 
-.ear-key-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ear-key-row { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
 .ear-key-now { font-size: 15px; color: var(--muted); }
 .ear-key-now b { color: var(--ink); font-size: 18px; }
 
-.ear-listen { display: flex; gap: 8px; flex-wrap: wrap; }
+.ear-listen { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.ear-listen-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.ear-listen > .btn { flex: 0 0 auto; white-space: nowrap; }
 .ear-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.ear-hint .ear-skip { font-size: 13px; font-weight: 600; color: var(--accent); margin-left: 4px; }   /* 필수 재생 건너뛰기 — 안내 문구와 다른 색 */
 
 /* 문제 다시 듣기: 안내 문구와 오선지 사이 가운데의 큰 동그란 재생 버튼 */
 .ear-replay { align-self: center; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.15), var(--card-shadow); cursor: pointer; transition: transform 80ms, filter 80ms; }
@@ -66,6 +71,9 @@
 .ear-acc[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 
 /* ---------- 건반: 오답 표시 (정답 초록은 practice.css .key.sel.good) ---------- */
+/* 스케일·기준음이 울리는 동안 그 건반에 점 — 정답 점(초록, .ans)과 다른 색 --ref (pages/ear.js listen) */
+.key.ref::after { content: ""; position: absolute; left: 50%; bottom: 26px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--ref); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ref) 30%, transparent); }
+.key.black.ref::after { bottom: 18px; width: 9px; height: 9px; margin-left: -4.5px; }
 .key.sel.bad.white { background: var(--warn); color: #fff; border-color: color-mix(in srgb, var(--warn) 55%, #000); }
 .key.sel.bad.black { background: color-mix(in srgb, var(--warn) 75%, #000); }
 .ear-kb { cursor: pointer; }

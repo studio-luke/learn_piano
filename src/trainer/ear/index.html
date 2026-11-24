@@ -43,7 +43,12 @@
     <div class="ear-layout">
       <section class="ear-card" aria-label="연습" data-i18n-aria="deskAria">
         <!-- 오른쪽 위: 연주 악기 (모든 단계 공통, 기기에 저장 — ear/instruments.js) -->
+        <!-- 맨 윗줄: 왼쪽 지금 조 + [다른 조로 바꾸기](조를 바꾸면 스케일을 다시 들려줌, 단음 단계만), 오른쪽 악기 — 한 줄에 (2026-11-24 사용자 요청) -->
         <div class="ear-tools">
+          <div class="ear-key-row" id="earKeyRow">
+            <span class="ear-key-now"><span data-i18n="earKeyNow">조</span> <b id="earKeyName">C Major</b></span>
+            <button class="linkbtn" id="earOtherKey" type="button" data-i18n="earOtherKey">다른 조로 바꾸기</button>
+          </div>
           <label class="ear-inst"><span data-i18n="earInstrument">악기</span> <select id="earInst"></select></label>
         </div>
 
@@ -54,19 +59,17 @@
 
         <!-- 단음 ① 음 하나 -->
         <div class="ear-panel" id="panelNote1">
-          <!-- 지금 조 + [다른 조로 바꾸기] — 조를 바꾸면 스케일을 다시 들려줌 -->
-          <div class="ear-key-row">
-            <span class="ear-key-now"><span data-i18n="earKeyNow">조</span> <b id="earKeyName">C Major</b></span>
-            <button class="linkbtn" id="earOtherKey" type="button" data-i18n="earOtherKey">다른 조로 바꾸기</button>
-          </div>
-
-          <!-- 기준 듣기: 한 자리에 [🚩 기준음 듣기], 그 문제를 틀리면 [🎹 스케일 들어보기]로 바뀜 (2026-11-24 사용자 결정) -->
+          <!-- 둘째 줄: 왼쪽 [▶ 시작](시작 전만) + 안내 문구, 오른쪽 기준 듣기 버튼 (2026-11-24 사용자 요청 — 줄 공간을 아끼려고)
+               안내 문구: 필수 재생(새 문제 앞의 스케일·기준음) 중에는 "… 재생 중이에요." + [생략하기] (pages/ear.js)
+               기준 듣기: 한 자리에 [🚩 기준음 듣기], 그 문제를 틀리면 [🎹 스케일 들어보기]로 바뀜 -->
           <div class="ear-listen">
-            <button class="btn primary" id="btnStart" type="button" data-i18n="earStart">▶ 시작</button>
+            <div class="ear-listen-main">
+              <button class="btn primary" id="btnStart" type="button" data-i18n="earStart">▶ 시작</button>
+              <p class="ear-hint" id="earHint"><span id="earHintText" data-i18n="earN1Intro">시작을 누르면 스케일을 들려준 뒤 문제를 내요.</span> <button class="linkbtn ear-skip" id="btnSkip" type="button" hidden data-i18n="earSkip">생략하기</button></p>
+            </div>
             <button class="btn" id="btnTonic" type="button" hidden data-i18n="earTonic">🚩 기준음 듣기</button>
             <button class="btn" id="btnScale" type="button" hidden data-i18n="earScale">🎹 스케일 들어보기</button>
           </div>
-          <p class="ear-hint" id="earHint" data-i18n="earN1Intro">시작을 누르면 스케일을 들려준 뒤 문제를 내요.</p>
 
           <!-- 문제 다시 듣기: 안내 문구와 오선지 사이 가운데에 큰 재생(▶) 버튼 (2026-11-24 사용자 요청). 단축키 Space -->
           <button class="ear-replay" id="btnReplay" type="button" hidden aria-label="문제 다시 듣기" data-i18n-aria="earReplay" data-i18n-title="earReplay" title="문제 다시 듣기">
@@ -84,7 +87,7 @@
             </div>
           </div>
 
-          <div class="keyboard ear-kb" id="keyboard" role="img" aria-label="피아노 건반 (G3–G5)" data-i18n-aria="earKbAria"></div>
+          <div class="keyboard ear-kb" id="keyboard" role="img" aria-label="피아노 건반 (F3–F5)" data-i18n-aria="earKbAria"></div>
 
           <div class="feedback" id="earFeedback" role="status" aria-live="polite"></div>
           <div class="ear-actions">
@@ -105,6 +108,7 @@
           </div>
         </div>
         <div class="opt">
+          <label class="check"><input type="checkbox" id="earTonicEach"><span><span data-i18n="earTonicEach">문제마다 기준음 재생</span><small data-i18n="earTonicEachSub">문제 음 앞에 으뜸음을 먼저 들려줘요</small></span></label>
           <label class="check"><input type="checkbox" id="earChrom"><span><span data-i18n="earChrom">조 밖의 음 포함</span><small data-i18n="earChromSub">반음계의 모든 음</small></span></label>
         </div>
       </aside>
