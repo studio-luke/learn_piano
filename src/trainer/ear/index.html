@@ -65,14 +65,8 @@
           <p data-i18n="earSoonText">이 단계는 준비 중이에요.</p>
         </div>
 
-        <!-- 단음 ③ 멜로디 받아쓰기 — 만드는 중 (2단계: 악보 그리기 확인용 미리보기, 재생·입력·채점은 다음 단계) -->
-        <div class="ear-panel" id="panelNote3" hidden>
-          <p class="ear-hint" data-i18n="earN3Preview">만드는 중이에요 — 지금은 문제 악보가 어떻게 그려지는지만 볼 수 있어요.</p>
-          <div class="ear-score" id="earScore" role="img" aria-label="악보" data-i18n-aria="earScoreAria"></div>
-          <button class="btn" id="btnN3Sample" type="button" data-i18n="earN3Sample">↻ 다른 예시</button>
-        </div>
-
-        <!-- 단음 ① 음 하나 · ② 마지막 음 (같은 화면 — 악보 자리 수와 문제 소리만 다름, pages/ear.js) -->
+        <!-- 단음 ① 음 하나 · ② 마지막 음 · ③ 멜로디 받아쓰기 (같은 화면 — ①·②는 눌러서 고르는 오선지, ③은 리듬 악보(#earScore)와
+             카운트인 글자(#earCount). ③은 만드는 중: 3단계(재생·메트로놈·카운트인)까지 — 지금은 정답 악보를 보여 주고 재생만, pages/ear.js) -->
         <div class="ear-panel" id="panelNote">
           <!-- 안내 문구: 필수 재생(새 문제 앞의 스케일·기준음) 중에는 "… 재생 중이에요." + [생략하기] (pages/ear.js) -->
           <p class="ear-hint" id="earHint"><span id="earHintText" data-i18n="earN1Intro">시작을 누르면 스케일을 들려준 뒤 문제를 내요.</span> <button class="linkbtn ear-skip" id="btnSkip" type="button" hidden data-i18n="earSkip">생략하기</button></p>
@@ -92,6 +86,10 @@
               <button class="btn" id="btnScale" type="button" hidden data-i18n="earScale">▶ 스케일</button>
             </div>
           </div>
+
+          <!-- 단음 ③: 카운트인("Ready" "Start")과 리듬 악보 (ear/score.js) -->
+          <div class="ear-count" id="earCount" aria-live="polite"></div>
+          <div class="ear-score" id="earScore" role="img" aria-label="악보" data-i18n-aria="earScoreAria" hidden></div>
 
           <!-- 오선지: 줄·칸을 눌러 음 고르기. 변화표는 아래 버튼으로 (ear/staff.js) -->
           <div class="ear-staff-wrap">
@@ -150,6 +148,15 @@
         </div>
         <!-- 단음 ③만: 최소 박자(4분·8분·16분, 처음 8분) · 마디 수(1·2, 처음 1) (2026-11-24 사용자 결정) -->
         <div class="group" id="earRhythmOpts" style="gap: 16px" hidden>
+          <div class="opt">
+            <!-- BPM: 처음 60, 40~160 (2026-11-24 사용자 결정 — 재생 속도 옵션 대신) -->
+            <h3><label for="earBpm">BPM</label></h3>
+            <div class="ear-bpm">
+              <button class="im-step" id="earBpmDown" type="button" aria-label="BPM −">−</button>
+              <input type="number" id="earBpm" min="40" max="160" step="1" inputmode="numeric">
+              <button class="im-step" id="earBpmUp" type="button" aria-label="BPM +">+</button>
+            </div>
+          </div>
           <div class="opt">
             <h3 id="earMinH" data-i18n="earMinH">최소 박자</h3>
             <input class="ear-range" type="range" id="earMin" min="0" max="2" step="1" aria-labelledby="earMinH">

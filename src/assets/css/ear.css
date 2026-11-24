@@ -144,6 +144,17 @@
 /* 3칸 슬라이더(단음 ③ 최소 박자): 0 · ½ · 1 */
 .ear-range-labels.three span:nth-child(2) { left: 50%; } .ear-range-labels.three span:nth-child(3) { left: 100%; }
 
+/* ---------- 단음 ③ BPM 입력 [− 숫자 +] ---------- */
+.ear-bpm { display: flex; align-items: center; gap: 6px; }
+.ear-bpm input { width: 64px; font-size: 16px; padding: 6px 8px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.ear-bpm .im-step { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 18px; line-height: 1; }
+
+/* ---------- 단음 ③ 카운트인 글자 ("Ready" "Start") — 비어 있으면 자리를 차지하지 않음 ---------- */
+.ear-count { text-align: center; font-family: var(--font-display); font-size: 30px; line-height: 1; color: var(--accent); min-height: 30px; }
+.ear-count:empty { display: none; }
+.ear-count.go { color: var(--ok); }
+.ear-score[hidden], .ear-staff-wrap[hidden], .ear-kb[hidden] { display: none; }
+
 /* ---------- 단음 ③ 리듬 악보 (ear/score.js) — 높이 = 줄 수 × 한 줄 ---------- */
 .ear-score svg { display: block; height: calc(var(--score-lines, 1) * 120px); width: auto; max-width: 100%; margin: 0 auto; color: var(--ink); }   /* 줄마다 120px, 폭이 넘치면 줄여서 맞춤 */
 .ear-score .st-line, .ear-score .st-ledger, .ear-score .st-bar { stroke: currentColor; stroke-width: 1; }

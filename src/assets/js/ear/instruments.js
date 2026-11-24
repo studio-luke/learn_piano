@@ -50,7 +50,7 @@ export function load(id) {
 function ready(ins) {
   const ctx = Sound.context();
   if (!ctx) return Promise.resolve(null);
-  if (!out) { out = ctx.createGain(); out.gain.value = 0.55; out.connect(ctx.destination); }
+  ensureOut(ctx);
   const jobs = [];
   for (const [m] of FILES) {
     const k = ins.id + "/" + m;
@@ -68,18 +68,27 @@ function ready(ins) {
 /**
  * 음들을 예약해서 냄 — 스케일·멜로디·화음 모두 이것 하나로.
  * @param id     악기 id
- * @param notes  [{ m: MIDI 번호, at: 몇 초 뒤, dur: 길이(초), vel: 세기 0~1 }]
+ * @param notes  [{ m: MIDI 번호, at: 몇 초 뒤, dur: 길이(초), vel: 세기 0~1 }] — 메트로놈 클릭은 { click: true, accent, at }
+ *               (단음 ③ — 음과 같은 시계로 예약해야 박이 맞아서 여기서 함께)
  * 녹음이 아직 안 풀렸으면 풀릴 때까지 기다렸다가 모두 함께 시작(음 사이 간격은 그대로)
  * @returns Promise — 소리를 예약한 순간(= at 0이 들리기 시작하는 때) 끝남. 페이지가 소리에 맞춰 화면을 바꿀 때 씀
  *   (피아노는 Sound가 따로 기다리므로 바로 끝남 — 첫 소리만 녹음이 풀리는 만큼 조금 늦을 수 있음)
  */
 export function play(id, notes) {
   const ins = byId(id);
-  if (!ins.dir) { for (const n of notes) Sound.note(n.m, n.at, n.dur, n.vel ?? 0.5); return Promise.resolve(); }
+  const clicks = notes.filter(n => n.click);
+  notes = notes.filter(n => !n.click);
+  if (!ins.dir) {
+    for (const n of notes) Sound.note(n.m, n.at, n.dur, n.vel ?? 0.5);
+    const ctx = clicks.length && Sound.context();
+    if (ctx) { ensureOut(ctx); const t0 = ctx.currentTime + 0.005; for (const c of clicks) click(ctx, t0 + c.at, c.accent); }
+    return Promise.resolve();
+  }
   load(ins.id);
   return ready(ins).then(ctx => {
     if (!ctx) return;
     const t0 = ctx.currentTime + 0.02;
+    for (const c of clicks) click(ctx, t0 + c.at, c.accent);
     for (const n of notes) {
       const sm = FILES.reduce((a, [f]) => Math.abs(f - n.m) < Math.abs(a - n.m) ? f : a, FILES[0][0]);
       const buf = buffers.get(ins.id + "/" + sm);
@@ -87,6 +96,26 @@ export function play(id, notes) {
       voice(ctx, ins, buf, n.m - sm, t0 + n.at, n.dur, n.vel ?? 0.5);
     }
   });
+}
+
+/** 이 파일의 전체 볼륨 노드 (처음 한 번 만듦) */
+function ensureOut(ctx) { if (!out) { out = ctx.createGain(); out.gain.value = 0.55; out.connect(ctx.destination); } }
+
+/**
+ * 메트로놈 클릭 하나 (합성음 — 코드 초견 메트로놈과 같은 높이: 마디 첫 박 1760Hz, 나머지 1100Hz).
+ * 짧게(0.05초) 울리고 사라짐. stopAll이 멈출 수 있게 voices에 넣음
+ */
+function click(ctx, t, accent) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = "square"; o.frequency.value = accent ? 1760 : 1100;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(accent ? 0.22 : 0.15, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  o.connect(g); g.connect(out);
+  o.start(t); o.stop(t + 0.06);
+  const v = { g, src: o };
+  voices.add(v);
+  o.onended = () => voices.delete(v);
 }
 
 /** 녹음 하나를 반음 shift만큼 높이를 바꿔 t(소리 장치 시계)에 dur초 동안 냄 */
