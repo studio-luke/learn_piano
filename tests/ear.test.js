@@ -1,7 +1,7 @@
 // 청음 연습 검사 (조성·스케일·출제·채점 — ear/theory.js).  실행: npm test
 import test from "node:test";
 import assert from "node:assert";
-import { keyNotes, nameOf, signature, scaleMidis, candidates, pickNote, judgeNote, spellMidi, midiOf, otherKey, sameRoot, KEY_ROOTS, LOW, HIGH } from "../src/assets/js/ear/theory.js";
+import { keyNotes, pcOf, pickMelody, nameOf, signature, scaleMidis, candidates, pickNote, judgeNote, spellMidi, midiOf, otherKey, sameRoot, KEY_ROOTS, LOW, HIGH } from "../src/assets/js/ear/theory.js";
 
 const names = list => list.map(nameOf);
 
@@ -74,4 +74,37 @@ test("ear: other key keeps major/minor and changes the tonic; same root keeps th
   for (let i = 0; i < 50; i++) { const k = otherKey({ root: "C", minor: true }); assert.ok(k.minor && k.root !== "C"); }
   assert.strictEqual(sameRoot("D♭", true), "C♯");
   assert.strictEqual(sameRoot("G♯", false), "A♭");
+});
+
+test("ear level 2: 4-note melody — neighbours at most an octave apart, all in F3–F5", () => {
+  for (const minor of [false, true]) for (const root of KEY_ROOTS[minor ? "minor" : "major"]) {
+    for (let i = 0; i < 40; i++) {
+      const m = pickMelody({ root, minor }, { chromatic: true });
+      assert.strictEqual(m.length, 4);
+      assert.ok(m.every(n => n.midi >= LOW && n.midi <= HIGH && n.midi === midiOf(n)));
+      for (let j = 1; j < 4; j++) assert.ok(Math.abs(m[j].midi - m[j - 1].midi) <= 12, root);
+    }
+  }
+});
+
+test("ear level 2: first note is diatonic, near the tonic, mostly a tonic-triad note", () => {
+  const key = { root: "D", minor: false };
+  const dia = new Set(keyNotes(key).diatonic.map(pcOf)), t0 = scaleMidis(key)[0];
+  const triad = new Set([2, 6, 9]);   // D F♯ A
+  let tri = 0;
+  for (let i = 0; i < 600; i++) {
+    const f = pickMelody(key, { chromatic: true })[0];
+    assert.ok(dia.has(pcOf(f)) && f.midi >= t0 - 5 && f.midi <= t0 + 12);
+    if (triad.has(pcOf(f))) tri++;
+  }
+  assert.ok(tri > 600 * 0.6, `triad starts ${tri}/600`);
+});
+
+test("ear level 2: leaps are not the majority", () => {
+  let leaps = 0, total = 0;
+  for (let i = 0; i < 500; i++) {
+    const m = pickMelody({ root: "C", minor: false });
+    for (let j = 1; j < 4; j++) { total++; if (Math.abs(m[j].midi - m[j - 1].midi) > 4) leaps++; }
+  }
+  assert.ok(leaps / total < 0.5, `leaps ${leaps}/${total}`);
 });

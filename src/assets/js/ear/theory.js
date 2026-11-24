@@ -126,6 +126,41 @@ export function pickNote(key, opt = {}, prevMidi = null, rnd = Math.random) {
   return pool[Math.floor(rnd() * pool.length)];
 }
 
+/** 가중치 목록에서 하나 고르기: items[i]를 weights[i]에 비례해서 (rnd = 0~1 난수) */
+function weighted(items, weights, rnd) {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = rnd() * total;
+  for (let i = 0; i < items.length; i++) { r -= weights[i]; if (r < 0) return items[i]; }
+  return items[items.length - 1];
+}
+
+// 단음 ② 멜로디: 이웃한 두 음 사이 음정(반음 수)별 가중치. 옥타브(12)까지만, 넘으면 0 (2026-11-24 사용자 결정 —
+// 도약이 너무 많지 않게 하되 순차 위주일 필요는 없음). 같은 음 반복은 드물게
+const STEP_WEIGHT = s => s === 0 ? 0.15 : s <= 2 ? 1 : s <= 4 ? 1 : s <= 7 ? 0.6 : s <= 12 ? 0.3 : 0;
+
+/**
+ * 단음 ② 마지막 음 — 4음 멜로디 만들기 (앞 3음은 보여 주고 4번째가 문제).
+ *   첫 음: 옵션과 상관없이 다이아토닉. 으뜸화음 음(1·3·5도 — 옥타브 위 1도, 1도 아래 5도 포함)을 3배로, 다른 다이아토닉 음도 가끔.
+ *          자리는 스케일 재생의 으뜸음(scaleMidis[0]) 기준 아래 5도 ~ 옥타브 위 1도 사이
+ *   둘째 음부터: "조 밖의 음 포함"(opt.chromatic)을 따름, 앞 음과의 음정은 STEP_WEIGHT
+ *   모든 음 F3~F5 안
+ * @returns [{ l, a, oct, midi } × 4]
+ */
+export function pickMelody(key, opt = {}, rnd = Math.random) {
+  const t0 = scaleMidis(key)[0];
+  const { scale } = keyNotes(key);
+  const triad = new Set([0, 2, 4].map(i => pcOf(scale[i])));
+  const firstPool = candidates(key).filter(n => n.midi >= t0 - 5 && n.midi <= t0 + 12);
+  const melody = [weighted(firstPool, firstPool.map(n => triad.has(pcOf(n)) ? 3 : 1), rnd)];
+  const pool = candidates(key, opt);
+  while (melody.length < 4) {
+    const prev = melody[melody.length - 1].midi;
+    const ws = pool.map(n => STEP_WEIGHT(Math.abs(n.midi - prev)));
+    melody.push(weighted(pool, ws, rnd));
+  }
+  return melody;
+}
+
 /**
  * 단음 채점 (옥타브까지 맞아야 정답).
  * @returns "ok" | "octUp"(정답이 한 옥타브 이상 위 — 음이름만 맞음) | "octDown" | "no"

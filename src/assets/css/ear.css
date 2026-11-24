@@ -83,6 +83,8 @@
 .ear-staff .st-ledger { stroke-width: 1.2; }
 .ear-staff .st-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 40px; fill: currentColor; }
 .ear-staff .st-acc, .ear-staff .st-head { fill: currentColor; }
+.ear-staff .st-stem { stroke: currentColor; stroke-width: 1.3; }
+.ear-staff .st-q { font-size: 22px; font-weight: 700; fill: var(--muted); }   /* 단음 ②의 문제 자리 "?" */
 .ear-staff .good { fill: var(--ok); stroke: var(--ok); }
 .ear-staff .bad { fill: var(--warn); stroke: var(--warn); }
 .ear-staff .ghost { fill: var(--muted); stroke: var(--muted); opacity: 0.45; }
