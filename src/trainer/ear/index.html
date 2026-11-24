@@ -71,18 +71,19 @@
           <p class="ear-hint" id="earHint"><span id="earHintText" data-i18n="earN1Intro">시작을 누르면 스케일을 들려준 뒤 문제를 내요.</span> <button class="linkbtn ear-skip" id="btnSkip" type="button" hidden data-i18n="earSkip">생략하기</button></p>
 
           <!-- 안내 문구와 오선지 사이 가운데: 시작 전에는 [▶ 시작], 그다음엔 문제 다시 듣기 큰 재생(▶) 버튼(단축키 Space).
-               ▶ 왼쪽에 기준 듣기 버튼 — 평소 [▶ 기준음], 그 문제를 틀리면 [▶ 스케일] (2026-11-24 사용자 요청: 둘째 줄 오른쪽에서 옮김).
-               ▶가 가운데에 오도록 세 칸(왼쪽 · ▶ · 빈칸) -->
+               ▶ 왼쪽에 [▶ 기준음](늘), 오른쪽에 [▶ 스케일](그 문제를 틀린 뒤에만 — 2026-11-24 사용자 결정: 기준음을 대신하지 않고 함께).
+               ▶가 가운데에 오도록 세 칸(왼쪽 · ▶ · 오른쪽) -->
           <div class="ear-play-row">
             <div class="ear-play-side">
               <button class="btn" id="btnTonic" type="button" hidden data-i18n="earTonic">▶ 기준음</button>
-              <button class="btn" id="btnScale" type="button" hidden data-i18n="earScale">▶ 스케일</button>
             </div>
             <button class="btn primary ear-start" id="btnStart" type="button" data-i18n="earStart">▶ 시작</button>
             <button class="ear-replay" id="btnReplay" type="button" hidden aria-label="문제 다시 듣기" data-i18n-aria="earReplay" data-i18n-title="earReplay" title="문제 다시 듣기">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
             </button>
-            <div class="ear-play-side"></div>
+            <div class="ear-play-side">
+              <button class="btn" id="btnScale" type="button" hidden data-i18n="earScale">▶ 스케일</button>
+            </div>
           </div>
 
           <!-- 오선지: 줄·칸을 눌러 음 고르기. 변화표는 아래 버튼으로 (ear/staff.js) -->

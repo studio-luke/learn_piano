@@ -53,10 +53,15 @@
 .ear-key-now { font-size: 15px; color: var(--muted); }
 .ear-key-now b { color: var(--ink); font-size: 18px; }
 
-/* 가운데 ▶(또는 [▶ 시작]) + 왼쪽 기준 듣기 버튼 — ▶가 카드 가운데에 오게 좌우 칸 폭을 같게 */
+/* 가운데 ▶(또는 [▶ 시작]) + 왼쪽 [기준음]·오른쪽 [스케일] — ▶가 카드 가운데에 오게 좌우 칸 폭을 같게 */
 .ear-play-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
 .ear-play-side:first-child { justify-self: end; }
+.ear-play-side:last-child { justify-self: start; }
 .ear-play-side .btn { white-space: nowrap; }
+/* [▶ 스케일]: 틀린 뒤에 새로 나온 버튼이라 살짝 구분 — 페이지 포인트 색(테라코타)을 옅게 섞어 톤을 맞춤
+   (2026-11-24 사용자 요청, 처음 쓴 파란색은 너무 튀어서 바꿈) */
+#btnScale { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); font-weight: 600; }
+#btnScale:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
 .ear-hint { margin: 0; font-size: 13px; color: var(--muted); }
 .ear-hint .ear-skip { font-size: 13px; font-weight: 600; color: var(--accent); margin-left: 4px; }   /* 필수 재생 건너뛰기 — 안내 문구와 다른 색 */
 
