@@ -55,9 +55,11 @@ const REST_PATH = {
  * @param el      그릴 상자 (안을 SVG로 채움)
  * @param tokens  [{ pos, dur, rest, note?: {l,a,oct}, cls? }] — rhythm.js makeDictation 모양. note가 없는 음표는 가운데 줄(B4)에 (리듬만 보여 줄 때)
  * @param opt     { bars, sig: theory.js signature(), perLine: 한 줄 마디 수, cursor: 입력 자리(문제 처음부터 16분 단위, 없으면 null),
- *                  ghost: 마우스를 올린 자리의 흐린 음표 { pos, dur, step, a? } (없으면 null — a가 없으면 조표대로, 빔 없이 혼자) }
+ *                  ghost: 마우스를 올린 자리의 흐린 음표 { pos, dur, step, a? } (없으면 null — a가 없으면 조표대로, 빔 없이 혼자),
+ *                  solved: 끝까지 다 맞혔는지 — 음자리표·조표·박자표를 초록으로 }
  */
-export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2, cursor = null, ghost = null } = {}) {
+export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2, cursor = null, ghost = null, solved = false } = {}) {
+  const head = solved ? " good" : "";   // 끝까지 다 맞히면 음자리표·조표·박자표도 초록 (끝난 느낌 — 2026-11-25 사용자 요청)
   const lines = Math.ceil(bars / perLine);
   // 마디별 토큰과 폭
   const byBar = Array.from({ length: bars }, (_, b) => tokens.filter(t => Math.floor(t.pos / BAR) === b));
@@ -67,11 +69,11 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
     const first = line * perLine, last = Math.min(bars, first + perLine) - 1;
     // 줄 머리: 음자리표 · 조표 · (첫 줄만) 박자표
     let x = SIG_X + sig.count * SIG_W + 8;
-    svgBody += `<text class="st-clef" x="3" y="${yOf(32, line)}">𝄞</text>`;
+    svgBody += `<text class="st-clef${head}" x="3" y="${yOf(32, line)}">𝄞</text>`;
     const steps = sig.a > 0 ? SHARP_STEPS : FLAT_STEPS;
-    for (let i = 0; i < sig.count; i++) svgBody += `<path class="st-acc" transform="translate(${SIG_X + i * SIG_W + SIG_W / 2},${yOf(steps[i], line)})" d="${ACC_PATH[String(sig.a)]}"/>`;
+    for (let i = 0; i < sig.count; i++) svgBody += `<path class="st-acc${head}" transform="translate(${SIG_X + i * SIG_W + SIG_W / 2},${yOf(steps[i], line)})" d="${ACC_PATH[String(sig.a)]}"/>`;
     if (line === 0) {
-      svgBody += `<text class="st-time" x="${x + 6}" y="${yOf(34, line) - 1}" text-anchor="middle">4</text><text class="st-time" x="${x + 6}" y="${yOf(30, line) - 1}" text-anchor="middle">4</text>`;
+      svgBody += `<text class="st-time${head}" x="${x + 6}" y="${yOf(34, line) - 1}" text-anchor="middle">4</text><text class="st-time${head}" x="${x + 6}" y="${yOf(30, line) - 1}" text-anchor="middle">4</text>`;
       x += 22;
     }
     x += 6;

@@ -348,7 +348,8 @@ function drawScore() {
   // 흐린 음표: 마우스를 올린 높이에, 다음 자리에 지금 고른 길이로 (음높이만 받아쓰면 정답 길이) — 잠겨 있으면 안 보임
   const ghost = cursor !== null && scoreGhost !== null && !refText && N.write !== "rhythm"
     ? { pos: cursor, dur: ghostDur(), step: scoreGhost, a: acc === "key" ? null : acc } : null;
-  renderScore($("earScore"), toks, { bars: N.dictBars, sig: signature(key()), perLine, cursor, ghost });
+  const solved = done && N.dAns >= N.dict.length;   // 정답 확인으로 끝난 게 아니라 끝까지 맞힘
+  renderScore($("earScore"), toks, { bars: N.dictBars, sig: signature(key()), perLine, cursor, ghost, solved });
 }
 // ---------- 디버그 모드 (관리자만, 기기에 저장 chordoven.earDebug) (2026-11-24 사용자 요청) ----------
 // 켜면: 정답을 글자로 바로 보여 줌(③은 코드 진행도), [다음 문제]·단축키는 문제를 안 끝내도 늘 됨
@@ -480,7 +481,7 @@ function submitToken(input) {
     if (input.midi !== undefined) markKeys(new Map([[input.midi, "good"]]));
     // 리듬만: 맞힌 음표의 실제 음을 들려줌 (건반을 누르지 않으니 — 2026-11-24 사용자 요청)
     if (N.write === "rhythm" && !target.rest) playPicked(target.note.midi);
-    if (N.dAns >= N.dict.length) { N.phase = "done"; setFeedback("ok", t("earN3Done")); }
+    if (N.dAns >= N.dict.length) { N.phase = "done"; setFeedback("ok", t("earN3Done")); revealNextButton(); }
     else setFeedback("ok", t("earN3Next"));
   } else {
     // 틀린 입력을 그 자리에 빨갛게 (그릴 수 없는 길이 — 점2분·점16분 — 는 가까운 모양으로)
@@ -775,6 +776,7 @@ function pick(m, spelled) {
       N.phase = "done";
       drawStaff({ note: N.q, cls: "good" });
       setFeedback("ok", t("earRight", { name: fullName(N.q) }));
+      revealNextButton();
     }
   } else {
     markKeys(answeredMarks([[m, "bad"]]));
@@ -863,14 +865,30 @@ $("btnReveal").onclick = () => {
   listen([{ kind: "question" }]);
   renderNoteButtons();
 };
-$("btnNext").onclick = () => { if (canNext()) newQuestion(false); };
+$("btnNext").onclick = () => { if (canNext()) { newQuestion(false); cardTopIntoView(); } };
+
+// ---------- 자동 스크롤 (2026-11-25 사용자 요청, 화면이 작을 때) ----------
+/** 정답을 맞혔는데 [다음 문제]가 화면 아래로 잘려 있으면 보이는 데까지 내림 */
+function revealNextButton() {
+  requestAnimationFrame(() => {
+    const r = $("btnNext").getBoundingClientRect(), over = r.bottom + 12 - window.innerHeight;
+    if (over > 0) window.scrollBy({ top: over, behavior: "smooth" });
+  });
+}
+/** 다음 문제로 넘어갔을 때 카드 위 경계선이 화면 위로 잘려 있으면 카드 위가 화면 맨 위에 닿게 올림 */
+function cardTopIntoView() {
+  requestAnimationFrame(() => {
+    const top = document.querySelector(".ear-card").getBoundingClientRect().top;
+    if (top < 0) window.scrollTo({ top: Math.max(0, top + window.scrollY - 8), behavior: "smooth" });
+  });
+}
 
 // 단축키 (물리 키 기준): Enter·N·→ 다음 문제(끝난 문제), Space 문제 다시 듣기. 입력칸·드롭다운·로그인 창에서는 안 함
 document.addEventListener("keydown", e => {
   if (!isNoteMode() || authOpen() || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = e.target && e.target.tagName;
   if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
-  if ((e.code === "Enter" || e.code === "KeyN" || e.code === "ArrowRight") && canNext()) { e.preventDefault(); newQuestion(false); }
+  if ((e.code === "Enter" || e.code === "KeyN" || e.code === "ArrowRight") && canNext()) { e.preventDefault(); newQuestion(false); cardTopIntoView(); }
   else if (e.code === "Space" && N.phase !== "idle") { e.preventDefault(); if (!refText) listen([{ kind: "question" }]); }
 });
 
