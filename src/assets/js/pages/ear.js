@@ -289,6 +289,7 @@ function renderNoteButtons() {
   $("btnScale").hidden = !started || !N.wrong;
   // 필수 재생 중에는 끔 (누르면 스케일이 끊겨서 — 2026-11-24 사용자 결정). 대신 안내 문구 옆 [생략하기]
   $("btnTonic").disabled = $("btnScale").disabled = !!refText;
+  $("btnReplay").disabled = !!refText;   // 문제 다시 듣기(큰 ▶)도 필수 재생 중에는 끔 — 생략은 [생략하기]로 (2026-11-24 사용자 요청)
   $("btnReveal").disabled = N.phase !== "ask" || !!refText;   // 필수 재생 중에도 막음 (2026-11-24 사용자 요청)
   $("btnNext").disabled = N.phase !== "done";
   $("earHintText").textContent = refText || (!started ? t("earN1Intro") : t("earN1Ask"));
@@ -365,7 +366,7 @@ document.addEventListener("keydown", e => {
   const tag = e.target && e.target.tagName;
   if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
   if ((e.code === "Enter" || e.code === "KeyN" || e.code === "ArrowRight") && N.phase === "done") { e.preventDefault(); newQuestion(false); }
-  else if (e.code === "Space" && N.phase !== "idle") { e.preventDefault(); listen([{ kind: "question" }]); }
+  else if (e.code === "Space" && N.phase !== "idle") { e.preventDefault(); if (!refText) listen([{ kind: "question" }]); }
 });
 
 renderInst(); renderSettings(); renderLevels(); renderNoteButtons();
