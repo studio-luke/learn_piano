@@ -80,7 +80,9 @@
             </div>
             <button class="btn primary ear-start" id="btnStart" type="button" data-i18n="earStart">▶ 시작</button>
             <button class="ear-replay" id="btnReplay" type="button" hidden aria-label="문제 다시 듣기" data-i18n-aria="earReplay" data-i18n-title="earReplay" title="문제 다시 듣기">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+              <!-- 재생 중에는 ■(중지) — .stop 클래스로 바꿔 보임 (pages/ear.js setReplaying) -->
+              <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+              <svg class="icon-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>
             </button>
             <div class="ear-play-side">
               <button class="btn" id="btnScale" type="button" hidden data-i18n="earScale">▶ 스케일</button>
@@ -90,6 +92,23 @@
           <!-- 단음 ③: 카운트인("Ready" "Start")과 리듬 악보 (ear/score.js) -->
           <div class="ear-count" id="earCount" aria-live="polite"></div>
           <div class="ear-score" id="earScore" role="img" aria-label="악보" data-i18n-aria="earScoreAria" hidden></div>
+          <!-- 단음 ③ 길이 고르기 (2026-11-24 사용자 결정): 음표 글자는 모두 악보 기호 영역(𝅗𝅥 𝅘𝅥 𝅘𝅥𝅮 𝅘𝅥𝅯 — ♩♪는 다른 글꼴로 작게 보여서), [.]은 점. 음표 버튼은 고른 채로 남고 건반을 누르면 그 길이로 적힘, [점]은 다음 음표 하나에만,
+               쉼표 버튼은 누르면 바로 그 쉼표가 적힘(점 없이). 2분쉼표는 출제하지 않아 늘 틀림. 음높이만 받아쓸 때는 숨김 (pages/ear.js) -->
+          <div class="ear-durs" id="earDurs" hidden>
+            <div class="ear-dur-row" role="radiogroup" aria-label="음표 길이" data-i18n-aria="earDurNotesAria">
+              <button type="button" class="ear-dur" data-dur="8" aria-pressed="false" aria-label="2분음표" data-i18n-aria="earDurHalf">𝅗𝅥</button>
+              <button type="button" class="ear-dur" data-dur="4" aria-pressed="true" aria-label="4분음표" data-i18n-aria="earDurQuarter">𝅘𝅥</button>
+              <button type="button" class="ear-dur" data-dur="2" aria-pressed="false" aria-label="8분음표" data-i18n-aria="earDurEighth">𝅘𝅥𝅮</button>
+              <button type="button" class="ear-dur" data-dur="1" aria-pressed="false" aria-label="16분음표" data-i18n-aria="earDur16th">𝅘𝅥𝅯</button>
+              <button type="button" class="ear-dot" id="earDot" aria-pressed="false" aria-label="점" data-i18n-aria="earDot">.</button>
+            </div>
+            <div class="ear-dur-row" aria-label="쉼표" data-i18n-aria="earDurRestsAria">
+              <button type="button" class="ear-rest" data-rest="8" aria-label="2분쉼표" data-i18n-aria="earRestHalf">𝄼</button>
+              <button type="button" class="ear-rest" data-rest="4" aria-label="4분쉼표" data-i18n-aria="earRestQuarter">𝄽</button>
+              <button type="button" class="ear-rest" data-rest="2" aria-label="8분쉼표" data-i18n-aria="earRestEighth">𝄾</button>
+              <button type="button" class="ear-rest" data-rest="1" aria-label="16분쉼표" data-i18n-aria="earRest16th">𝄿</button>
+            </div>
+          </div>
 
           <!-- 오선지: 줄·칸을 눌러 음 고르기. 변화표는 아래 버튼으로 (ear/staff.js) -->
           <div class="ear-staff-wrap">
@@ -155,6 +174,14 @@
               <button class="im-step" id="earBpmDown" type="button" aria-label="BPM −">−</button>
               <input type="number" id="earBpm" min="40" max="160" step="1" inputmode="numeric">
               <button class="im-step" id="earBpmUp" type="button" aria-label="BPM +">+</button>
+            </div>
+          </div>
+          <div class="opt">
+            <h3 data-i18n="earWriteH">받아쓸 것</h3>
+            <div class="chips radios" role="radiogroup" aria-label="받아쓸 것" data-i18n-aria="earWriteH">
+              <label class="chip"><input type="radio" name="earWrite" id="earWriteBoth" value="both"><span data-i18n="earWriteBoth">음높이와 리듬</span></label>
+              <label class="chip"><input type="radio" name="earWrite" id="earWritePitch" value="pitch"><span data-i18n="earWritePitch">음높이만</span></label>
+              <label class="chip"><input type="radio" name="earWrite" id="earWriteRhythm" value="rhythm"><span data-i18n="earWriteRhythm">리듬만</span></label>
             </div>
           </div>
           <div class="opt">

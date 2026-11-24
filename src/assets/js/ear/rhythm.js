@@ -180,3 +180,23 @@ export function makeDictation(key, opt = {}, { bars = 1, min = 2 } = {}, rnd = M
   let i = 0;
   return rhythm.map(x => (x.rest ? x : { ...x, note: pitches[i++] }));
 }
+
+/**
+ * 답 한 칸 채점 (단음 ③ — 순서대로 한 칸씩).
+ * @param target  정답 토큰 { dur, rest, note? }
+ * @param input   입력 { rest: 쉼표 버튼인지, dur: 길이(16분 단위 — 점이 붙으면 1.5배라 12·6·3·1.5), midi?: 누른 건반 }
+ * @param write   받아쓸 것 "both"(음높이와 리듬) | "pitch"(음높이만 — 길이는 보지 않음) | "rhythm"(리듬만 — 음높이는 보지 않음)
+ * @returns "ok" | "len"(음은 맞고 길이가 다름) | "pitch"(길이는 맞고 음이 다름) | "octUp" | "octDown"(길이는 맞고 음이름만 맞음) | "no"
+ *   쉼표 자리에 음표, 음표 자리에 쉼표는 늘 "no" (2026-11-24 사용자 결정). 점2분·점16분·2분쉼표·점쉼표는 정답 길이가 될 수 없어 늘 틀림
+ */
+export function judgeToken(target, input, write = "both") {
+  if (!!target.rest !== !!input.rest) return "no";
+  const lenOk = write === "pitch" || input.dur === target.dur;
+  if (target.rest) return lenOk ? "ok" : "no";
+  if (write === "rhythm") return lenOk ? "ok" : "no";
+  const d = input.midi - target.note.midi;
+  const pitch = d === 0 ? "ok" : d % 12 === 0 ? (d < 0 ? "octUp" : "octDown") : "no";
+  if (pitch === "ok") return lenOk ? "ok" : "len";
+  if (!lenOk) return "no";
+  return pitch === "no" ? "pitch" : pitch;
+}

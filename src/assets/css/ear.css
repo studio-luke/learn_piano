@@ -74,6 +74,9 @@
 .ear-replay:active:not(:disabled) { transform: scale(0.95); }
 .ear-replay:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
 .ear-replay svg { width: 34px; height: 34px; fill: currentColor; margin-left: 3px; }   /* 삼각형은 무게중심이 왼쪽이라 살짝 오른쪽으로 */
+.ear-replay .icon-stop { margin-left: 0; display: none; }
+.ear-replay.stop .icon-play { display: none; }
+.ear-replay.stop .icon-stop { display: block; }
 
 /* ---------- 오선지 + 변화표 고르기 ---------- */
 .ear-staff-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
@@ -149,6 +152,16 @@
 .ear-bpm input { width: 64px; font-size: 16px; padding: 6px 8px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
 .ear-bpm .im-step { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 18px; line-height: 1; }
 
+/* ---------- 단음 ③ 길이 고르기 (음표 줄 · 쉼표 줄) ---------- */
+.ear-durs { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ear-durs[hidden] { display: none; }
+.ear-dur-row { display: flex; gap: 4px; align-items: center; }
+.ear-dur, .ear-rest, .ear-dot { min-width: 44px; height: 40px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 22px; line-height: 1; }
+.ear-dot { font-family: var(--font-body); font-size: 30px; font-weight: 900; line-height: 1; padding: 8px 0 0; }   /* 점: 굵은 "." 크게, 가운데보다 조금 아래(글자 기준선 근처 — 점으로 보이게) (2026-11-24 사용자 요청) */
+.ear-dur[aria-pressed="true"], .ear-dot[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.ear-rest:active { background: var(--sunken); }
+.ear-durs.locked { filter: grayscale(1); opacity: 0.4; pointer-events: none; }
+
 /* ---------- 단음 ③ 카운트인 글자 ("Ready" "Start") — 비어 있으면 자리를 차지하지 않음 ---------- */
 .ear-count { text-align: center; font-family: var(--font-display); font-size: 30px; line-height: 1; color: var(--accent); min-height: 30px; }
 .ear-count:empty { display: none; }
@@ -166,6 +179,10 @@
 .ear-score .good { fill: var(--ok); stroke: var(--ok); }
 .ear-score .bad { fill: var(--warn); stroke: var(--warn); }
 .ear-score .ref { fill: var(--ref); stroke: var(--ref); }
+.ear-score .ghost { fill: var(--muted); stroke: var(--muted); opacity: 0.5; }   /* 마우스를 올린 자리의 흐린 음표 */
+.ear-score svg { cursor: pointer; touch-action: manipulation; }
+.ear-score .hint { fill: var(--muted); stroke: var(--muted); opacity: 0.55; }   /* 음높이만 받아쓸 때 보여 주는 리듬 (음높이는 없음) */
+.ear-score .st-cursor { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 2; }   /* 다음에 적을 자리 */
 .ear .group[hidden] { display: none; }
 
 /* ---------- 출제 설정의 조성 고르기 (코드 초견 improv.css .key-pick과 같은 모양) ---------- */

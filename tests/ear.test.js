@@ -129,6 +129,7 @@ test("ear level 2: two notes to answer → 5-note melody with the same rules", (
 
 // ---------- 단음 ③ 리듬 (ear/rhythm.js) ----------
 import { generateRhythm, rhythmProblem, makeDictation, mergeable, notate, isCanonical, BAR } from "../src/assets/js/ear/rhythm.js";
+import * as rhythmMod from "../src/assets/js/ear/rhythm.js";
 
 test("ear level 3: every generated rhythm follows the placement rules (all minimums, 1 and 2 bars)", () => {
   for (const min of [4, 2, 1]) for (const bars of [1, 2]) {
@@ -191,4 +192,22 @@ test("ear level 3: one notation per sound — notes last until the next attack, 
   assert.strictEqual(n([0, 6, 8, 12], 2), "n6 n2 n4 n4");        // 점4분
   assert.strictEqual(n([3, 5, 8, 12], 1), "r2 r1 n1 r1 n3 n4 n4"); // 0.75박 16분은 박을 못 넘어서 16분쉼표가 남음
   for (const min of [4, 2, 1]) for (let i = 0; i < 1500; i++) assert.ok(isCanonical(generateRhythm(2, min), min));
+});
+
+test("ear level 3: judging one slot — pitch and length, rests, write modes", () => {
+  const { judgeToken } = rhythmMod;
+  const q = { dur: 4, rest: false, note: { midi: 60 } }, r = { dur: 2, rest: true };
+  assert.strictEqual(judgeToken(q, { dur: 4, midi: 60 }), "ok");
+  assert.strictEqual(judgeToken(q, { dur: 2, midi: 60 }), "len");      // 음은 맞고 길이가 다름
+  assert.strictEqual(judgeToken(q, { dur: 4, midi: 62 }), "pitch");    // 길이는 맞고 음이 다름
+  assert.strictEqual(judgeToken(q, { dur: 4, midi: 72 }), "octDown");
+  assert.strictEqual(judgeToken(q, { dur: 2, midi: 62 }), "no");
+  assert.strictEqual(judgeToken(q, { dur: 4, rest: true }), "no");     // 음표 자리에 쉼표
+  assert.strictEqual(judgeToken(r, { dur: 2, midi: 60 }), "no");       // 쉼표 자리에 음표
+  assert.strictEqual(judgeToken(r, { dur: 2, rest: true }), "ok");
+  assert.strictEqual(judgeToken(r, { dur: 1, rest: true }), "no");     // 8분쉼표 자리에 16분쉼표
+  assert.strictEqual(judgeToken(q, { dur: 2, midi: 60 }, "pitch"), "ok");   // 음높이만: 길이는 안 봄
+  assert.strictEqual(judgeToken(q, { dur: 4, midi: 50 }, "rhythm"), "ok");  // 리듬만: 음은 안 봄
+  assert.strictEqual(judgeToken({ dur: 6, rest: false, note: { midi: 60 } }, { dur: 6, midi: 60 }), "ok");   // 점4분
+  assert.strictEqual(judgeToken({ dur: 8, rest: false, note: { midi: 60 } }, { dur: 12, midi: 60 }), "len"); // 점2분은 늘 틀림
 });

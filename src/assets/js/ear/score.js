@@ -6,7 +6,9 @@
 //     묶을 짝이 없으면 꼬리(깃발). 쉼표에서는 빔이 끊김. 8분-4분-8분처럼 박을 넘는 음은 묶지 않음
 //   - 쉼표: 4분 · 8분 · 16분 (도형으로 그림 — 글꼴마다 모양·자리가 달라서)
 //   - 임시표: 조표와 다르면 붙이고, 같은 마디 안 같은 자리에서는 앞 음의 임시표가 이어짐(다시 바뀔 때만 다시 붙임)
-//   - 폭: 음표 길이에 따라 넓게(짧은 음도 붙어 보이지 않게 최소 폭), 한 줄에 perLine마디 — 폰은 1마디씩
+//   - 폭: 시간에 비례 — 마디 폭은 늘 같고 음표는 박 위치에 놓임(받아쓰는 중에 아직 안 적은 음의 길이·개수가 간격으로 드러나지
+//     않게, 2026-11-24). 한 줄에 perLine마디 — 폰은 1마디씩
+//   - 입력 자리 표시(cursor): 다음에 적을 박 위치에 세로선
 // 화면 크기는 ear.css의 .ear-score (높이 = 줄 수 × 한 줄 높이). 색은 토큰마다 cls(good·bad·ref)로.
 import { ACC_PATH } from "../naming/staff.js";
 import { SHARP_STEPS, FLAT_STEPS, NATURAL_PATH } from "./staff.js";
@@ -19,12 +21,16 @@ const TOP = 34;              // 한 줄 안에서 맨 윗줄(F5)의 y
 const STEM = 33;             // 기둥 길이
 const BEAM_W = 4.6;          // 빔 두께
 const BEAM_GAP = 7.5;        // 첫째·둘째 빔 사이
-const UNIT = 6, MIN_W = 20;  // 토큰 폭 = 16분 단위 × UNIT + 12 (최소 MIN_W)
+const COL = 15;              // 16분음표 하나의 폭 (시간 비례 배치)
+const BAR_PAD = 14;          // 마디 안 왼쪽 여백 (마디줄과 첫 음 사이)
+const BAR_W = BAR_PAD + 16 * COL + 6;   // 마디 폭 (늘 같음)
 const SIG_X = 40, SIG_W = 9;
 
 const stepOf = n => n.oct * 7 + n.l;
+
+/** 악보 그림 좌표 y → 줄·칸 번호 (line번째 줄 기준) — 마우스를 올린 높이를 음으로 바꿀 때 (pages/ear.js) */
+export const stepAtY = (y, line) => 38 - Math.round((y - line * LINE_H - TOP) / HALF);
 const yOf = (step, line) => line * LINE_H + TOP + (38 - step) * HALF;
-const tokenW = t => Math.max(MIN_W, t.dur * UNIT + 12);
 const isBeamable = t => !t.rest && t.dur <= 3;   // 8분·점8분·16분
 
 /** 비스듬한 타원 (머리 그리기) */
@@ -50,13 +56,13 @@ const REST_PATH = {
  * 악보 그리기.
  * @param el      그릴 상자 (안을 SVG로 채움)
  * @param tokens  [{ pos, dur, rest, note?: {l,a,oct}, cls? }] — rhythm.js makeDictation 모양. note가 없는 음표는 가운데 줄(B4)에 (리듬만 보여 줄 때)
- * @param opt     { bars, sig: theory.js signature(), perLine: 한 줄 마디 수 }
+ * @param opt     { bars, sig: theory.js signature(), perLine: 한 줄 마디 수, cursor: 입력 자리(문제 처음부터 16분 단위, 없으면 null),
+ *                  ghost: 마우스를 올린 자리의 흐린 음표 { pos, dur, step } (없으면 null — 조표대로의 음, 빔 없이 혼자) }
  */
-export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2 } = {}) {
+export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2, cursor = null, ghost = null } = {}) {
   const lines = Math.ceil(bars / perLine);
   // 마디별 토큰과 폭
   const byBar = Array.from({ length: bars }, (_, b) => tokens.filter(t => Math.floor(t.pos / BAR) === b));
-  const barW = b => byBar[b].reduce((a, t) => a + tokenW(t), 0) + 16 || BAR * UNIT;
   const headX = new Map();   // 토큰 → 머리 x
   let svgBody = "", maxW = 0;
   for (let line = 0; line < lines; line++) {
@@ -72,15 +78,25 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
     }
     x += 6;
     for (let b = first; b <= last; b++) {
-      let tx = x + 8;
-      for (const t of byBar[b]) { headX.set(t, tx + 6); tx += tokenW(t); }
-      x += barW(b);
+      for (const t of byBar[b]) headX.set(t, x + BAR_PAD + (t.pos % BAR) * COL);
+      // 입력 자리 세로선 (이 마디 안이면)
+      if (cursor !== null && Math.floor(cursor / BAR) === b && cursor < bars * BAR) {
+        const cx = x + BAR_PAD + (cursor % BAR) * COL;
+        svgBody += `<line class="st-cursor" x1="${cx}" x2="${cx}" y1="${yOf(40, line)}" y2="${yOf(27, line)}"/>`;
+      }
+      x += BAR_W;
       // 마디줄 (마지막 마디는 겹세로줄)
       const y1 = yOf(38, line), y2 = yOf(30, line);
       if (b === bars - 1) svgBody += `<line class="st-bar" x1="${x - 5}" x2="${x - 5}" y1="${y1}" y2="${y2}"/><rect class="st-bar-end" x="${x - 2}" y="${y1}" width="3.4" height="${y2 - y1}"/>`;
       else svgBody += `<line class="st-bar" x1="${x}" x2="${x}" y1="${y1}" y2="${y2}"/>`;
       // 이 마디의 음표·쉼표
       svgBody += barSVG(byBar[b], headX, sig, line);
+      // 흐린 음표 (마우스를 올린 자리 — 다음에 적을 자리에 지금 고른 길이로)
+      if (ghost && Math.floor(ghost.pos / BAR) === b) {
+        const l = ((ghost.step % 7) + 7) % 7, gt = { pos: ghost.pos, dur: ghost.dur, rest: false, cls: "ghost", note: { l, a: sigAcc(sig, l), oct: Math.floor(ghost.step / 7) } };
+        headX.set(gt, x - BAR_W + BAR_PAD + (gt.pos % BAR) * COL);
+        svgBody += barSVG([gt], headX, sig, line);
+      }
     }
     // 오선 (줄 끝까지)
     for (let i = 0; i < 5; i++) svgBody = `<line class="st-line" x1="0" x2="${x + (last === bars - 1 ? 1.4 : 0)}" y1="${line * LINE_H + TOP + i * SP}" y2="${line * LINE_H + TOP + i * SP}"/>` + svgBody;
