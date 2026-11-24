@@ -98,6 +98,14 @@
 .key.ref.black { background: color-mix(in srgb, var(--ref) 80%, #000); }
 .key.sel.bad.white { background: var(--warn); color: #fff; border-color: color-mix(in srgb, var(--warn) 55%, #000); }
 .key.sel.bad.black { background: color-mix(in srgb, var(--warn) 75%, #000); }
+/* MIDI 상태 글씨 — 출제 설정 "MIDI 입력 허용" 옆과 건반 오른쪽 위 (랜덤 코드 연습 .midi-status와 같은 모양) */
+.ear .midi-status { font-size: 11px; color: var(--muted); }
+.ear .midi-status:empty { display: none; }
+.ear .midi-status.on::before, .ear .midi-status.none::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--ok); vertical-align: 0.05em; }
+.ear .midi-status.none::before { background: var(--danger); }
+.ear .midi-status.on { cursor: help; }
+.ear-midi { display: flex; justify-content: flex-end; margin-bottom: -8px; }
+.ear-midi:has(.midi-status:empty) { display: none; }   /* 글씨가 없으면 줄도 차지하지 않음 */
 .ear-kb { cursor: pointer; }
 /* 색이 바로 바뀌게 (practice.css .key의 0.06초 색 전환을 끔) — 울리는 건반이 흰색을 거쳐 파랗게 되며 번쩍이지 않게 (2026-11-24) */
 .ear-kb .key { transition: none; }

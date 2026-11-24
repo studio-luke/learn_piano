@@ -99,6 +99,8 @@
             </div>
           </div>
 
+          <!-- 건반 오른쪽 위: MIDI 상태 글씨 (출제 설정의 "MIDI 입력 허용" 옆과 같은 내용, 컴퓨터만 — pages/ear.js renderMidi) -->
+          <div class="ear-midi"><small class="midi-status" id="midiStatusKb"></small></div>
           <div class="keyboard ear-kb" id="keyboard" role="img" aria-label="피아노 건반 (F3–F5)" data-i18n-aria="earKbAria"></div>
 
           <div class="feedback" id="earFeedback" role="status" aria-live="polite"></div>
@@ -122,6 +124,8 @@
         <div class="opt">
           <label class="check"><input type="checkbox" id="earTonicEach"><span><span data-i18n="earTonicEach">문제마다 기준음 재생</span><small data-i18n="earTonicEachSub">문제 음 앞에 으뜸음을 먼저 들려줘요</small></span></label>
           <label class="check"><input type="checkbox" id="earChrom"><span><span data-i18n="earChrom">조 밖의 음 포함</span><small data-i18n="earChromSub">반음계의 모든 음</small></span></label>
+          <!-- 컴퓨터에서만 보임(practice.css .pc-only): MIDI 건반으로 답 고르기, 처음 꺼짐. 켤 때 권한 요청 (pages/ear.js, 2026-11-24 사용자 요청) -->
+          <label class="check pc-only" id="earMidiLabel"><input type="checkbox" id="earMidiOpt"><span><span data-i18n="earMidiOpt">MIDI 입력 허용</span> <small class="midi-status" id="midiStatus"></small></span></label>
         </div>
       </aside>
     </div>

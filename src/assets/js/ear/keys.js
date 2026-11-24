@@ -3,7 +3,8 @@
 //   - 마우스: 누르는 순간 입력
 //   - 터치: 손을 뗄 때 입력, 10px 넘게 움직이면 스크롤로 보고 입력 안 함 (랜덤 코드 연습 practice/keyboard.js와 같은 규칙)
 // 모양은 practice.css의 .keyboard / .key를 그대로 쓰고, 오답 표시(.bad)만 ear.css에.
-// C에만 옥타브 이름(C4, C5)을 적어 위치를 알기 쉽게 — 다른 음이름은 답이 되므로 적지 않음
+// C에만 옥타브 이름(C4, C5)을 적어 위치를 알기 쉽게 — 다른 음이름은 답이 되므로 적지 않음.
+// 컴퓨터에서는 건반마다 키보드 글자(Q, 2, W …)도 표시 (setKeyLabels, 모양은 practice.css .kbd-lbl — 랜덤 코드 연습과 같음)
 import { $ } from "../common/dom.js";
 
 const WHITE = [0, 2, 4, 5, 7, 9, 11];
@@ -77,4 +78,17 @@ export function refKey(m, on) {
   if (m === null) { for (const el of keyEls.values()) el.classList.remove("ref"); return; }
   const el = keyEls.get(m);
   if (el) el.classList.toggle("ref", on);
+}
+
+/**
+ * 건반에 컴퓨터 키보드 글자 표시 (컴퓨터에서만 — 페이지가 부름).
+ * @param labels  Map(MIDI 번호 → 글자). 빈 Map이면 모두 지움
+ */
+export function setKeyLabels(labels) {
+  for (const [m, el] of keyEls) {
+    el.querySelector(".kbd-lbl")?.remove();
+    const ch = labels.get(m);
+    if (ch) el.insertAdjacentHTML("beforeend", `<span class="kbd-lbl">${ch}</span>`);
+  }
+  $("keyboard").classList.toggle("kbd-on", labels.size > 0);
 }

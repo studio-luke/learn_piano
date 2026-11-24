@@ -14,10 +14,11 @@
 import { startPage } from "../common/layout.js";
 import { isOpen as authOpen } from "../account/auth-dialog.js";
 import { t, onLangChange } from "../i18n/index.js";
-import { $ } from "../common/dom.js";
+import { $, toast } from "../common/dom.js";
 import { store } from "../common/storage.js";
 import * as Ins from "../ear/instruments.js";
-import { initKeys, markKeys, refKey } from "../ear/keys.js";
+import { Midi } from "../input/midi.js";
+import { initKeys, markKeys, refKey, setKeyLabels } from "../ear/keys.js";
 import { initStaff, setSignature, showNotes } from "../ear/staff.js";
 import { KEY_ROOTS, LOW, HIGH, signature, scaleMidis, pickNote, judgeNote, spellMidi, midiOf, sigAcc, fullName, otherKey, sameRoot } from "../ear/theory.js";
 
@@ -307,6 +308,8 @@ function setFeedback(cls, html) {
  */
 function pick(m, spelled) {
   if (refText) return;   // 기준을 들려주는 중에는 입력 안 받음 (건반·오선지가 회색)
+  // MIDI 건반은 범위 밖 음도 올 수 있음 → 소리만 내고 안내 (화면 건반·컴퓨터 키보드는 늘 범위 안)
+  if (m < LOW || m > HIGH) { playPicked(m); toast(t("earOutOfRange")); return; }
   playPicked(m);
   if (N.phase !== "ask") return;   // 시작 전·끝난 문제: 소리만
   const note = spelled || spellMidi(key(), m);
@@ -369,5 +372,81 @@ document.addEventListener("keydown", e => {
   else if (e.code === "Space" && N.phase !== "idle") { e.preventDefault(); if (!refText) listen([{ kind: "question" }]); }
 });
 
-renderInst(); renderSettings(); renderLevels(); renderNoteButtons();
-onLangChange(() => { renderInst(); renderLevels(); renderNoteButtons(); });
+// ---------- 컴퓨터 키보드·MIDI 건반으로 답 고르기 (컴퓨터에서만, 2026-11-24 사용자 요청) ----------
+// 컴퓨터 판별은 다른 연습과 같은 기준 (마우스처럼 정확히 가리키는 기기). 폰·태블릿은 화면 건반만
+const IS_PC = !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches);
+// 출제 설정 "MIDI 입력 허용". 직접 켜고 끈 적이 있으면 그 값(chordoven.earMidi), 없으면 이 브라우저가 MIDI 권한을
+// 이미 허용했는지로 정함 — 허용했으면 켜짐, 아니면 꺼짐 (2026-11-24 사용자 결정, 아래 IS_PC 블록의 midiDefault)
+let midiOn = store.get("earMidi") === "on";
+
+// 키보드 배열 (물리 키 e.code 기준 → 한글 입력 상태에서도 동작): F3부터 반음씩
+//   q 2 w 3 e 4 r t 6 y 7 u i 9 o 0 p - [ ] k , l . /
+//   = F3 F♯3 G3 G♯3 A3 A♯3 B3 C4 C♯4 D4 D♯4 E4 F4 F♯4 G4 G♯4 A4 A♯4 B4 C5 C♯5 D5 D♯5 E5 F5
+//   윗줄(q~])이 흰 건반, 그 사이 숫자·- 가 검은 건반 — 랜덤 코드 연습의 C3부터 배열과 같은 모양, 끝 다섯 개(k , l . /)도 같은 방식
+const KEY_CODES = ["KeyQ", "Digit2", "KeyW", "Digit3", "KeyE", "Digit4", "KeyR", "KeyT", "Digit6", "KeyY", "Digit7", "KeyU",
+  "KeyI", "Digit9", "KeyO", "Digit0", "KeyP", "Minus", "BracketLeft", "BracketRight", "KeyK", "Comma", "KeyL", "Period", "Slash"];
+const KEY_MIDI = new Map(KEY_CODES.map((c, i) => [c, LOW + i]));   // F3(53)부터
+/** e.code → 건반에 적을 글자 ("KeyQ" → "Q", "Digit2" → "2", "BracketLeft" → "[") */
+const KEY_CHAR = { Minus: "-", BracketLeft: "[", BracketRight: "]", Comma: ",", Period: ".", Slash: "/" };
+const keyChar = c => KEY_CHAR[c] || c.replace(/^(Key|Digit)/, "");
+
+if (IS_PC) {
+  document.addEventListener("keydown", e => {
+    if (mode !== "note1" || authOpen() || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = e.target && e.target.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    const m = KEY_MIDI.get(e.code);
+    if (m === undefined) return;
+    e.preventDefault();
+    pick(m);
+  });
+
+  // 건반에 키보드 글자 (2026-11-24 사용자 요청 — 랜덤 코드 연습처럼)
+  setKeyLabels(new Map(KEY_CODES.map((c, i) => [LOW + i, keyChar(c)])));
+
+  // MIDI: 출제 설정의 "MIDI 입력 허용"이 켜져 있을 때만. 누르는 순간 답 (뗌·페달은 쓰지 않음 —
+  // 한 음씩 고르는 단계라서). 켤 때 아직 권한이 없으면 브라우저가 권한 창을 띄우고, 거부하면 다시 끔 (랜덤 코드 연습의 MIDI 입력 모드와 같은 흐름)
+  Midi.on("noteon", m => { if (midiOn && mode === "note1") pick(m); });
+  Midi.on("state", renderMidi);
+  $("earMidiOpt").checked = midiOn;
+  $("earMidiOpt").onchange = async e => {
+    midiOn = e.target.checked; store.set("earMidi", midiOn ? "on" : "off"); renderMidi();
+    if (midiOn && !(await Midi.connect())) { midiOn = false; store.set("earMidi", "off"); $("earMidiOpt").checked = false; renderMidi(); toast(t("midiDenied")); }
+  };
+  // 지원하지 않는 브라우저(Safari 등): 체크는 켜지지 않고 안내만
+  if (!Midi.supported) {
+    $("earMidiLabel").classList.add("is-off");
+    $("earMidiLabel").addEventListener("click", e => { e.preventDefault(); toast(t("midiUnsupported")); });
+  }
+  // 처음 값: 직접 고른 적이 없으면 권한 상태로 (허용한 브라우저 → 켜짐). 그다음 켜져 있으면 연결 (허용했으면 권한 창 없이)
+  midiDefault().then(() => {
+    $("earMidiOpt").checked = midiOn;
+    renderMidi();
+    if (midiOn) Midi.connect().then(ok => { if (!ok) { midiOn = false; store.set("earMidi", "off"); $("earMidiOpt").checked = false; renderMidi(); } });
+  });
+}
+
+/** 직접 켜고 끈 적이 없으면(저장된 값 없음) MIDI 권한이 이미 허용돼 있는지로 midiOn을 정함. 조회를 못 하는 브라우저는 꺼짐 */
+async function midiDefault() {
+  if (store.get("earMidi") !== null || !Midi.supported || !navigator.permissions) return;
+  try { midiOn = (await navigator.permissions.query({ name: "midi" })).state === "granted"; } catch (e) { /* Firefox 등 — 꺼짐 */ }
+}
+
+/**
+ * MIDI 상태 글씨: 연결됨(초록 점, 기기 이름은 툴팁) / 켜져 있는데 기기 없음(빨간 점) / 미지원 브라우저 안내.
+ * 출제 설정의 체크 옆(#midiStatus)과 건반 오른쪽 위(#midiStatusKb) 두 곳에 똑같이 (2026-11-24 사용자 요청)
+ */
+function renderMidi() {
+  if (!IS_PC) return;
+  const on = midiOn && Midi.state === "ready" && Midi.devices.length > 0;
+  const none = midiOn && Midi.state === "ready" && !on;
+  for (const id of ["midiStatus", "midiStatusKb"]) {
+    const el = $(id);
+    el.textContent = !Midi.supported ? t("midiUseChrome") : on ? t("midiConnected") : none ? t("midiNoDevice") : "";
+    el.className = "midi-status" + (on ? " on" : none ? " none" : "");
+    if (on) el.title = Midi.devices.join("\n"); else el.removeAttribute("title");
+  }
+}
+
+renderInst(); renderSettings(); renderLevels(); renderNoteButtons(); renderMidi();
+onLangChange(() => { renderInst(); renderLevels(); renderNoteButtons(); renderMidi(); });
