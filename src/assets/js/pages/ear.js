@@ -191,7 +191,9 @@ function renderSettings() {
   [...$("earSpeedLabels").children].forEach((el, i) => el.classList.toggle("on", i === S.speed));
   $("earCount1").checked = S.count === 1; $("earCount2").checked = S.count === 2;
   // 단음 ③만: 최소 박자(슬라이더 0·1·2 = 4분·8분·16분)·마디 수
-  $("earRhythmOpts").hidden = mode !== "note3";
+  // ③만: BPM(조성 오른쪽) · 최소 박자·마디 수 · 받아쓸 것·멜로디 개연성. 두 번째 구분선은 ②·③ (옵션 묶음이 둘 있을 때)
+  $("earRhythmOpts").hidden = $("earDictOpts").hidden = $("earBpmOpt").hidden = mode !== "note3";
+  $("earSep2").hidden = !melodic() && mode !== "note3";
   const mi = [4, 2, 1].indexOf(S.min);
   $("earMin").value = mi;
   $("earMin").style.setProperty("--p", (mi / 2 * 100) + "%");
@@ -230,8 +232,31 @@ for (const n of [1, 2]) $("earBars" + n).onchange = () => { S.bars = n; saveS();
 const BPM_MIN = 40, BPM_MAX = 160;
 const setBpm = v => { S.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, Math.round(+v) || 60)); saveS(); renderSettings(); };
 $("earBpm").onchange = e => setBpm(e.target.value);
-$("earBpmDown").onclick = () => setBpm(S.bpm - 1);
-$("earBpmUp").onclick = () => setBpm(S.bpm + 1);
+// [−]·[+]: 누르면 1씩, 꾹 누르고 있으면 0.5초 뒤부터 0.25초마다 10단위로(61 → 70 → 80, 59 → 50 → 40)
+// — 코드 초견(pages/improv.js stepButton)과 같은 방식 (2026-11-25 사용자 요청). 손가락이 10px 넘게 움직이면(스크롤) 멈춤,
+// 키보드(Tab → Enter·Space)는 click으로 1씩
+const BPM_HOLD_DELAY = 500, BPM_HOLD_EVERY = 250;
+const tenStep = (v, dir) => (dir > 0 ? Math.floor(v / 10) * 10 + 10 : Math.ceil(v / 10) * 10 - 10);
+function bpmStepButton(btn, dir) {
+  let timer = 0, start = null;
+  const end = () => { clearTimeout(timer); clearInterval(timer); timer = 0; start = null; };
+  btn.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    e.preventDefault();   // 초점·글자 선택이 생기지 않게 (누르는 순간 바뀌므로 click은 아래에서 무시)
+    end();
+    start = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    setBpm(S.bpm + dir);
+    timer = setTimeout(() => { setBpm(tenStep(S.bpm, dir)); timer = setInterval(() => setBpm(tenStep(S.bpm, dir)), BPM_HOLD_EVERY); }, BPM_HOLD_DELAY);
+  });
+  btn.addEventListener("pointermove", e => {
+    if (start && e.pointerId === start.id && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) end();
+  });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) btn.addEventListener(ev, end);
+  btn.addEventListener("contextmenu", e => e.preventDefault());   // 폰에서 꾹 누를 때 메뉴가 뜨지 않게
+  btn.addEventListener("click", e => { if (e.detail === 0) setBpm(S.bpm + dir); });   // 키보드로 누른 click만 (detail 0)
+}
+bpmStepButton($("earBpmDown"), -1);
+bpmStepButton($("earBpmUp"), 1);
 // 받아쓸 것: 다음 문제부터
 for (const w of ["Both", "Pitch", "Rhythm"]) $("earWrite" + w).onchange = () => { S.write = w.toLowerCase(); saveS(); };
 // 멜로디 개연성: 다음 문제부터
@@ -353,8 +378,10 @@ function drawScore() {
 }
 // ---------- 디버그 모드 (관리자만, 기기에 저장 chordoven.earDebug) (2026-11-24 사용자 요청) ----------
 // 켜면: 정답을 글자로 바로 보여 줌(③은 코드 진행도), [다음 문제]·단축키는 문제를 안 끝내도 늘 됨
+// 지금은 옵션을 숨기고 꺼 둠 (2026-11-25 사용자 요청). 다시 쓰려면 SHOW_DEBUG = true
+const SHOW_DEBUG = false;
 let debugOn = store.get("earDebug") === "on";
-const debugMode = () => debugOn && Account.isAdmin();
+const debugMode = () => SHOW_DEBUG && debugOn && Account.isAdmin();
 const DBG_DUR = { 8: "2", 6: "4.", 4: "4", 3: "8.", 2: "8", 1: "16" };   // 길이 → 짧은 글자 (관리자용이라 번역 안 함)
 function renderDebug() {
   const el = $("earDebugOut");
@@ -379,7 +406,7 @@ function renderDebug() {
 /** 다음 문제로 넘어갈 수 있는지 — 끝난 문제, 디버그 모드면 시작한 뒤 언제나 */
 const canNext = () => N.phase === "done" || (debugMode() && N.phase !== "idle");
 {
-  const showDebug = () => { $("earDebugLabel").hidden = !Account.isAdmin(); renderDebug(); renderNoteButtons(); };
+  const showDebug = () => { $("earDebugLabel").hidden = !SHOW_DEBUG || !Account.isAdmin(); renderDebug(); renderNoteButtons(); };
   $("earDebugOpt").checked = debugOn;
   $("earDebugOpt").onchange = e => { debugOn = e.target.checked; store.set("earDebug", debugOn ? "on" : "off"); renderDebug(); renderNoteButtons(); };
   Account.on("change", showDebug); showDebug();
@@ -627,7 +654,8 @@ function setRef(text, skip = false) {
 /** [생략하기]: 필수 재생의 남은 스케일·기준음을 건너뛰고 바로 문제 음 (단음 ②·③은 멜로디 처음부터 — 멜로디 동안은 다시 잠금) */
 $("btnSkip").onclick = () => { if (refSkip) listen([{ kind: "question" }], melodic() || dictation()); };
 
-const playPicked = m => Ins.play(inst, [{ m, at: 0, dur: 0.9, vel: 0.5 }]);
+// 건반·오선지·MIDI로 고른 음 소리 — 앞에 고른 음은 짧게 사라짐 (겹쳐 들리지 않게, 2026-11-25 사용자 요청 — ear/instruments.js pick)
+const playPicked = m => Ins.pick(inst, m);
 
 /** 새 문제. withScale = 스케일을 먼저 들려줌 (시작, 조를 바꿨을 때) */
 function newQuestion(withScale) {

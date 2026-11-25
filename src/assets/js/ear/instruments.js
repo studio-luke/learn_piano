@@ -98,6 +98,48 @@ export function play(id, notes) {
   });
 }
 
+// ---------- 건반으로 고른 음 (2026-11-25 사용자 요청) ----------
+// 빠르게 여러 음을 누르면 앞 음이 겹쳐 들려서, 새 음을 누르면 앞에 누른 음을 PICK_FADE초 동안 줄여 끔.
+// 문제·스케일·기준음 소리는 건드리지 않음 (피아노는 Sound의 held 소리, 다른 악기는 picked로 따로 기록)
+const PICK_FADE = 0.1;
+const picked = new Set();    // 건반으로 고른 음의 목소리 (피아노 말고 다른 악기)
+
+/** 건반으로 고른 음 하나 — 앞에 고른 음을 짧게 사라지게 하고 냄 */
+export function pick(id, m, dur = 0.9, vel = 0.5) {
+  const ins = byId(id);
+  Sound.releaseHeld(PICK_FADE);
+  fadeOut([...picked], PICK_FADE);
+  picked.clear();
+  if (!ins.dir) { Sound.note(m, 0, dur, vel, true); return; }
+  load(ins.id);
+  ready(ins).then(ctx => {
+    if (!ctx) return;
+    const sm = FILES.reduce((a, [f]) => Math.abs(f - m) < Math.abs(a - m) ? f : a, FILES[0][0]);
+    const buf = buffers.get(ins.id + "/" + sm);
+    if (!buf) { Sound.note(m, 0, dur, vel, true); return; }   // 그 녹음을 못 받았으면 피아노로
+    // 녹음이 풀리기를 기다리는 사이 다른 음을 또 눌렀으면 그 음이 먼저 picked에 들어가 있을 수 있음 → 이것도 앞 음으로 침
+    fadeOut([...picked], PICK_FADE);
+    picked.clear();
+    const v = voice(ctx, ins, buf, m - sm, ctx.currentTime + 0.02, dur, vel);
+    picked.add(v);
+    v.src.addEventListener("ended", () => picked.delete(v));
+  });
+}
+
+/** 목소리들을 fade초 동안 줄이고 끔 */
+function fadeOut(list, fade) {
+  const ctx = Sound.context();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  for (const v of list) {
+    v.g.gain.cancelScheduledValues(now);
+    v.g.gain.setValueAtTime(Math.max(v.g.gain.value, 0.0001), now);
+    v.g.gain.exponentialRampToValueAtTime(0.0001, now + fade);
+    try { v.src.stop(now + fade + 0.02); } catch (e) { /* 옛 Safari는 stop을 두 번 부르면 오류 — 볼륨은 이미 줄였으니 무시 */ }
+    voices.delete(v);
+  }
+}
+
 /** 이 파일의 전체 볼륨 노드 (처음 한 번 만듦) */
 function ensureOut(ctx) { if (!out) { out = ctx.createGain(); out.gain.value = 0.55; out.connect(ctx.destination); } }
 
@@ -134,19 +176,12 @@ function voice(ctx, ins, buf, shift, t, dur, vel) {
   const v = { g, src };
   voices.add(v);
   src.onended = () => voices.delete(v);
+  return v;
 }
 
 /** 모든 소리 멈추기 (다음 문제로 넘어갈 때, 다시 듣기 전에) — 0.08초 동안 줄여서 끔 */
 export function stopAll() {
   Sound.stopAll();
-  const ctx = Sound.context();
-  if (!ctx) return;
-  const now = ctx.currentTime;
-  for (const v of [...voices]) {
-    v.g.gain.cancelScheduledValues(now);
-    v.g.gain.setValueAtTime(Math.max(v.g.gain.value, 0.0001), now);
-    v.g.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-    try { v.src.stop(now + 0.1); } catch (e) { /* 옛 Safari는 stop을 두 번 부르면 오류 — 볼륨은 이미 줄였으니 무시 */ }
-    voices.delete(v);
-  }
+  fadeOut([...voices], 0.08);
+  picked.clear();
 }

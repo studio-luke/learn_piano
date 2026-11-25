@@ -183,6 +183,7 @@
 .ear-score .st-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 40px; fill: currentColor; }
 .ear-score .st-time { font-family: var(--font-display); font-size: 22px; font-weight: 700; fill: currentColor; }
 .ear-score .good { fill: var(--ok); stroke: var(--ok); }
+.ear-score svg.solved { color: var(--ok); }   /* 끝까지 다 맞힘: 오선·마디줄 등 currentColor로 그린 것 모두 초록 */
 .ear-score .bad { fill: var(--warn); stroke: var(--warn); }
 .ear-score .ref { fill: var(--ref); stroke: var(--ref); }
 .ear-score .ghost { fill: var(--muted); stroke: var(--muted); opacity: 0.5; }   /* 마우스를 올린 자리의 흐린 음표 */
@@ -206,6 +207,20 @@
    비어 있어도 한 줄 자리는 남김: 건반을 누를 때마다 안내가 생겼다 사라지며 건반이 위아래로 움직이지 않게 */
 .ear-panel .feedback { margin-top: 0; min-height: calc(13px * 1.45 + 12px); }
 .ear-panel .feedback:empty { display: flex; visibility: hidden; }
+
+/* ---------- 출제 설정: 조성 + (③만) 오른쪽에 BPM — 한 줄, 좁으면 다음 줄로 (2026-11-25 사용자 요청) ---------- */
+.ear-key-bpm { display: flex; flex-wrap: wrap; gap: 16px 14px; align-items: flex-start; }
+.ear-key-bpm > .opt[hidden] { display: none; }
+/* 컴퓨터의 출제 설정 칸(폭 320px, 안쪽 약 278px)에도 한 줄에 들어가게 이 줄에서만 조금씩 좁힘 (조성 약 138 + BPM 116 + 틈 14) */
+.ear-key-bpm .key-pick { gap: 6px; }
+.ear-key-bpm .key-pick select { padding: 7px 8px; }
+.ear-key-bpm .mode-btn { min-width: 70px; padding: 7px 10px; }
+.ear-key-bpm .ear-bpm { gap: 4px; }
+.ear-key-bpm .ear-bpm input { width: 52px; padding: 6px 2px; }
+/* 숫자 칸의 브라우저 기본 위아래 화살표는 숨김 — [−]·[+]가 있고, 화살표가 자리를 차지해 "100"이 잘려 보였음 (2026-11-25) */
+.ear-bpm input { -moz-appearance: textfield; appearance: textfield; }
+.ear-bpm input::-webkit-inner-spin-button, .ear-bpm input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.ear-key-bpm .ear-bpm .im-step { width: 30px; }
 
 /* ---------- 폰 세로 안내 (건반 바로 위 — 보이는 조건은 practice.css의 폰 세로 미디어 쿼리) ----------
    알약은 랜덤 코드 연습처럼 떠 있지 않고 제자리에 (위에 음표·쉼표 버튼이 있어서 가리지 않게) */

@@ -141,20 +141,35 @@
         </div>
       </section>
 
-      <!-- 단음 갈래의 출제 설정 (단계끼리 같이 씀, 기기에 저장 — pages/ear.js) -->
+      <!-- 단음 갈래의 출제 설정 (단계끼리 같이 씀, 기기에 저장 — pages/ear.js). 순서 (2026-11-25 사용자 결정):
+             ①·②  조성 · 조 밖의 음 포함 ─ (② 재생 속도 · 맞힐 음 개수 ─) 문제마다 기준음 재생 · MIDI 입력 허용
+             ③     조성 | BPM(같은 줄) · 조 밖의 음 포함 ─ 최소 박자 · 마디 수 ─ 받아쓸 것 · 멜로디 개연성 · 문제마다 기준음 재생 · MIDI 입력 허용
+           단계에 맞지 않는 묶음·구분선은 pages/ear.js renderSettings가 hidden으로 -->
       <aside class="sheet" id="sheetNote" aria-label="출제 설정" data-i18n-aria="settings">
         <div class="sheet-head"><h2 data-i18n="settings">출제 설정</h2></div>
-        <div class="opt">
-          <h3 data-i18n="earKeyH">조성</h3>
-          <div class="key-pick">
-            <select id="earRoot" aria-label="으뜸음" data-i18n-aria="earRootAria"></select>
-            <button class="mode-btn" id="earMode" type="button" aria-label="Major / minor">Major</button>
+        <!-- 조성 + (③만) 오른쪽에 BPM -->
+        <div class="ear-key-bpm">
+          <div class="opt">
+            <h3 data-i18n="earKeyH">조성</h3>
+            <div class="key-pick">
+              <select id="earRoot" aria-label="으뜸음" data-i18n-aria="earRootAria"></select>
+              <button class="mode-btn" id="earMode" type="button" aria-label="Major / minor">Major</button>
+            </div>
+          </div>
+          <div class="opt" id="earBpmOpt" hidden>
+            <!-- BPM: 처음 60, 40~160 (2026-11-24 사용자 결정 — 재생 속도 옵션 대신) -->
+            <h3><label for="earBpm">BPM</label></h3>
+            <div class="ear-bpm">
+              <button class="im-step" id="earBpmDown" type="button" aria-label="BPM −">−</button>
+              <input type="number" id="earBpm" min="40" max="160" step="1" inputmode="numeric">
+              <button class="im-step" id="earBpmUp" type="button" aria-label="BPM +">+</button>
+            </div>
           </div>
         </div>
         <div class="opt">
-          <label class="check"><input type="checkbox" id="earTonicEach"><span><span data-i18n="earTonicEach">문제마다 기준음 재생</span><small data-i18n="earTonicEachSub">문제 음 앞에 으뜸음을 먼저 들려줘요</small></span></label>
           <label class="check"><input type="checkbox" id="earChrom"><span><span data-i18n="earChrom">조 밖의 음 포함</span><small data-i18n="earChromSub">반음계의 모든 음</small></span></label>
         </div>
+        <hr class="divider">
         <!-- 단음 ②만: 멜로디 재생 속도(느리게·보통·빠르게·매우 빠르게, 처음 보통) · 맞힐 음 개수(1·2개, 처음 1개) (2026-11-24 사용자 요청) -->
         <div class="group" id="earMelodyOpts" style="gap: 16px" hidden>
           <div class="opt">
@@ -174,33 +189,6 @@
         <!-- 단음 ③만: 최소 박자(4분·8분·16분, 처음 8분) · 마디 수(1·2, 처음 1) (2026-11-24 사용자 결정) -->
         <div class="group" id="earRhythmOpts" style="gap: 16px" hidden>
           <div class="opt">
-            <!-- BPM: 처음 60, 40~160 (2026-11-24 사용자 결정 — 재생 속도 옵션 대신) -->
-            <h3><label for="earBpm">BPM</label></h3>
-            <div class="ear-bpm">
-              <button class="im-step" id="earBpmDown" type="button" aria-label="BPM −">−</button>
-              <input type="number" id="earBpm" min="40" max="160" step="1" inputmode="numeric">
-              <button class="im-step" id="earBpmUp" type="button" aria-label="BPM +">+</button>
-            </div>
-          </div>
-          <!-- 멜로디 개연성: 높음 · 중간(처음) · 낮음 · 랜덤 — 높음~낮음은 코드 진행 위의 멜로디(ear/harmony.js), 랜덤은 예전 방식 (2026-11-24 사용자 결정) -->
-          <div class="opt">
-            <h3 data-i18n="earChanceH">멜로디 개연성</h3>
-            <div class="chips radios" role="radiogroup" aria-label="멜로디 개연성" data-i18n-aria="earChanceH">
-              <label class="chip"><input type="radio" name="earChance" id="earChanceHigh" value="high"><span data-i18n="earChanceHigh">높음</span></label>
-              <label class="chip"><input type="radio" name="earChance" id="earChanceMid" value="mid"><span data-i18n="earChanceMid">중간</span></label>
-              <label class="chip"><input type="radio" name="earChance" id="earChanceLow" value="low"><span data-i18n="earChanceLow">낮음</span></label>
-              <label class="chip"><input type="radio" name="earChance" id="earChanceRandom" value="random"><span data-i18n="earChanceRandom">랜덤</span></label>
-            </div>
-          </div>
-          <div class="opt">
-            <h3 data-i18n="earWriteH">받아쓸 것</h3>
-            <div class="chips radios" role="radiogroup" aria-label="받아쓸 것" data-i18n-aria="earWriteH">
-              <label class="chip"><input type="radio" name="earWrite" id="earWriteBoth" value="both"><span data-i18n="earWriteBoth">음높이와 리듬</span></label>
-              <label class="chip"><input type="radio" name="earWrite" id="earWritePitch" value="pitch"><span data-i18n="earWritePitch">음높이만</span></label>
-              <label class="chip"><input type="radio" name="earWrite" id="earWriteRhythm" value="rhythm"><span data-i18n="earWriteRhythm">리듬만</span></label>
-            </div>
-          </div>
-          <div class="opt">
             <h3 id="earMinH" data-i18n="earMinH">최소 박자</h3>
             <input class="ear-range" type="range" id="earMin" min="0" max="2" step="1" aria-labelledby="earMinH">
             <div class="ear-range-labels three" id="earMinLabels"><span data-i18n="earMin4">4분음표</span><span data-i18n="earMin8">8분음표</span><span data-i18n="earMin16">16분음표</span></div>
@@ -213,11 +201,34 @@
             </div>
           </div>
         </div>
+        <hr class="divider" id="earSep2" hidden>
+        <!-- 단음 ③만: 받아쓸 것 · 멜로디 개연성 -->
+        <div class="group" id="earDictOpts" style="gap: 16px" hidden>
+          <div class="opt">
+            <h3 data-i18n="earWriteH">받아쓸 것</h3>
+            <div class="chips radios" role="radiogroup" aria-label="받아쓸 것" data-i18n-aria="earWriteH">
+              <label class="chip"><input type="radio" name="earWrite" id="earWriteBoth" value="both"><span data-i18n="earWriteBoth">음높이와 리듬</span></label>
+              <label class="chip"><input type="radio" name="earWrite" id="earWritePitch" value="pitch"><span data-i18n="earWritePitch">음높이만</span></label>
+              <label class="chip"><input type="radio" name="earWrite" id="earWriteRhythm" value="rhythm"><span data-i18n="earWriteRhythm">리듬만</span></label>
+            </div>
+          </div>
+          <!-- 멜로디 개연성: 높음 · 중간 · 낮음 · 랜덤 — 높음~낮음은 코드 진행 위의 멜로디(ear/harmony.js), 랜덤은 예전 방식 (2026-11-24 사용자 결정) -->
+          <div class="opt">
+            <h3 data-i18n="earChanceH">멜로디 개연성</h3>
+            <div class="chips radios" role="radiogroup" aria-label="멜로디 개연성" data-i18n-aria="earChanceH">
+              <label class="chip"><input type="radio" name="earChance" id="earChanceHigh" value="high"><span data-i18n="earChanceHigh">높음</span></label>
+              <label class="chip"><input type="radio" name="earChance" id="earChanceMid" value="mid"><span data-i18n="earChanceMid">중간</span></label>
+              <label class="chip"><input type="radio" name="earChance" id="earChanceLow" value="low"><span data-i18n="earChanceLow">낮음</span></label>
+              <label class="chip"><input type="radio" name="earChance" id="earChanceRandom" value="random"><span data-i18n="earChanceRandom">랜덤</span></label>
+            </div>
+          </div>
+        </div>
         <div class="opt">
-          <!-- 관리자만: 디버그 모드 — 단음 ③ 문제의 코드 진행을 악보 아래에 글자로 (2026-11-24 사용자 요청) -->
-          <label class="check" id="earDebugLabel" hidden><input type="checkbox" id="earDebugOpt"><span data-i18n="earDebug">디버그 모드 (코드·정답 보기)</span></label>
+          <label class="check"><input type="checkbox" id="earTonicEach"><span><span data-i18n="earTonicEach">문제마다 기준음 재생</span><small data-i18n="earTonicEachSub">문제 음 앞에 으뜸음을 먼저 들려줘요</small></span></label>
           <!-- 컴퓨터에서만 보임(practice.css .pc-only): MIDI 건반으로 답 고르기, 처음 꺼짐. 켤 때 권한 요청 (pages/ear.js, 2026-11-24 사용자 요청) -->
           <label class="check pc-only" id="earMidiLabel"><input type="checkbox" id="earMidiOpt"><span><span data-i18n="earMidiOpt">MIDI 입력 허용</span> <small class="midi-status" id="midiStatus"></small></span></label>
+          <!-- 관리자만: 디버그 모드 — 지금은 숨김 (2026-11-25 사용자 요청, pages/ear.js SHOW_DEBUG). 다시 쓰려면 SHOW_DEBUG = true -->
+          <label class="check" id="earDebugLabel" hidden><input type="checkbox" id="earDebugOpt"><span data-i18n="earDebug">디버그 모드 (코드·정답 보기)</span></label>
         </div>
       </aside>
     </div>

@@ -56,7 +56,7 @@ const REST_PATH = {
  * @param tokens  [{ pos, dur, rest, note?: {l,a,oct}, cls? }] — rhythm.js makeDictation 모양. note가 없는 음표는 가운데 줄(B4)에 (리듬만 보여 줄 때)
  * @param opt     { bars, sig: theory.js signature(), perLine: 한 줄 마디 수, cursor: 입력 자리(문제 처음부터 16분 단위, 없으면 null),
  *                  ghost: 마우스를 올린 자리의 흐린 음표 { pos, dur, step, a? } (없으면 null — a가 없으면 조표대로, 빔 없이 혼자),
- *                  solved: 끝까지 다 맞혔는지 — 음자리표·조표·박자표를 초록으로 }
+ *                  solved: 끝까지 다 맞혔는지 — 오선·마디줄·음자리표·조표·박자표까지 모두 초록으로 }
  */
 export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2, cursor = null, ghost = null, solved = false } = {}) {
   const head = solved ? " good" : "";   // 끝까지 다 맞히면 음자리표·조표·박자표도 초록 (끝난 느낌 — 2026-11-25 사용자 요청)
@@ -108,7 +108,8 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
   }
   const H = lines * LINE_H;
   el.style.setProperty("--score-lines", lines);
-  el.innerHTML = `<svg viewBox="0 0 ${maxW} ${H}" aria-hidden="true">${svgBody}</svg>`;
+  // 끝까지 다 맞히면 오선·마디줄까지 악보 전체를 초록으로 (2026-11-25 사용자 요청 — ear.css .ear-score svg.solved)
+  el.innerHTML = `<svg viewBox="0 0 ${maxW} ${H}" aria-hidden="true"${solved ? ' class="solved"' : ""}>${svgBody}</svg>`;
 }
 
 /** 한 마디의 음표·쉼표 SVG */

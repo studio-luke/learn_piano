@@ -254,6 +254,14 @@ function pedal(on) {
   for (const m of sustained) if (!down.has(m)) release(m, RELEASE);
   sustained.clear();
 }
+/**
+ * "누른 소리"(held — MIDI 건반이나 releaseHeld를 쓰는 페이지가 건반 입력으로 낸 소리)를 음과 상관없이 모두 fade초 동안 줄임.
+ * 청음 연습: 건반을 빠르게 이어 누르면 앞 음이 겹쳐 들려서, 새 음을 누를 때 앞에 누른 음을 짧게 사라지게 함 (2026-11-25 사용자 요청)
+ */
+function releaseHeld(fade = FADE) {
+  for (const w of pending) if (w.held) pending.delete(w);
+  if (ctx) for (const v of [...voices]) if (v.held) silence(v, fade);
+}
 /** MIDI 건반으로 누른 음 m의 소리만 줄임 (화면 버튼으로 재생한 화음 등은 그대로) */
 function release(m, fade) {
   for (const w of pending) if (w.m === m && w.held) pending.delete(w);
@@ -273,4 +281,4 @@ function context() {
   return ctx;
 }
 
-export const Sound = { note, chord, stop, stopAll, noteOn, noteOff, pedal, loadFull, preload, running, context };
+export const Sound = { note, chord, stop, stopAll, noteOn, noteOff, pedal, releaseHeld, loadFull, preload, running, context };
