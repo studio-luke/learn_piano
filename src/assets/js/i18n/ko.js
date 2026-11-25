@@ -522,7 +522,7 @@ export default {
   earCNeedType: "코드 종류를 하나 이상 골라 주세요.",
   earCStaffAria: "큰보표 — 정답 화음",
   earCAnswerAria: "코드 종류",
-  earCKbAria: "피아노 건반 (C3–E5)",
+  earCKbAria: "피아노 건반 (F3–A5)",
   earSoonText: "이 단계는 준비 중이에요.",
   earInstrument: "악기",
   earInstPiano: "피아노",

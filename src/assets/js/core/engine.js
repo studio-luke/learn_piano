@@ -65,7 +65,9 @@ const TYPES = [
   { id: "M7", group: "seventh", name: "M7", w: 2.7, tones: [...T3, [11, 7]], std: ["M7"], sym: ["△7", "△"], seventh: true, ten: ["9", "#11", "13"] },
   { id: "m7", group: "seventh", name: "m7", w: 2.7, tones: [...t3, [10, 7]], std: ["m7"], sym: ["-7"], seventh: true, ten: ["9", "11"] },
   { id: "dom7", group: "seventh", name: "7", w: 2.7, tones: [...T3, [10, 7]], std: ["7"], sym: [], seventh: true, ten: ["b9", "9", "#9", "#11", "b13", "13"], dominant: true },
-  { id: "7sus4", group: "seventh", name: "7sus4", w: 1.8, tones: [[0, 1], [5, 4], [7, 5], [10, 7]], std: ["7sus4"], sym: [], seventh: true, ten: ["b9", "9", "13"] },
+  // 7sus4(♭13): 프리지안 서스(♭9·♭13)까지 — 2026-11-25 사용자 요청으로 모든 연습에 추가. ♭13과 완전5음이 반음으로 부딪혀서
+  // 들려줄 때는 5음을 뺌(voicing · 코드 추론하기 출제 · 청음 연습 — 판정에서는 텐션 코드라 5음이 원래 생략 가능)
+  { id: "7sus4", group: "seventh", name: "7sus4", w: 1.8, tones: [[0, 1], [5, 4], [7, 5], [10, 7]], std: ["7sus4"], sym: [], seventh: true, ten: ["b9", "9", "b13", "13"] },
   { id: "aug7", group: "seventh", name: "aug7", w: 1, tones: [[0, 1], [4, 3], [8, 5], [10, 7]], std: ["aug7"], sym: ["+7"], seventh: true, ten: ["9", "#11"] },
   { id: "dim7", group: "seventh", name: "dim7", w: 1.8, tones: [[0, 1], [3, 3], [6, 5], [9, 7]], std: ["dim7"], sym: ["°7"], seventh: true, ten: [] },
   // m7(♭5): (♭5)가 이미 텐션처럼 읽혀서 텐션은 1개까지
@@ -301,11 +303,16 @@ function grade(selected, q) {
 }
 
 /** 정답 확인 때 들려주고 초록 점으로 보여줄 보이싱 (MIDI 48~72 안) */
+/** 7sus4(♭13)인지 — 들려줄 때 완전5음을 뺌 (♭13과 반음으로 부딪혀서, 2026-11-25 사용자 결정) */
+const susB13 = q => q.type === "7sus4" && (q.tens || []).includes("b13");
+
 function voicing(q) {
   const root = 48 + q.rootPc;
   const out = [];
+  const drop5 = susB13(q);
   for (const t of q.tones) {
     if (t.role === "alt" && !(t.ten === "#9" || t.ten === "b13")) continue;   // 7alt는 ♯9·♭13으로 들려줌
+    if (drop5 && t.deg === 5) continue;                                       // 7sus4(♭13)은 5음 없이
     let m = root + t.semi;
     const deg = t.ten ? TEN[t.ten][1] : t.deg;
     if (deg >= 9) { m = root + 12 + t.semi; if (m > 72) m -= 12; }   // 텐션은 한 옥타브 위
@@ -320,5 +327,5 @@ function voicing(q) {
  */
 const tonesFor = (typeId, root, tens) => buildTones(BY_ID[typeId], root, tens, false, { optE: true }, true);
 
-export const Engine = { TYPES, BY_ID, PC_NAMES, TEN, TEN_ORDER, WHITE, NAT, LET, generate, rebuild, spec, quality, grade, voicing, tenText, spellTone, simpleName, tonesFor, pcOf };
+export const Engine = { TYPES, BY_ID, PC_NAMES, TEN, TEN_ORDER, WHITE, NAT, LET, generate, rebuild, spec, quality, grade, voicing, tenText, spellTone, simpleName, tonesFor, pcOf, susB13 };
 export default Engine;

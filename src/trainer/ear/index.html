@@ -170,7 +170,7 @@
             </div>
             <div class="keypad" id="keypad"></div>
           </div>
-          <div class="keyboard wide ear-c-kb" id="earCKeyboard" role="img" aria-label="피아노 건반 (C3–E5)" data-i18n-aria="earCKbAria"></div>
+          <div class="keyboard wide ear-c-kb" id="earCKeyboard" role="img" aria-label="피아노 건반 (F3–A5)" data-i18n-aria="earCKbAria"></div>
           <div class="ear-actions three">
             <button class="btn primary" id="btnCSubmit" type="button" disabled data-i18n="check">제출</button>
             <button class="btn" id="btnCReveal" type="button" disabled data-i18n="reveal">정답 확인🥲</button>
@@ -279,6 +279,17 @@
         <div class="opt">
           <label class="check"><input type="checkbox" id="earCInv"><span><span data-i18n="earCInv">자리바꿈 허용</span><small data-i18n="earCInvSub">위 화음의 쌓는 순서가 달라져요 (베이스는 늘 근음)</small></span></label>
         </div>
+        <!-- 텐션 (2026-11-25 사용자 결정 — 랜덤 코드 연습과 같은 모양·문구): 켜면 최대 개수 [1개 · 2개]. 규칙은 ear/chords.js 머리 -->
+        <div class="opt">
+          <label class="check"><input type="checkbox" id="earCTens"><span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsubName">세븐코드에 ♭9 9 ♯9 11 ♯11 ♭13 13 텐션이 붙어 나와요.</small></span></label>
+          <div class="sub" id="earCTenBox" hidden>
+            <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
+              <label class="chip"><input type="radio" name="earCTenMax" id="earCTenMax1" value="1" checked><span data-i18n="max1">최대 1개</span></label>
+              <label class="chip"><input type="radio" name="earCTenMax" id="earCTenMax2" value="2"><span data-i18n="max2">최대 2개</span></label>
+            </div>
+          </div>
+        </div>
+        <p class="warnbox" id="earCWarn"></p>
       </aside>
     </div>
   </main>

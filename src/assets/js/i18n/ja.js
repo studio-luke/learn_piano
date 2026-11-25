@@ -521,7 +521,7 @@ export default {
   earCNeedType: "コードの種類を1つ以上選んでください。",
   earCStaffAria: "大譜表 — 正解の和音",
   earCAnswerAria: "コードの種類",
-  earCKbAria: "ピアノ鍵盤（C3–E5）",
+  earCKbAria: "ピアノ鍵盤（F3–A5）",
   earSoonText: "この段階は準備中です。",
   earInstrument: "楽器",
   earInstPiano: "ピアノ",

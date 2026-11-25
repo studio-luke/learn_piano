@@ -143,7 +143,7 @@ function pickWeighted(items, w, rnd) {
 
 /**
  * 건반 높이 정하기.
- *   자리바꿈 꺼짐: 근음부터 1 3 5 7 9 11 13 순서로 바로 위에 쌓음 (5음은 늘 보여줌)
+ *   자리바꿈 꺼짐: 근음부터 1 3 5 7 9 11 13 순서로 바로 위에 쌓음 (5음은 늘 보여줌 — 7sus4(♭13)만 5음 없음)
  *   자리바꿈 켜짐 (규칙은 위 "자리바꿈 보이싱 규칙"):
  *     1) 5음 생략을 먼저 정함 — 생략할 수 있는 5음(텐션이 붙은 코드)은 50% 확률로 뺌, 단 mM7은 늘 보여줌
  *     2) 남은 음 가운데서 베이스를 비율대로 고름 (생략한 5음이 베이스가 되는 일은 없음)
@@ -157,6 +157,8 @@ export function voice(q, inv, rnd = Math.random) {
   let tones = q.tones.filter(t => t.role !== "alt");
   // mM7은 5음을 빼면 알아듣기 너무 어려워서 늘 보여줌 (출제만 — 판정은 그대로, 사용자 결정 2026-11-08)
   if (inv && q.type !== "mM7" && tones.some(t => t.role === "optional") && rnd() < 0.5) tones = tones.filter(t => t.role !== "optional");
+  // 7sus4(♭13)은 자리바꿈과 상관없이 늘 5음을 뺌 — ♭13과 반음으로 부딪혀서 (2026-11-25 사용자 결정, engine susB13)
+  if (q.type === "7sus4" && (q.tens || []).includes("b13")) tones = tones.filter(t => !(t.deg === 5 && t.semi === 7));
 
   if (!inv) {
     tones = tones.slice().sort((a, b) => degOf(a) - degOf(b) || a.semi - b.semi);

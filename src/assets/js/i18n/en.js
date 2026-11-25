@@ -521,7 +521,7 @@ export default {
   earCNeedType: "Choose at least one chord type.",
   earCStaffAria: "Grand staff — answer chord",
   earCAnswerAria: "Chord quality",
-  earCKbAria: "Piano keyboard (C3–E5)",
+  earCKbAria: "Piano keyboard (F3–A5)",
   earSoonText: "This level is coming soon.",
   earInstrument: "Sound",
   earInstPiano: "Piano",

@@ -992,9 +992,12 @@ if (IS_PC) {
   // 건반에 키보드 글자 (2026-11-24 사용자 요청 — 랜덤 코드 연습처럼)
   setKeyLabels(new Map(KEY_CODES.map((c, i) => [LOW + i, keyChar(c)])));
 
-  // MIDI: 출제 설정의 "MIDI 입력 허용"이 켜져 있을 때만. 누르는 순간 답 (뗌·페달은 쓰지 않음 —
+  // MIDI: 출제 설정의 "MIDI 입력 허용"이 켜져 있을 때만. 단음은 누르는 순간 답 (뗌·페달은 쓰지 않음 —
   // 한 음씩 고르는 단계라서). 켤 때 아직 권한이 없으면 브라우저가 권한 창을 띄우고, 거부하면 다시 끔 (랜덤 코드 연습의 MIDI 입력 모드와 같은 흐름)
-  Midi.on("noteon", m => { if (!midiOn) return; if (isNoteMode()) pick(m); else chord1Midi(m); });   // 코드 ①은 소리만
+  Midi.on("noteon", (m, vel) => { if (!midiOn) return; if (isNoteMode()) pick(m); else chord1Midi("on", m, vel); });
+  // 코드 ①은 소리만 — 코드 초견과 같이 떼기·서스테인 페달도 (2026-11-25 사용자 요청)
+  Midi.on("noteoff", m => { if (midiOn && !isNoteMode()) chord1Midi("off", m); });
+  Midi.on("pedal", on => { if (midiOn && !isNoteMode()) chord1Midi("pedal", on); });
   Midi.on("state", renderMidi);
   $("earMidiOpt").checked = midiOn;
   $("earMidiOpt").onchange = async e => {

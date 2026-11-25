@@ -11,16 +11,20 @@ import { Sound } from "../practice/audio.js";
 
 /**
  * 악기 목록 (화면의 순서). key = 문구 키(i18n), dir = assets/sounds/ 아래 폴더(피아노는 없음),
- * sustain = 누르는 동안 소리가 이어지는 악기(목소리·현악기) — 시작을 살짝 부드럽게, gain = 녹음마다 다른 크기를 맞추는 값
+ * sustain = 누르는 동안 소리가 이어지는 악기(목소리·현악기) — 시작을 살짝 부드럽게, gain = 녹음마다 다른 크기를 맞추는 값,
+ * low = 코드 ①의 베이스로 쓸 가장 낮은 음(MIDI) — 피아노·전자 피아노·현악기 C2, 기타·합창(베이스 목소리) E2(악기가 그 아래를 못 냄).
+ *       (2026-11-25 사용자 요청 — 처음엔 실제 최저음(피아노 A0 등)까지였으나 너무 낮은 베이스가 크게 울려 위 화음이 묻혀서 C2까지)
  */
 export const INSTRUMENTS = [
-  { id: "piano", key: "earInstPiano" },
-  { id: "choir", key: "earInstChoir", dir: "choir", sustain: true, gain: 0.55 },
-  { id: "epiano", key: "earInstEpiano", dir: "epiano", gain: 0.7 },
-  { id: "guitar", key: "earInstGuitar", dir: "guitar", gain: 0.75 },
-  { id: "strings", key: "earInstStrings", dir: "strings", sustain: true, gain: 0.5 },
+  { id: "piano", key: "earInstPiano", low: 36 },
+  { id: "choir", key: "earInstChoir", dir: "choir", sustain: true, gain: 0.55, low: 40 },
+  { id: "epiano", key: "earInstEpiano", dir: "epiano", gain: 0.7, low: 36 },
+  { id: "guitar", key: "earInstGuitar", dir: "guitar", gain: 0.75, low: 40 },
+  { id: "strings", key: "earInstStrings", dir: "strings", sustain: true, gain: 0.5, low: 36 },
 ];
 const byId = id => INSTRUMENTS.find(x => x.id === id) || INSTRUMENTS[0];
+/** 그 악기의 가장 낮은 음 (MIDI) */
+export const lowest = id => byId(id).low;
 
 // 녹음 파일: [MIDI 번호, 파일 이름] — 원본 이름 그대로(플랫: Eb, Gb)
 const FILES = [[33, "A1"]];
@@ -177,6 +181,52 @@ function voice(ctx, ins, buf, shift, t, dur, vel) {
   voices.add(v);
   src.onended = () => voices.delete(v);
   return v;
+}
+
+// ---------- 연주 (코드 ①의 건반·MIDI 건반 — 코드 초견과 같은 방식, 2026-11-25 사용자 요청) ----------
+// 누르는 동안 울리고, 떼면 줄어들고, 서스테인 페달을 밟고 있으면 뗀 음도 페달을 뗄 때까지 울림. 세기(1~127)도 반영.
+// 피아노는 practice/audio.js의 noteOn·noteOff·pedal 그대로, 다른 악기는 같은 규칙을 여기서
+const HOLD_DUR = 30, PLAY_RELEASE = 0.5;
+const playing = new Map();   // MIDI 번호 → 울리는 목소리 (피아노 말고 다른 악기)
+const pedalHeld = new Set(); // 페달 때문에 뗐는데도 울리는 음
+let pedalOn = false;
+const velOf = vel => 0.08 + 0.42 * (vel / 127);   // audio.js velGain과 같음
+
+/** 건반을 누름 (vel 1~127) */
+export function noteOn(id, m, vel = 90) {
+  const ins = byId(id);
+  noteStop(m, 0.03);
+  pedalHeld.delete(m);
+  if (!ins.dir) { Sound.noteOn(m, vel); return; }
+  load(ins.id);
+  ready(ins).then(ctx => {
+    if (!ctx) return;
+    const sm = FILES.reduce((a, [f]) => Math.abs(f - m) < Math.abs(a - m) ? f : a, FILES[0][0]);
+    const buf = buffers.get(ins.id + "/" + sm);
+    if (!buf) { Sound.noteOn(m, vel); return; }
+    const v = voice(ctx, ins, buf, m - sm, ctx.currentTime + 0.01, HOLD_DUR, velOf(vel));
+    playing.set(m, v);
+    v.src.addEventListener("ended", () => { if (playing.get(m) === v) playing.delete(m); });
+  });
+}
+/** 건반을 뗌 — 페달을 밟고 있으면 페달을 뗄 때까지 둠 */
+export function noteOff(m) {
+  Sound.noteOff(m);
+  if (pedalOn) pedalHeld.add(m); else noteStop(m, PLAY_RELEASE);
+}
+/** 서스테인 페달 */
+export function pedal(on) {
+  Sound.pedal(on);
+  pedalOn = on;
+  if (on) return;
+  for (const m of pedalHeld) noteStop(m, PLAY_RELEASE);
+  pedalHeld.clear();
+}
+/** 터치로 한 번 누름: 앞 음을 끄지 않고 짧게(1.2초) 울림 */
+export function tap(id, m) { play(id, [{ m, at: 0, dur: 1.2, vel: 0.5 }]); }
+function noteStop(m, fade) {
+  const v = playing.get(m);
+  if (v) { fadeOut([v], fade); playing.delete(m); }
 }
 
 /** 모든 소리 멈추기 (다음 문제로 넘어갈 때, 다시 듣기 전에) — 0.08초 동안 줄여서 끔 */

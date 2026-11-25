@@ -8,6 +8,7 @@
 // 출제·채점은 ear/chords.js, 큰보표는 ear/grand.js, 건반은 ear/chord-keys.js
 import { $, esc, toast, chipHTML } from "../common/dom.js";
 import { t } from "../i18n/index.js";
+import { Engine as E } from "../core/engine.js";
 import { store } from "../common/storage.js";
 import * as Ins from "./instruments.js";
 import { makeChord, judgeChord, voiceLike, chordName, rootText, typeText, GROUPS, DEFAULT_TYPES } from "./chords.js";
@@ -22,14 +23,14 @@ const ARP_STEP = 0.32;                         // 펼쳐 듣기: 음 사이 간�
 
 let ctx = null;          // pages/ear.js가 넘겨주는 것 { inst(), authOpen(), cardTopIntoView(), revealNextButton() }
 let active = false;      // 지금 코드 ① 단계인지 (단축키·MIDI 소리)
-let S = null;            // 출제 설정 { types, inv }
+let S = null;            // 출제 설정 { types, inv, tens: 텐션 허용, tenMax: 최대 개수 1·2 }
 let keys = null;         // 건반
 // 문제 상태: q 문제, phase "idle"(시작 전) | "ask"(푸는 중) | "done"(맞힘·정답 확인), wrong 틀린 답 { chord, name }(마지막 것), solved 맞혔는지
 const C = { q: null, phase: "idle", wrong: null, solved: false };
 
 // ---------- 출제 설정 ----------
 function loadS() {
-  const s = Object.assign({ types: DEFAULT_TYPES.slice(), inv: false }, store.getJSON(STORE) || {});
+  const s = Object.assign({ types: DEFAULT_TYPES.slice(), inv: false, tens: false, tenMax: 1 }, store.getJSON(STORE) || {});
   const known = new Set(GROUPS.flatMap(g => g.ids));
   s.types = s.types.filter(id => known.has(id));
   if (!s.types.length) s.types = DEFAULT_TYPES.slice();
@@ -49,6 +50,7 @@ function buildSettings() {
     if (!box.checked && S.types.length === 1) { box.checked = true; toast(t("earCNeedType")); return; }   // 하나는 남김
     S.types = box.checked ? [...new Set([...S.types, id])] : S.types.filter(x => x !== id);
     saveS();   // 다음 문제부터
+    renderSettings();   // 텐션 안내 다시
   });
   // 묶음의 [전체]: 모두 켜져 있으면 모두 끄고, 아니면 모두 켬 (코드 추론하기와 같음). 끄면 하나도 안 남을 때는 그대로 + 알림
   $("earCTypes").addEventListener("click", e => {
@@ -62,10 +64,17 @@ function buildSettings() {
     renderSettings();
   });
   $("earCInv").onchange = e => { S.inv = e.target.checked; saveS(); };
+  $("earCTens").onchange = e => { S.tens = e.target.checked; saveS(); renderSettings(); };
+  $("earCTenMax1").onchange = () => { S.tenMax = 1; saveS(); };
+  $("earCTenMax2").onchange = () => { S.tenMax = 2; saveS(); };
 }
 function renderSettings() {
   $("earCTypes").querySelectorAll("[data-ctype]").forEach(b => { b.checked = S.types.includes(b.dataset.ctype); });
   $("earCInv").checked = S.inv;
+  $("earCTens").checked = S.tens; $("earCTenBox").hidden = !S.tens;
+  $("earCTenMax1").checked = S.tenMax !== 2; $("earCTenMax2").checked = S.tenMax === 2;
+  // 텐션이 붙을 수 있는 7화음(dim7·augM7 빼고)이 하나도 없으면 안내 (랜덤 코드 연습과 같은 문구)
+  $("earCWarn").textContent = S.tens && !S.types.some(id => E.BY_ID[id].ten?.length) ? t("warnC") : "";
 }
 
 // 읽을 수 없는 답의 안내 (judgeChord error → 문구 키) — 제출과 내 답 듣기가 같이 씀
@@ -125,7 +134,7 @@ function render() {
 }
 
 function newQuestion() {
-  const q = makeChord(S, Math.random, C.q);
+  const q = makeChord({ ...S, bassLow: Ins.lowest(ctx.inst()) }, Math.random, C.q);   // 베이스는 고른 악기가 낼 수 있는 음까지
   Object.assign(C, { q, phase: "ask", wrong: null, solved: false });
   clearAnswer();
   setFeedback("", "");
@@ -212,7 +221,12 @@ export function initChord1(c) {
   buildSettings();
   renderSettings();
   initKeypad(() => {}, { noRoot: true });
-  keys = makeChordKeys($("earCKeyboard"), m => { Ins.pick(ctx.inst(), m); keys.flash(m); });
+  // 건반 연주: 코드 초견과 같이 앞 음을 끄지 않음 — 마우스는 누르는 동안, 터치는 한 번 (2026-11-25 사용자 요청)
+  keys = makeChordKeys($("earCKeyboard"), {
+    down: m => { Ins.noteOn(ctx.inst(), m, 90); keys.hold(m, true); },
+    up: m => { Ins.noteOff(m); keys.hold(m, false); },
+    tap: m => { Ins.tap(ctx.inst(), m); keys.flash(m); },
+  });
   $("btnCStart").onclick = start;
   $("btnCReplay").onclick = playQuestion;
   $("btnCArp").onclick = playArp;
@@ -246,10 +260,12 @@ export function setChord1Active(on) {
 }
 
 /** MIDI 건반으로 누른 음 — 코드 ①에서는 소리만 */
-export function chord1Midi(m) {
+/** MIDI 건반 (pages/ear.js가 넘겨줌): 코드 초견과 같이 세기·떼기·서스테인 페달 — kind "on" | "off" | "pedal" */
+export function chord1Midi(kind, m, vel) {
   if (!active) return false;
-  Ins.pick(ctx.inst(), m);
-  keys.flash(m);
+  if (kind === "pedal") Ins.pedal(m);
+  else if (kind === "on") { Ins.noteOn(ctx.inst(), m, vel); keys.hold(m, true); }
+  else { Ins.noteOff(m); keys.hold(m, false); }
   return true;
 }
 

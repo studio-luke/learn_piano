@@ -521,7 +521,7 @@ export default {
   earCNeedType: "请至少选择一种和弦类型。",
   earCStaffAria: "大谱表 — 正确和弦",
   earCAnswerAria: "和弦类型",
-  earCKbAria: "钢琴键盘（C3–E5）",
+  earCKbAria: "钢琴键盘（F3–A5）",
   earSoonText: "此阶段正在准备中。",
   earInstrument: "乐器",
   earInstPiano: "钢琴",

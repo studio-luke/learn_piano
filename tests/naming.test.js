@@ -32,10 +32,13 @@ test("naming: notes stay in F3–D6, one per pitch class, and tension chord type
   }
 });
 
-test("naming: without inversion the notes are stacked 1 3 5 7 9 11 13 from the root, fifth always shown", () => {
+test("naming: without inversion the notes are stacked 1 3 5 7 9 11 13 from the root, fifth always shown (except 7sus4(♭13))", () => {
   for (const q of gen({ optInv: false })) {
     assert.strictEqual(mod12(q.notes[0].midi), q.rootPc, q.symbol);
-    const want = q.tones.filter(t => t.role !== "alt").length;
+    // 7sus4(♭13)은 5음 없음 — ♭13과 반음으로 부딪혀서 (2026-11-25 사용자 결정)
+    const sus13 = q.type === "7sus4" && q.tens.includes("b13");
+    if (sus13) assert.ok(!q.notes.some(n => mod12(n.midi - q.rootPc) === 7), q.symbol);
+    const want = q.tones.filter(t => t.role !== "alt").length - (sus13 ? 1 : 0);
     assert.strictEqual(q.notes.length, want, `${q.symbol}: all tones incl. optional fifth`);
   }
 });
