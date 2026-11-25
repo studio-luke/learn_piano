@@ -214,6 +214,26 @@
 .ear-panel .feedback { margin-top: 0; min-height: calc(13px * 1.45 + 12px); }
 .ear-panel .feedback:empty { display: flex; visibility: hidden; }
 
+/* ---------- 코드 ① 코드 종류 (ear/chord1.js — 2026-11-25) ----------
+   입력칸·키패드·넓은 건반은 코드 추론하기(naming.css) 모양 그대로, 여기는 이 단계에만 있는 것 */
+.ear-c-staff { display: flex; justify-content: center; }
+.ear-c-staff svg { height: 190px; width: auto; overflow: visible; color: var(--ink); }
+.ear-c-staff .st-clef.bass { font-size: 34px; }
+.ear-c-staff .st-head.good, .ear-c-staff .st-acc.good { fill: var(--ok); }
+/* 답 칸 앞의 근음 글자 (문제에 보여 줌 — 입력칸과 같은 글꼴·크기) */
+.ear-c-root { display: flex; align-items: center; justify-content: center; min-width: 44px; padding-inline: 6px; font-family: var(--font-display); font-size: 26px; color: var(--ink); }
+.ear-c-root:empty { visibility: hidden; }
+.answer-row:has(.ear-c-root) .answer-input { justify-content: flex-start; }
+/* 근음 글자 키가 없는 키패드: [M m dim aug sus add] [2 4 5 6 7 9 11 13] [♯ ♭ ( ) ,] */
+.keypad.no-root .pad-row.r0 .pad-key { font-family: inherit; font-size: 16px; }
+.keypad.no-root .pad-row.r2 { grid-auto-columns: minmax(0, 64px); justify-content: center; }
+.keypad.no-root .pad-key[data-k="♯"], .keypad.no-root .pad-key[data-k="♭"] { font-family: "Noto Music", "Apple Symbols", "Segoe UI Symbol", var(--font-body); font-size: 22px; font-weight: 400; }
+.ear-c-kb .key .lbl { font-size: 10px; }
+/* [제출] [정답 확인] [다음 문제] 세 칸 */
+.ear-actions.three { grid-template-columns: 1fr 1fr 1fr; }
+.ear-chord .feedback:empty { display: flex; visibility: hidden; }
+.ear-chord .feedback { min-height: calc(13px * 1.45 + 12px); }
+
 /* ---------- 출제 설정: 조성 + (③만) 오른쪽에 BPM — 한 줄, 좁으면 다음 줄로 (2026-11-25 사용자 요청) ---------- */
 .ear-key-bpm { display: flex; flex-wrap: wrap; gap: 16px 14px; align-items: flex-start; }
 .ear-key-bpm > .opt[hidden] { display: none; }
@@ -358,4 +378,9 @@
   .ear-replay svg { width: 22px; height: 22px; }
   .ear-panel { gap: 5px; }
   .ear-kb { height: 88px; }
+}
+
+/* 코드 ①: 폰 가로 격자(위 단음 배치)는 쓰지 않고 위에서 아래로 쌓음 — 폰 배치는 따로 맞출 것 (2026-11-25 — 1차) */
+@media (orientation: landscape) and (max-height: 520px) {
+  .ear-panel.ear-chord { display: flex; flex-direction: column; }
 }

@@ -25,6 +25,7 @@ import { initKeys, markKeys, refKey, setKeyLabels } from "../ear/keys.js";
 import { initStaff, setSignature, showNotes, setSlots, setAnswerSlot, setGhostEnabled } from "../ear/staff.js";
 import { renderScore, stepAtY } from "../ear/score.js";
 import { makeDictation, judgeToken, BAR } from "../ear/rhythm.js";
+import { initChord1, setChord1Active, chord1Midi, chord1Lang } from "../ear/chord1.js";
 import { KEY_ROOTS, LOW, HIGH, signature, scaleMidis, pickNote, pickMelody, judgeNote, spellMidi, midiOf, sigAcc, fullName, otherKey, sameRoot } from "../ear/theory.js";
 
 startPage({ title: "navEar" });
@@ -36,7 +37,7 @@ const LEVELS = [
   { mode: "note1", track: "note", num: "1", key: "earN1", ready: true },
   { mode: "note2", track: "note", num: "2", key: "earN2", ready: true },
   { mode: "note3", track: "note", num: "3", key: "earN3", ready: true },   // 만드는 중 (2단계: 악보 미리보기)
-  { mode: "chord1", track: "chord", num: "1", key: "earC1" },
+  { mode: "chord1", track: "chord", num: "1", key: "earC1", ready: true },   // 코드 종류 (2026-11-25 — ear/chord1.js)
   { mode: "chord2", track: "chord", num: "2", key: "earC2" },
   { mode: "chord3", track: "chord", num: "3", key: "earC3" },
   { mode: "chord4", track: "chord", num: "4", key: "earC4" },
@@ -83,8 +84,11 @@ function renderLevels() {
   $("panelNote").hidden = !isNoteMode();
   $("earKeyRow").hidden = lv.track !== "note";   // 맨 윗줄의 조 표시는 단음 단계만
   $("earSoon").hidden = lv.ready;
+  $("panelChord").hidden = mode !== "chord1";
   $("sheetNote").hidden = lv.track !== "note" || !lv.ready;
-  document.querySelector(".ear-layout").classList.toggle("no-sheet", $("sheetNote").hidden);
+  $("sheetChord").hidden = mode !== "chord1";
+  document.querySelector(".ear-layout").classList.toggle("no-sheet", $("sheetNote").hidden && $("sheetChord").hidden);
+  setChord1Active(mode === "chord1");
 }
 
 function goMode(m) {
@@ -923,10 +927,10 @@ $("btnReveal").onclick = () => {
 $("btnNext").onclick = () => { if (canNext()) { newQuestion(false); cardTopIntoView(); } };
 
 // ---------- 자동 스크롤 (2026-11-25 사용자 요청, 화면이 작을 때) ----------
-/** 정답을 맞혔는데 [다음 문제]가 화면 아래로 잘려 있으면 보이는 데까지 내림 */
-function revealNextButton() {
+/** 정답을 맞혔는데 [다음 문제](btn — 코드 ①은 자기 버튼)가 화면 아래로 잘려 있으면 보이는 데까지 내림 */
+function revealNextButton(btn = $("btnNext")) {
   requestAnimationFrame(() => {
-    const r = $("btnNext").getBoundingClientRect(), over = r.bottom + 12 - window.innerHeight;
+    const r = btn.getBoundingClientRect(), over = r.bottom + 12 - window.innerHeight;
     if (over > 0) window.scrollBy({ top: over, behavior: "smooth" });
   });
 }
@@ -987,7 +991,7 @@ if (IS_PC) {
 
   // MIDI: 출제 설정의 "MIDI 입력 허용"이 켜져 있을 때만. 누르는 순간 답 (뗌·페달은 쓰지 않음 —
   // 한 음씩 고르는 단계라서). 켤 때 아직 권한이 없으면 브라우저가 권한 창을 띄우고, 거부하면 다시 끔 (랜덤 코드 연습의 MIDI 입력 모드와 같은 흐름)
-  Midi.on("noteon", m => { if (midiOn && isNoteMode()) pick(m); });
+  Midi.on("noteon", m => { if (!midiOn) return; if (isNoteMode()) pick(m); else chord1Midi(m); });   // 코드 ①은 소리만
   Midi.on("state", renderMidi);
   $("earMidiOpt").checked = midiOn;
   $("earMidiOpt").onchange = async e => {
@@ -1030,8 +1034,10 @@ function renderMidi() {
 }
 
 setModeInUrl(mode);   // 주소에 mode가 없거나 모르는 값이면 지금 단계(처음엔 note1)로 고쳐 둠 (코드 초견과 같은 방식)
+// 코드 ① 화면 (ear/chord1.js) — 악기·로그인 창·스크롤은 이 페이지 것을 함께 씀
+initChord1({ inst: () => inst, authOpen, cardTopIntoView, revealNextButton: () => revealNextButton($("btnCNext")) });
 renderInst(); renderSettings(); renderLevels(); resetNote(); renderMidi(); renderDurs();
-onLangChange(() => { renderInst(); renderLevels(); renderNoteButtons(); renderMidi(); });
+onLangChange(() => { renderInst(); renderLevels(); renderNoteButtons(); renderMidi(); chord1Lang(); });
 // 웹 글꼴을 다 받은 뒤 안내 문구 칸 폭을 다시 잼 (받기 전에는 대체 글꼴 폭이라서)
 if (document.fonts) document.fonts.ready.then(() => { setHintWidth.key = ""; renderNoteButtons(); });
 

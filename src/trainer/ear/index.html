@@ -22,6 +22,8 @@
 <link rel="stylesheet" href="/assets/css/base.css">
 <link rel="stylesheet" href="/assets/css/account.css">
 <link rel="stylesheet" href="/assets/css/practice.css">
+<!-- 코드 ①의 입력칸·키패드·넓은 건반은 코드 추론하기와 같은 모양 (naming.css — ear.css보다 먼저, 겹치는 규칙은 ear.css가 이김) -->
+<link rel="stylesheet" href="/assets/css/naming.css">
 <link rel="stylesheet" href="/assets/css/ear.css">
 <script type="module" src="/assets/js/pages/ear.js"></script>
 </head>
@@ -139,6 +141,41 @@
             <button class="btn next" id="btnNext" type="button" disabled data-i18n="next">다음 문제 →</button>
           </div>
         </div>
+
+        <!-- 코드 ① 코드 종류 (2026-11-25 사용자 결정 — ear/chord1.js): 코드를 듣고 근음 뒤에 코드 종류를 씀.
+             큰보표·건반은 정답을 확인한 뒤에 채워짐. 틀리면 [펼쳐 듣기]·[내 답 듣기] -->
+        <div class="ear-panel ear-chord" id="panelChord" hidden>
+          <p class="ear-hint"><span id="earCHintText"></span></p>
+          <div class="ear-play-row">
+            <div class="ear-play-side">
+              <button class="btn" id="btnCArp" type="button" hidden data-i18n="earCArp">▶ 펼쳐 듣기</button>
+            </div>
+            <button class="btn primary ear-start" id="btnCStart" type="button" data-i18n="earStart">▶ 시작</button>
+            <button class="ear-replay" id="btnCReplay" type="button" hidden aria-label="문제 다시 듣기" data-i18n-aria="earReplay" data-i18n-title="earReplay" title="문제 다시 듣기">
+              <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+            </button>
+            <div class="ear-play-side">
+              <button class="btn" id="btnCMine" type="button" hidden></button>
+            </div>
+          </div>
+          <div class="ear-c-staff" id="earCStaff" role="img" aria-label="큰보표 — 정답 화음" data-i18n-aria="earCStaffAria"></div>
+          <!-- 답: 근음 글자(문제에 보여 줌, 못 지움) + 코드 종류 입력칸(naming/keypad.js — 근음 글자 키 없음) -->
+          <div class="answer">
+            <div class="answer-row">
+              <span class="ear-c-root" id="earCRoot" aria-hidden="true"></span>
+              <div class="answer-input" id="answer" role="textbox" aria-readonly="true" aria-label="코드 종류" data-i18n-aria="earCAnswerAria"></div>
+              <button class="pad-key back" id="padBack" type="button" aria-label="한 칸 지우기" data-i18n-aria="backAria">⌫</button>
+            </div>
+            <div class="keypad" id="keypad"></div>
+          </div>
+          <div class="feedback" id="earCFeedback" role="status" aria-live="polite"></div>
+          <div class="keyboard wide ear-c-kb" id="earCKeyboard" role="img" aria-label="피아노 건반 (C3–E5)" data-i18n-aria="earCKbAria"></div>
+          <div class="ear-actions three">
+            <button class="btn primary" id="btnCSubmit" type="button" disabled data-i18n="check">제출</button>
+            <button class="btn" id="btnCReveal" type="button" disabled data-i18n="reveal">정답 확인🥲</button>
+            <button class="btn next" id="btnCNext" type="button" disabled data-i18n="next">다음 문제 →</button>
+          </div>
+        </div>
       </section>
 
       <!-- 단음 갈래의 출제 설정 (단계끼리 같이 씀, 기기에 저장 — pages/ear.js). 순서 (2026-11-25 사용자 결정):
@@ -229,6 +266,17 @@
           <label class="check pc-only" id="earMidiLabel"><input type="checkbox" id="earMidiOpt"><span><span data-i18n="earMidiOpt">MIDI 입력 허용</span> <small class="midi-status" id="midiStatus"></small></span></label>
           <!-- 관리자만: 디버그 모드 — 지금은 숨김 (2026-11-25 사용자 요청, pages/ear.js SHOW_DEBUG). 다시 쓰려면 SHOW_DEBUG = true -->
           <label class="check" id="earDebugLabel" hidden><input type="checkbox" id="earDebugOpt"><span data-i18n="earDebug">디버그 모드 (코드·정답 보기)</span></label>
+        </div>
+      </aside>
+
+      <!-- 코드 ①의 출제 설정 (기기에 저장 chordoven.ear.chord1.v1 — ear/chord1.js) -->
+      <aside class="sheet" id="sheetChord" aria-label="출제 설정" data-i18n-aria="settings" hidden>
+        <div class="sheet-head"><h2 data-i18n="settings">출제 설정</h2></div>
+        <!-- 코드 종류 칩: 3화음 · 7화음 · 6화음 (처음 켜짐: aug 계열을 뺀 7화음 + 6화음) -->
+        <div class="group" id="earCTypes" style="gap: 16px"></div>
+        <hr class="divider">
+        <div class="opt">
+          <label class="check"><input type="checkbox" id="earCInv"><span><span data-i18n="earCInv">자리바꿈 허용</span><small data-i18n="earCInvSub">위 화음의 쌓는 순서가 달라져요 (베이스는 늘 근음)</small></span></label>
         </div>
       </aside>
     </div>

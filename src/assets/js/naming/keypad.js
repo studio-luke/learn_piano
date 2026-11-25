@@ -64,14 +64,19 @@ export const answerText = () => tokens.join("");
 /** 커서가 맨 끝에 있고 고른 것이 없는지 (→ 키: 그렇다면 다음 문제, 아니면 커서 이동) */
 export const caretAtEnd = () => caret === tokens.length && !hasSel();
 
+// 근음 글자를 쓰지 않는 페이지(청음 연습 코드 ① — 근음은 문제에 보여 줌, 2026-11-25): 근음 글자 줄을 빼고 ♯·♭은 괄호 줄 앞으로
+const ROWS_NO_ROOT = [ROWS[1], ROWS[2], ["♯", "♭", ...ROWS[3]]];
+
 /**
  * 입력칸·키패드 만들기.
  * @param changed  입력한 글자가 바뀔 때마다 부를 함수
+ * @param noRoot   근음 글자(C~B) 키를 뺄지 (청음 연습 코드 ①)
  */
-export function initKeypad(changed) {
+export function initKeypad(changed, { noRoot = false } = {}) {
   onInput = changed;
   const pad = $("keypad");
-  pad.innerHTML = ROWS.map((row, i) =>
+  pad.classList.toggle("no-root", noRoot);
+  pad.innerHTML = (noRoot ? ROWS_NO_ROOT : ROWS).map((row, i) =>
     `<div class="pad-row r${i}">${row.map(k => `<button class="pad-key" type="button" data-k="${k}">${k}</button>`).join("")}</div>`).join("");
   // 키를 눌러도 초점을 가져가지 않게 (컴퓨터에서 Enter가 마지막에 누른 키를 다시 누르지 않게)
   pad.addEventListener("pointerdown", e => { if (e.target.closest(".pad-key")) e.preventDefault(); });
