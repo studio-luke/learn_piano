@@ -259,6 +259,7 @@ export function submit() {
     setFeedback("no", () => `<strong>${esc(t("notYet"))}</strong><span>${esc(t(ERR_KEY[r.error]))}</span>`);
   } else if (r.correct) {
     state.good = true;
+    Sound.chord(q.notes.map(n => n.midi), false);   // 맞히면 문제 소리를 한 번 더 — 이름과 소리를 함께 기억하게 (2026-11-25 사용자 요청)
     setFeedback("ok", () => `<strong>${esc(t("correct"))}</strong><span class="ans-list">${answerList(q, r.unlisted || r.matched)}</span>`);
     lock();
   } else {
@@ -293,6 +294,7 @@ export function reveal() {
   if (!state.attempted) { state.attempted = true; finish(q, false); }
   settleTimed();   // 정답 확인 = 오답, 시간 없음
   showAnswer();
+  Sound.chord(q.notes.map(n => n.midi), false);   // 정답 확인도 문제 소리를 한 번 더 (맞혔을 때와 같음, 2026-11-25 사용자 요청)
 }
 
 /** 입력칸 글자가 바뀜: 풀던 문제면 지난 오답 안내·주황 표시를 지움 */

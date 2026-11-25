@@ -511,7 +511,7 @@ export default {
   earC1Ask: "들리는 코드의 종류를 근음 뒤에 써 보세요.",
   earC1AskMaj: "들리는 코드의 종류를 근음 뒤에 써 보세요. 메이저 3화음이면 그대로 [제출].",
   earCArp: "▶ 펼쳐 듣기",
-  earCMine: "▶ 내 답 듣기 ({name})",
+  earCMine: "내 답 듣기",
   earCWrong: "아니에요 ({name}). 다시 들어 보세요.",
   earCRootTyped: "근음은 이미 적혀 있어요 — 코드 종류만 써 주세요.",
   earCTriads: "3화음",

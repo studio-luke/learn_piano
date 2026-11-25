@@ -180,7 +180,6 @@
   .kb-wrap { width: auto; margin-inline: -11px; }
   .kb-bar, .legend { padding-inline: 11px; }
   .keyboard { border-radius: 0; }
-  .rotate-tip:not([hidden]) { display: block; }
   .scroll-tip:not([hidden]) { display: flex; }
   .hint-wide { display: none; }
   .hint-narrow { display: inline; }
@@ -198,6 +197,11 @@
 }
 
 /* 키가 작은 폰 세로(아이폰 SE 등, 주소창이 보일 때 높이 600px 이하): 코드 기호와 위쪽 여백을 줄여 건반이 버튼 줄 위로 올라오게 */
+/* "폰을 가로로 돌리면…" 안내는 폰(마우스 없음)에서만 — 컴퓨터 창을 좁게 줄여도 세로 화면처럼 되어 안내가 떴음 (2026-11-25 사용자 요청).
+   랜덤 코드 연습·코드 초견·청음 연습이 함께 씀. 출제 설정 알약은 좁은 컴퓨터 창에서도 출제 설정이 아래에 있어서 그대로 */
+@media (max-width: 600px) and (orientation: portrait) and (not ((hover: hover) and (pointer: fine))) {
+  .rotate-tip:not([hidden]) { display: block; }
+}
 @media (max-width: 600px) and (orientation: portrait) and (max-height: 600px) {
   .desk { padding-top: 10px; gap: 8px; }
   .symbol { font-size: clamp(40px, 12vw, 54px); }

@@ -127,9 +127,9 @@
           </div>
 
           <!-- 폰 세로 안내 (건반 바로 위, 2026-11-25 사용자 요청 — 다른 연습 페이지와 같게): 출제 설정이 아래에 있다는 알약(누르면 스크롤, ×는 닫기)과
-               가로로 돌리기 권유(×로 닫음). 보이는 곳은 practice.css 폰 세로 미디어 쿼리, 언제 숨길지는 pages/ear.js -->
+               가로로 돌리기 권유([닫기] — 랜덤 코드 연습과 같은 모양). 보이는 곳은 practice.css 폰 세로 미디어 쿼리, 언제 숨길지는 pages/ear.js -->
           <div class="scroll-tip" id="earScrollTip" hidden><button class="scroll-tip-go" id="earScrollTipGo" type="button"><span class="scroll-tip-arrow" aria-hidden="true">▼</span><span data-i18n="earScrollTip">아래로 내리면 출제 설정을 바꿀 수 있어요</span></button><button class="scroll-tip-x" id="earScrollTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></div>
-          <p class="rotate-tip" id="earRotateTip" hidden><span data-i18n="rotateTip">폰을 가로로 돌리면 건반이 커져요.</span><button class="ear-tip-x" id="earRotateTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></p>
+          <p class="rotate-tip" id="earRotateTip" hidden><span data-i18n="rotateTip">폰을 가로로 돌리면 건반이 커져요.</span> <button class="linkbtn" id="earRotateTipX" type="button" data-i18n="close">닫기</button></p>
 
           <!-- 건반 오른쪽 위: MIDI 상태 글씨 (출제 설정의 "MIDI 입력 허용" 옆과 같은 내용, 컴퓨터만 — pages/ear.js renderMidi) -->
           <div class="ear-midi"><small class="midi-status" id="midiStatusKb"></small></div>
@@ -154,21 +154,22 @@
             <button class="ear-replay" id="btnCReplay" type="button" hidden aria-label="문제 다시 듣기" data-i18n-aria="earReplay" data-i18n-title="earReplay" title="문제 다시 듣기">
               <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
             </button>
-            <div class="ear-play-side">
-              <button class="btn" id="btnCMine" type="button" hidden></button>
-            </div>
+            <div class="ear-play-side"></div>
           </div>
           <div class="ear-c-staff" id="earCStaff" role="img" aria-label="큰보표 — 정답 화음" data-i18n-aria="earCStaffAria"></div>
+          <!-- 맞음/틀림: 큰보표와 입력칸 사이 (2026-11-25 사용자 요청 — 컴퓨터·폰 세로 같은 자리) -->
+          <div class="feedback" id="earCFeedback" role="status" aria-live="polite"></div>
           <!-- 답: 근음 글자(문제에 보여 줌, 못 지움) + 코드 종류 입력칸(naming/keypad.js — 근음 글자 키 없음) -->
           <div class="answer">
             <div class="answer-row">
               <span class="ear-c-root" id="earCRoot" aria-hidden="true"></span>
               <div class="answer-input" id="answer" role="textbox" aria-readonly="true" aria-label="코드 종류" data-i18n-aria="earCAnswerAria"></div>
+              <!-- 내 답 듣기: 틀리면 입력칸이 조금 줄어들며 ⌫ 왼쪽에 나타남 (2026-11-25 사용자 요청 — 평소엔 자리를 비워 두지 않음). 지금 입력칸의 코드를 들려줌(ear/chord1.js playMine) -->
+              <button class="pad-key ear-c-mine" id="btnCMine" type="button" hidden aria-label="내 답 듣기" data-i18n-aria="earCMine" title="내 답 듣기" data-i18n-title="earCMine"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
               <button class="pad-key back" id="padBack" type="button" aria-label="한 칸 지우기" data-i18n-aria="backAria">⌫</button>
             </div>
             <div class="keypad" id="keypad"></div>
           </div>
-          <div class="feedback" id="earCFeedback" role="status" aria-live="polite"></div>
           <div class="keyboard wide ear-c-kb" id="earCKeyboard" role="img" aria-label="피아노 건반 (C3–E5)" data-i18n-aria="earCKbAria"></div>
           <div class="ear-actions three">
             <button class="btn primary" id="btnCSubmit" type="button" disabled data-i18n="check">제출</button>

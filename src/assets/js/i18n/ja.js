@@ -510,7 +510,7 @@ export default {
   earC1Ask: "聞こえたコードの種類を根音のあとに書いてください。",
   earC1AskMaj: "聞こえたコードの種類を根音のあとに書いてください。メジャー三和音ならそのまま［提出］。",
   earCArp: "▶ 分散して聞く",
-  earCMine: "▶ 自分の答えを聞く（{name}）",
+  earCMine: "自分の答えを聞く",
   earCWrong: "違います（{name}）。もう一度聞いてみましょう。",
   earCRootTyped: "根音はもう書いてあります — コードの種類だけ書いてください。",
   earCTriads: "三和音",

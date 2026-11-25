@@ -217,7 +217,7 @@
 /* ---------- 코드 ① 코드 종류 (ear/chord1.js — 2026-11-25) ----------
    입력칸·키패드·넓은 건반은 코드 추론하기(naming.css) 모양 그대로, 여기는 이 단계에만 있는 것 */
 .ear-c-staff { display: flex; justify-content: center; }
-.ear-c-staff svg { height: 190px; width: auto; overflow: visible; color: var(--ink); }
+.ear-c-staff svg { height: 173px; width: auto; overflow: visible; color: var(--ink); }
 .ear-c-staff .st-clef.bass { font-size: 34px; }
 .ear-c-staff .st-head.good, .ear-c-staff .st-acc.good { fill: var(--ok); }
 /* 답 칸 앞의 근음 글자 (문제에 보여 줌 — 입력칸과 같은 글꼴·크기) */
@@ -230,9 +230,17 @@
 .keypad.no-root .pad-key[data-k="♯"], .keypad.no-root .pad-key[data-k="♭"] { font-family: "Noto Music", "Apple Symbols", "Segoe UI Symbol", var(--font-body); font-size: 22px; font-weight: 400; }
 .ear-c-kb .key .lbl { font-size: 10px; }
 /* [제출] [정답 확인] [다음 문제] 세 칸 */
+/* 내 답 듣기 ▶: 입력칸과 ⌫ 사이. 틀리면 나타나며 입력칸이 그만큼 줄어듦(폭이 0에서 늘어나는 짧은 움직임) */
+.pad-key.ear-c-mine { flex: none; width: 48px; display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--accent); }
+.pad-key.ear-c-mine[hidden] { display: none; }
+.pad-key.ear-c-mine svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
+.pad-key.ear-c-mine:not([hidden]) { animation: ear-c-mine-in .22s ease-out; }
+@keyframes ear-c-mine-in { from { width: 0; opacity: 0; border-width: 0; } }
+@media (prefers-reduced-motion: reduce) { .pad-key.ear-c-mine:not([hidden]) { animation: none; } }
 .ear-actions.three { grid-template-columns: 1fr 1fr 1fr; }
 .ear-chord .feedback:empty { display: flex; visibility: hidden; }
 .ear-chord .feedback { min-height: calc(13px * 1.45 + 12px); }
+.ear-chord .ear-hint { text-align: center; }   /* 안내 문구 가운데 (2026-11-25 사용자 요청) */
 
 /* ---------- 출제 설정: 조성 + (③만) 오른쪽에 BPM — 한 줄, 좁으면 다음 줄로 (2026-11-25 사용자 요청) ---------- */
 .ear-key-bpm { display: flex; flex-wrap: wrap; gap: 16px 14px; align-items: flex-start; }
@@ -252,7 +260,6 @@
    알약은 랜덤 코드 연습처럼 떠 있지 않고 제자리에 (위에 음표·쉼표 버튼이 있어서 가리지 않게) */
 .ear-panel .scroll-tip { position: static; margin: 0 auto; }
 .ear-panel .rotate-tip { margin: -2px 0 -4px; }
-.ear-tip-x { border: none; background: none; color: inherit; font-size: 15px; line-height: 1; padding: 2px 6px; margin-left: 2px; cursor: pointer; }
 
 /* ---------- 폰·태블릿 (마우스 없음): 오선지·악보를 눌러 고르기가 없어서 임시표 버튼도 없음 (2026-11-25 사용자 요청) ---------- */
 @media not all and (hover: hover) and (pointer: fine) {
@@ -380,7 +387,80 @@
   .ear-kb { height: 88px; }
 }
 
-/* 코드 ①: 폰 가로 격자(위 단음 배치)는 쓰지 않고 위에서 아래로 쌓음 — 폰 배치는 따로 맞출 것 (2026-11-25 — 1차) */
+/* ---------- 코드 ①: 폰 세로 (2026-11-25 레이아웃 검사) ----------
+   재생 버튼들을 큰보표 왼쪽에 세로로 (위아래로 쌓으면 한 줄을 더 차지해서). 큰보표·입력칸·키패드도 줄임
+   ┌ 안내 문구 ───────────┐
+   │   ▶ / 펼쳐 │ 큰보표    │
+   │ 맞음·틀림 (컴퓨터와 같은 자리 — 비어도 자리는 남김) │
+   │ 근음 입력칸 ⌫ / 키패드 │
+   │ (안내 알약·가로 권유) / 건반 │
+   └ [제출][정답][다음] ────┘ */
+@media (max-width: 600px) and (orientation: portrait) {
+  .ear-panel.ear-chord { display: grid; grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr); column-gap: 18px; }
+  .ear-chord > * { grid-column: 1 / -1; }
+  .ear-chord .ear-hint { grid-row: 1; }
+  .ear-chord .feedback { grid-row: 3; min-height: calc(13px * 1.45 + 6px); padding-block: 3px; }
+  .ear-chord .ear-play-row { grid-column: 2; grid-row: 2; align-self: center;
+    grid-template-columns: auto; grid-template-areas: "main" "left" "right"; justify-items: center; gap: 8px; }
+  .ear-chord .ear-play-row > .ear-play-side:first-child { grid-area: left; justify-self: center; }
+  .ear-chord .ear-play-row > .ear-play-side:last-child { grid-area: right; justify-self: center; }
+  .ear-chord .ear-play-row > .ear-start, .ear-chord .ear-play-row > .ear-replay { grid-area: main; }
+  .ear-chord .ear-play-side .btn { padding: 6px 10px; font-size: 13px; }
+  .ear-c-staff { grid-column: 3; grid-row: 2; }
+  .ear-chord .answer { grid-row: 4; }
+  .ear-chord .scroll-tip { grid-row: 5; }
+  .ear-chord .rotate-tip { grid-row: 6; }
+  .ear-c-kb { grid-row: 7; }
+  .ear-chord .ear-actions { grid-row: 8; }
+  .ear-chord .pad-key[data-k="♯"], .ear-chord .pad-key[data-k="♭"] { font-size: 19px; line-height: 1; }
+}
+@media (max-width: 600px) and (orientation: portrait) and (max-height: 800px) {
+  .ear-c-staff svg { height: 150px; }
+  .ear-chord .answer-input { min-height: 42px; font-size: 22px; }
+  .ear-chord .pad-key { min-height: 34px; }
+  .ear-chord .keypad, .ear-chord .pad-row { gap: 5px; }
+}
+@media (max-width: 600px) and (orientation: portrait) and (max-height: 560px) {
+  .ear-c-staff svg { height: 100px; }
+  .ear-chord .answer-input { min-height: 34px; }
+  .ear-chord .pad-key { min-height: 29px; }
+  .keyboard.ear-c-kb { height: 76px; }
+}
+
+/* ---------- 코드 ①: 폰 가로 (높이 520px 이하, 2026-11-25) ----------
+   ┌ 조·악기 ─────────────────────────────────────────────┐
+   │      안내 문구 / 맞음·틀림 (한 줄 — 맞음·틀림이 나오면 안내는 가림)  │
+   │ (빈) │ ▶ 펼쳐·내 답 │ 큰보표 │ 근음+입력칸 / 키패드 │ (빈) │ 제출·정답·다음 │
+   │ 건반 (폭 전체)                                            │
+   └───────────────────────────────────────────────────────┘ */
 @media (orientation: landscape) and (max-height: 520px) {
-  .ear-panel.ear-chord { display: flex; flex-direction: column; }
+  .ear-panel.ear-chord { grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 380px) minmax(0, 1fr) auto; }
+  .ear-chord .ear-hint, .ear-chord .feedback { grid-column: 2 / 6; grid-row: 1; }
+  .ear-chord .ear-hint { contain: none; white-space: normal; height: auto; min-height: 19px; line-height: 19px; }
+  .ear-chord:has(.feedback:not(:empty)) .ear-hint { visibility: hidden; }
+  .ear-chord .feedback { min-height: 0; padding-block: 2px; align-self: center; }
+  .ear-chord .feedback:empty { display: none; }
+  .ear-chord .ear-play-row { grid-column: 2; grid-row: 2; grid-row-end: 3; }
+  .ear-c-staff { grid-column: 3; grid-row: 2; }
+  .ear-c-staff svg { height: 168px; }
+  .ear-chord .answer { grid-column: 4; grid-row: 2; gap: 5px; }
+  .ear-chord .answer-input { min-height: 38px; font-size: 20px; }
+  .ear-chord .ear-c-root { font-size: 22px; min-width: 32px; }
+  .ear-chord .pad-key.back, .pad-key.ear-c-mine { width: 44px; }
+  .ear-chord .pad-key { min-height: 32px; font-size: 14px; }
+  .ear-chord .keypad, .ear-chord .pad-row { gap: 4px; }
+  .ear-chord .ear-actions { grid-column: 6; grid-row: 2; grid-template-columns: auto; align-self: center; }
+  .ear-chord .pad-key[data-k="♯"], .ear-chord .pad-key[data-k="♭"] { font-size: 18px; line-height: 1; }
+  .keyboard.ear-c-kb { grid-column: 1 / -1; grid-row: 3; height: 100px; }
+}
+/* 높이 341~380px(큰 폰 + 주소창): 큰보표·건반을 조금 줄임 */
+@media (orientation: landscape) and (max-height: 380px) {
+  .ear-c-staff svg { height: 150px; }
+  .keyboard.ear-c-kb { height: 88px; }
+}
+@media (orientation: landscape) and (max-height: 340px) {
+  .ear-c-staff svg { height: 132px; }
+  .ear-chord .answer-input { min-height: 32px; font-size: 18px; }
+  .ear-chord .pad-key { min-height: 28px; }
+  .keyboard.ear-c-kb { height: 74px; }
 }

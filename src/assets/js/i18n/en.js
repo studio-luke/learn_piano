@@ -510,7 +510,7 @@ export default {
   earC1Ask: "Write the quality of the chord you hear after the root.",
   earC1AskMaj: "Write the quality of the chord you hear after the root. For a major triad, just press [Submit].",
   earCArp: "▶ Arpeggiate",
-  earCMine: "▶ Hear my answer ({name})",
+  earCMine: "Hear my answer",
   earCWrong: "Not quite ({name}). Listen again.",
   earCRootTyped: "The root is already written — type only the quality.",
   earCTriads: "Triads",

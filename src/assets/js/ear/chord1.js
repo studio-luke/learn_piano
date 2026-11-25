@@ -68,6 +68,9 @@ function renderSettings() {
   $("earCInv").checked = S.inv;
 }
 
+// 읽을 수 없는 답의 안내 (judgeChord error → 문구 키) — 제출과 내 답 듣기가 같이 씀
+const ERR_KEY = { root: "earCRootTyped", noParen: "errNoParen", unknown: "errUnknown" };
+
 // ---------- 소리 ----------
 const notesOf = q => [{ m: q.bass.midi, at: 0, dur: DUR, vel: BASS_VEL }, ...q.upper.map(n => ({ m: n.midi, at: 0, dur: DUR, vel: VEL }))];
 function playChord(bass, upper) {
@@ -83,9 +86,15 @@ function playArp() {
   const total = ARP_STEP * (ms.length - 1) + DUR;
   Ins.play(ctx.inst(), ms.map((m, i) => ({ m, at: i * ARP_STEP, dur: total - i * ARP_STEP, vel: i ? VEL : BASS_VEL })));
 }
+/**
+ * 내 답 듣기: 지금 입력칸의 글자를 읽어 들려줌 — 제출하지 않고 고친 글자도 바로 (2026-11-25 사용자 요청: 한 번 틀리면 이미 오답이라
+ * 그 뒤로 쉬워져도 괜찮음). 읽을 수 없는 글자면 2초 알림만
+ */
 function playMine() {
   if (!C.q || !C.wrong) return;
-  const v = voiceLike(C.wrong.chord, C.q);
+  const r = judgeChord(answerText(), C.q);
+  if (r.error) { toast(t(ERR_KEY[r.error]), 2000); return; }
+  const v = voiceLike(r.chord, C.q);
   playChord(v.bass, v.upper);
 }
 
@@ -103,7 +112,6 @@ function render() {
   // 틀린 뒤: 펼쳐 듣기·내 답 듣기. 끝난 뒤(틀린 답이 있었으면): 정답 듣기·내 답 듣기
   $("btnCArp").hidden = !started || (!C.wrong && !done);
   $("btnCMine").hidden = !C.wrong;
-  $("btnCMine").innerHTML = C.wrong ? esc(t("earCMine", { name: C.wrong.name })) : "";
   $("btnCSubmit").disabled = C.phase !== "ask";
   $("btnCReveal").disabled = C.phase !== "ask";
   $("btnCNext").disabled = !done;
@@ -129,14 +137,14 @@ function submit() {
   if (C.phase !== "ask") return;
   const r = judgeChord(answerText(), C.q);
   if (r.error) {
-    const key = { root: "earCRootTyped", noParen: "errNoParen", unknown: "errUnknown" }[r.error];
-    setFeedback("info", esc(t(key)));
+    setFeedback("info", esc(t(ERR_KEY[r.error])));
     return;   // 시도로 치지 않음
   }
   if (r.correct) {
     C.phase = "done"; C.solved = true;
     setFeedback("ok", t("earRight", { name: esc(C.q.name) }));
     render();
+    playQuestion();   // 맞히면 문제 소리를 한 번 더 (▶ 다시 듣기와 같은 소리, 2026-11-25 사용자 요청)
     ctx.revealNextButton();
     return;
   }
@@ -150,6 +158,7 @@ function reveal() {
   C.phase = "done";
   setFeedback("info", t("earReveal", { name: esc(C.q.name) }));
   render();
+  playQuestion();   // 정답 확인도 문제 소리를 한 번 더
   ctx.revealNextButton();
 }
 
@@ -207,6 +216,7 @@ export function initChord1(c) {
   $("btnCStart").onclick = start;
   $("btnCReplay").onclick = playQuestion;
   $("btnCArp").onclick = playArp;
+  $("btnCMine").addEventListener("pointerdown", e => e.preventDefault());   // 눌러도 입력칸의 커서·선택이 그대로 (⌫와 같음)
   $("btnCMine").onclick = playMine;
   $("btnCSubmit").onclick = submit;
   $("btnCReveal").onclick = reveal;

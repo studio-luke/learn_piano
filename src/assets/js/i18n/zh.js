@@ -510,7 +510,7 @@ export default {
   earC1Ask: "请在根音后写出听到的和弦类型。",
   earC1AskMaj: "请在根音后写出听到的和弦类型。大三和弦直接按［提交］。",
   earCArp: "▶ 分解听",
-  earCMine: "▶ 听我的答案（{name}）",
+  earCMine: "听我的答案",
   earCWrong: "不对（{name}）。再听一遍。",
   earCRootTyped: "根音已经写好了 — 只需写和弦类型。",
   earCTriads: "三和弦",

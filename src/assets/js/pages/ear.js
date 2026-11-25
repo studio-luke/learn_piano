@@ -89,6 +89,9 @@ function renderLevels() {
   $("sheetChord").hidden = mode !== "chord1";
   document.querySelector(".ear-layout").classList.toggle("no-sheet", $("sheetNote").hidden && $("sheetChord").hidden);
   setChord1Active(mode === "chord1");
+  // 폰 세로 안내(알약·가로 권유)는 보이는 패널의 건반 바로 위로 옮김 — 요소는 하나라 기억(닫음·봄)도 하나
+  const kb = mode === "chord1" ? $("earCKeyboard") : $("keyboard");
+  kb.before($("earScrollTip"), $("earRotateTip"));
 }
 
 function goMode(m) {
@@ -1050,13 +1053,14 @@ $("earRotateTip").hidden = store.get("earRotateTip") === "closed";
 $("earRotateTipX").onclick = () => { $("earRotateTip").hidden = true; store.set("earRotateTip", "closed"); };
 {
   const tip = $("earScrollTip");
-  const head = document.querySelector("#sheetNote h2");
+  const heads = [...document.querySelectorAll("#sheetNote h2, #sheetChord h2")];   // 단음·코드 출제 설정 — 보이는 쪽에 닿으면 끝
+  const head = heads[0];
   const done = () => { tip.hidden = true; store.set("earScrollTip", "seen"); seen.disconnect(); };
   const seen = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) done(); }, { rootMargin: "0px 0px -35% 0px" });
   if (store.get("earScrollTip") !== "seen" && head && "IntersectionObserver" in window) {
     tip.hidden = false;
-    seen.observe(head);
-    $("earScrollTipGo").onclick = () => { done(); head.closest(".sheet").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    heads.forEach(h => seen.observe(h));   // 숨겨진 쪽은 화면에 들어오지 않아서 셈에 안 들어감
+    $("earScrollTipGo").onclick = () => { done(); document.querySelector(".sheet:not([hidden])")?.scrollIntoView({ behavior: "smooth", block: "start" }); };
     $("earScrollTipX").onclick = done;
   }
 }

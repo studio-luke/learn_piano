@@ -13,6 +13,8 @@ const W = 130;                   // 그림 폭 (naming/staff.js와 같음 — �
 const GAP = 94;                  // 두 보표의 맨 윗줄 사이 — 위 보표 맨 아랫줄 아래 54(E3 머리까지 약 45)
 const H = TOP + GAP + 4 * SP + 30;   // 아래 보표 밑에 덧줄 하나(E2) 자리
 const X0 = 8;                    // 오선 시작 (왼쪽에 보표를 묶는 세로줄)
+const VB_TOP = 18;               // 그림 위쪽 빈 곳을 잘라 냄 (음은 D5까지라 맨 윗줄 위 덧줄이 없음 — 높은음자리표 머리 자리만 남김).
+                                 // 폰에서 세로 공간을 아끼려고 (2026-11-25), 음자리표 글자가 조금 넘쳐도 svg overflow: visible
 
 // 베이스 음 → 12칸 위의 가짜 음 (낮은음자리표 자리를 높은음자리표 계산으로)
 function lift(n) {
@@ -46,7 +48,7 @@ export function drawGrand(el, upper = [], bass = null, cls = "") {
     for (const h of heads) s += `<path class="st-head ${cls}" fill-rule="evenodd" d="${headPath(h.x, h.y + dy)}"/>`;
     return s;
   };
-  let svg = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
+  let svg = `<svg viewBox="0 ${VB_TOP} ${W} ${H - VB_TOP}" aria-hidden="true">`;
   svg += `<line class="st-line" x1="${X0}" x2="${X0}" y1="${TOP}" y2="${TOP + GAP + 4 * SP}"/>`;   // 두 보표를 잇는 세로줄
   svg += staff(TOP, "g") + staff(TOP + GAP, "f");
   svg += notesSvg(upper, 0);
