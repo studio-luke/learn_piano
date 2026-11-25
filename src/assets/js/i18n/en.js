@@ -561,6 +561,7 @@ export default {
   earN2Ask: "Pick the melody's last note on the keyboard or the staff.",
   earN2Ask2: "Pick the two hidden notes in order on the keyboard or the staff.",
   earPlayingMelody: "Playing the melody.",
+  earScrollTip: "Scroll down to change the question settings",
   earN1Ask: "Pick the note you hear on the keyboard or the staff.",
   earStaffAria: "Staff — tap to pick a note",
   earAccLabel: "Accidental:",

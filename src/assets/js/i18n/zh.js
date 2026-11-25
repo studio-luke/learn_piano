@@ -561,6 +561,7 @@ export default {
   earN2Ask: "在键盘或五线谱上选出旋律的最后一个音。",
   earN2Ask2: "按顺序在键盘或五线谱上选出隐藏的两个音。",
   earPlayingMelody: "正在播放旋律。",
+  earScrollTip: "向下滚动即可更改出题设置",
   earN1Ask: "在键盘或五线谱上选出听到的音。",
   earStaffAria: "五线谱 — 点击选择音",
   earAccLabel: "临时记号:",

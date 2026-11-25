@@ -385,6 +385,14 @@ const canNext = () => N.phase === "done" || (debugMode() && N.phase !== "idle");
   Account.on("change", showDebug); showDebug();
 }
 const scorePerLine = () => (window.innerWidth < 600 ? 1 : 2);   // 폰은 한 줄에 1마디
+// 화면을 돌리면(세로 ↔ 가로) 한 줄의 마디 수가 바뀔 수 있음 → 그때 바로 다시 그림
+// (예전에는 다음 입력 때 그려져서, 세로에서 만든 두 줄 악보가 가로로 돌려도 한동안 두 줄로 남았음 — 2026-11-25 사용자 제보)
+let lastPerLine = scorePerLine();
+window.addEventListener("resize", () => {
+  if (scorePerLine() === lastPerLine) return;
+  lastPerLine = scorePerLine();
+  drawScore();
+});
 /** 흐린 음표·입력에 쓸 길이: 음높이만이면 정답 길이, 아니면 고른 길이(+점 — 그릴 수 없는 점2분·점16분은 가까운 모양으로) */
 function ghostDur() {
   if (N.write === "pitch") return N.dict[N.dAns].dur;
@@ -671,6 +679,28 @@ function renderNoteButtons() {
   // ③은 문제를 푸는 동안 안내 문구를 비움 — 폰에서 세로 공간이 모자라서 (2026-11-25 사용자 요청, 줄 높이는 남김)
   $("earHintText").textContent = refText || (!started ? t(lv + "Intro") : dictation() ? "" : t(ask));
   $("btnSkip").hidden = !refSkip;
+  setHintWidth(lv);
+}
+
+/**
+ * 폰 가로: 안내 문구 칸의 최소 폭 = 이 단계에서 문제를 푸는 동안 나올 수 있는 문구 중 가장 긴 것 (CSS 변수 --hint-w, ear.css).
+ * 문구가 바뀔 때마다 가운데 칸 폭이 달라져 재생 버튼이 좌우로 움직이던 것을 막음 (2026-11-25 사용자 요청).
+ * 후보: 단계의 질문 문구(③은 없음) · "멜로디를 재생 중이에요." · 스케일·첫 음 재생 문구 + [생략하기]. 글자 폭은 canvas로 잼
+ */
+// (상태는 함수 자체에 둠 — renderNoteButtons가 이 파일의 let 선언보다 먼저 불릴 수 있어서)
+function setHintWidth(lv) {
+  const key = lv + "|" + keyLabel() + "|" + t("earPlayingMelody");
+  if (key === setHintWidth.key) return;
+  const hint = $("earHint"), skip = $("btnSkip"), cs = getComputedStyle(hint), ss = getComputedStyle(skip);
+  if (!cs.fontSize) return;
+  setHintWidth.key = key;
+  const ctx = (setHintWidth.ctx ||= document.createElement("canvas").getContext("2d"));
+  const w = (text, st) => { ctx.font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`; return ctx.measureText(text).width; };
+  const skipW = w(" ", cs) + w(t("earSkip"), ss) + 4;   // 띄어쓰기 + [생략하기](왼쪽 여백 4px)
+  const asks = lv === "earN3" ? [] : lv === "earN2" ? ["earN2Ask", "earN2Ask2"] : ["earN1Ask"];
+  const plain = [...asks.map(k => t(k)), t("earPlayingMelody")].map(s => w(s, cs));
+  const withSkip = ["earPlayingScale", "earPlayingTonic"].map(k => w(t(k, { key: keyLabel() }), cs) + skipW);
+  $("panelNote").style.setProperty("--hint-w", Math.ceil(Math.max(...plain, ...withSkip)) + 2 + "px");
 }
 
 /**
@@ -819,12 +849,9 @@ for (const b of document.querySelectorAll(".ear-acc")) b.onclick = () => setAcc(
 
 $("btnStart").onclick = () => {
   newQuestion(true);
-  // 폰: 시작하면 카드 위쪽이 화면 맨 위에 닿게 부드럽게 내림 — 갈래·단계 막대는 위로 밀려나고 건반·버튼이 한 화면에
-  // 들어오게 (2026-11-24 사용자 요청). 컴퓨터는 화면이 넉넉해서 그대로
-  if (!IS_PC) {
-    const top = document.querySelector(".ear-card").getBoundingClientRect().top + window.scrollY - 8;
-    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-  }
+  // 폰: 시작하면 카드 위쪽이 화면 맨 위에 닿게 — 갈래·단계 막대는 위로 밀려나고 건반·버튼이 한 화면에 들어오게
+  // (2026-11-24 사용자 요청). 컴퓨터는 화면이 넉넉해서 그대로
+  if (!IS_PC) cardTopIntoView();
 };
 // 큰 ▶: 누르면 다시 듣기 + ■(중지)로 바뀜, ■를 누르면 멈춤. 다 들으면 ▶로 돌아옴 (2026-11-24 사용자 요청)
 $("btnReplay").onclick = () => {
@@ -875,11 +902,17 @@ function revealNextButton() {
     if (over > 0) window.scrollBy({ top: over, behavior: "smooth" });
   });
 }
-/** 다음 문제로 넘어갔을 때 카드 위 경계선이 화면 위로 잘려 있으면 카드 위가 화면 맨 위에 닿게 올림 */
+/**
+ * [시작]·다음 문제 뒤 카드 위치 맞추기.
+ *   - 폰: 지금 어디에 있든 카드 위 경계선이 화면 맨 위에 딱 붙게 (2026-11-25 사용자 요청 — 화면이 빽빽해서 카드가 조금만
+ *     내려가 있어도 건반 아랫부분이 가려짐)
+ *   - 컴퓨터: 카드 위 경계선이 화면 위로 잘려 있을 때만 조금 여유(8px)를 두고 올림
+ */
 function cardTopIntoView() {
   requestAnimationFrame(() => {
     const top = document.querySelector(".ear-card").getBoundingClientRect().top;
-    if (top < 0) window.scrollTo({ top: Math.max(0, top + window.scrollY - 8), behavior: "smooth" });
+    if (!IS_PC) { if (Math.abs(top) > 1) window.scrollTo({ top: Math.max(0, top + window.scrollY), behavior: "smooth" }); }
+    else if (top < 0) window.scrollTo({ top: Math.max(0, top + window.scrollY - 8), behavior: "smooth" });
   });
 }
 
@@ -971,3 +1004,25 @@ function renderMidi() {
 setModeInUrl(mode);   // 주소에 mode가 없거나 모르는 값이면 지금 단계(처음엔 note1)로 고쳐 둠 (코드 초견과 같은 방식)
 renderInst(); renderSettings(); renderLevels(); resetNote(); renderMidi(); renderDurs();
 onLangChange(() => { renderInst(); renderLevels(); renderNoteButtons(); renderMidi(); });
+// 웹 글꼴을 다 받은 뒤 안내 문구 칸 폭을 다시 잼 (받기 전에는 대체 글꼴 폭이라서)
+if (document.fonts) document.fonts.ready.then(() => { setHintWidth.key = ""; renderNoteButtons(); });
+
+// ---------- 폰 세로 안내 (2026-11-25 사용자 요청 — 다른 연습 페이지와 같게, 건반 바로 위) ----------
+// 보이는 곳(폰 세로)은 CSS(practice.css)가 정함. 랜덤 코드 연습과 따로 기억: chordoven.earRotateTip · chordoven.earScrollTip
+// - "폰을 가로로 돌리면 건반이 커져요." + ×: 닫으면 이 기기에서 다시 안 나옴
+// - "▼ 아래로 내리면 출제 설정을 바꿀 수 있어요" 알약: 누르면 출제 설정으로 스크롤. 출제 설정 제목이 화면 위쪽 65% 안에
+//   한 번 들어오거나 알약·×를 누르면 다시 안 나옴 (넓은 화면은 처음부터 보여서 곧바로 끝남)
+$("earRotateTip").hidden = store.get("earRotateTip") === "closed";
+$("earRotateTipX").onclick = () => { $("earRotateTip").hidden = true; store.set("earRotateTip", "closed"); };
+{
+  const tip = $("earScrollTip");
+  const head = document.querySelector("#sheetNote h2");
+  const done = () => { tip.hidden = true; store.set("earScrollTip", "seen"); seen.disconnect(); };
+  const seen = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) done(); }, { rootMargin: "0px 0px -35% 0px" });
+  if (store.get("earScrollTip") !== "seen" && head && "IntersectionObserver" in window) {
+    tip.hidden = false;
+    seen.observe(head);
+    $("earScrollTipGo").onclick = () => { done(); head.closest(".sheet").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    $("earScrollTipX").onclick = done;
+  }
+}

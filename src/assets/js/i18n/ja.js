@@ -561,6 +561,7 @@ export default {
   earN2Ask: "メロディの最後の音を鍵盤か楽譜で選んでください。",
   earN2Ask2: "隠れた2つの音を順番に鍵盤か楽譜で選んでください。",
   earPlayingMelody: "メロディを再生中です。",
+  earScrollTip: "下にスクロールすると出題設定を変えられます",
   earN1Ask: "聞こえた音を鍵盤か楽譜で選んでください。",
   earStaffAria: "五線譜 — 押して音を選ぶ",
   earAccLabel: "臨時記号:",

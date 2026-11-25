@@ -562,6 +562,7 @@ export default {
   earN2Ask: "멜로디의 마지막 음을 건반이나 악보에서 골라 보세요.",
   earN2Ask2: "숨은 두 음을 순서대로 건반이나 악보에서 골라 보세요.",
   earPlayingMelody: "멜로디를 재생 중이에요.",
+  earScrollTip: "아래로 내리면 출제 설정을 바꿀 수 있어요",
   earN1Ask: "들리는 음을 건반이나 악보에서 골라 보세요.",
   earStaffAria: "오선지 — 눌러서 음 고르기",
   earAccLabel: "임시표:",

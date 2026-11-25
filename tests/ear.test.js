@@ -457,3 +457,58 @@ test("ear level 3: no beat of rest right before or after a half note (it would s
     });
   }
 });
+
+test("ear level 3 harmony: modal chords take their notes from the borrowed scale (C major Fm7 · A♭M7 → no B♮ except a chromatic semitone step)", () => {
+  const PER = { high: 1, mid: 2, low: 4 };
+  let modal = 0;
+  for (const chance of ["high", "mid", "low"]) for (let i = 0; i < 500; i++) {
+    const d = makeDictation({ root: "C", minor: false }, { chromatic: true }, { bars: 2, min: 2, chance });
+    if (!d.chords) continue;
+    const ns = d.filter(x => !x.rest), slot = 16 / PER[chance];
+    ns.forEach((t, j) => {
+      const c = d.chords[Math.min(d.chords.length - 1, Math.floor(t.pos / slot))];
+      if (!c.src) return;
+      modal++;
+      if (t.note.l !== 6 || t.note.a !== 0) return;
+      // 남은 B♮는 조 밖의 반음 경과음·보조음뿐 (앞뒤가 반음)
+      assert.ok(Math.abs(ns[j - 1].note.midi - t.note.midi) === 1 && Math.abs(ns[j + 1].note.midi - t.note.midi) === 1, c.name);
+    });
+  }
+  assert.ok(modal > 500, String(modal));
+});
+
+test("ear level 3 harmony: common interval patterns at high (more) and mid, never at low", () => {
+  const count = chance => {
+    let n = 0;
+    for (let i = 0; i < 400; i++) n += makeDictation({ root: "C", minor: false }, {}, { bars: 2, min: 1, chance }).motifs.filter(m => /^h\d+ [a-zA-Z]/.test(m)).length;
+    return n;
+  };
+  const hi = count("high"), mid = count("mid"), lo = count("low");
+  assert.ok(hi > mid * 1.5 && mid > 0 && lo === 0, JSON.stringify({ hi, mid, lo }));
+  // 화성음 패턴(ctRun)의 음은 모두 화성음(9음 포함)
+  for (let i = 0; i < 400; i++) {
+    const d = makeDictation({ root: "C", minor: false }, {}, { bars: 1, min: 1, chance: "high" });
+    for (const m of d.motifs) {
+      const g = /^h(\d+) ctRun$/.exec(m);
+      if (!g) continue;
+      const c = d.chords[0], ninth = (pcOf(c.root) + 2) % 12;
+      const ns = d.filter(x => !x.rest && Math.floor(x.pos / 8) === g[1] - 1).slice(0, 3);
+      for (const t of ns) assert.ok(c.pcs.has(pcOf(t.note)) || pcOf(t.note) === ninth, `${c.name} ${JSON.stringify(t.note)}`);
+    }
+  }
+});
+
+test("ear level 3 harmony: chromatic passing / neighbour tones — only with chromatic on, off the beat, in and out by semitone, at most 2", () => {
+  const PER = { high: 1, mid: 2, low: 4 };
+  let seen = 0;
+  for (const chance of ["high", "mid", "low"]) for (let i = 0; i < 400; i++) {
+    const off = makeDictation({ root: "C", minor: false }, {}, { bars: 2, min: 1, chance });
+    assert.ok(!off.motifs.some(m => m.startsWith("chrom")));
+    const d = makeDictation({ root: "C", minor: false }, { chromatic: true }, { bars: 2, min: 1, chance });
+    if (!d.chords) continue;
+    const n = d.motifs.filter(m => m.startsWith("chrom")).length;
+    assert.ok(n <= 2);
+    seen += n;
+  }
+  assert.ok(seen > 100, String(seen));
+});

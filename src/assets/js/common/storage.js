@@ -10,6 +10,8 @@
 //   chordoven.improvMidiSound   코드 초견의 "MIDI 건반 입력 시 소리 재생" ("off"면 끔)
 //   chordoven.improvRandom.v1   코드 초견 무작위 코드 모드의 출제 설정 (improv/settings.js)
 //   chordoven.improvScrollTip   코드 초견의 "아래로 내리면…" 안내 (출제 설정을 한 번 봤으면 "seen")
+//   chordoven.earScrollTip      청음 연습의 "아래로 내리면 출제 설정을…" 안내 (출제 설정을 한 번 봤으면 "seen")
+//   chordoven.earRotateTip      청음 연습의 "폰을 가로로 돌리면…" 안내를 닫았는지 (랜덤 코드 연습의 rotateTip과 따로)
 //   chordoven.improvProg.v1     코드 초견 8마디 코드진행 모드의 출제 설정 (improv/prog-settings.js)
 //   chordoven.lastPractice      마지막으로 연 연습 페이지 { route, mode } — 마이페이지 등의 [← 연습으로] (common/layout.js)
 //   chordoven.improvProgScrollTip  코드 초견 8마디 모드의 "아래로 내리면 출제 옵션을…" 안내 ("seen"이면 다시 안 나옴)

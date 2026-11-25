@@ -207,9 +207,72 @@
 .ear-panel .feedback { margin-top: 0; min-height: calc(13px * 1.45 + 12px); }
 .ear-panel .feedback:empty { display: flex; visibility: hidden; }
 
+/* ---------- 폰 세로 안내 (건반 바로 위 — 보이는 조건은 practice.css의 폰 세로 미디어 쿼리) ----------
+   알약은 랜덤 코드 연습처럼 떠 있지 않고 제자리에 (위에 음표·쉼표 버튼이 있어서 가리지 않게) */
+.ear-panel .scroll-tip { position: static; margin: 0 auto; }
+.ear-panel .rotate-tip { margin: -2px 0 -4px; }
+.ear-tip-x { border: none; background: none; color: inherit; font-size: 15px; line-height: 1; padding: 2px 6px; margin-left: 2px; cursor: pointer; }
+
 /* ---------- 폰·태블릿 (마우스 없음): 오선지·악보를 눌러 고르기가 없어서 임시표 버튼도 없음 (2026-11-25 사용자 요청) ---------- */
 @media not all and (hover: hover) and (pointer: fine) {
   .ear-accs { display: none; }
   .ear-staff-wrap:has(> .ear-staff[hidden]) { display: none; }   /* ③: 오선지가 숨겨져 임시표뿐인 줄 → 줄째로 없앰 */
   .ear-staff svg, .ear-score svg { cursor: default; }
+}
+
+/* ---------- 폰 가로 (높이 520px 이하) — 2026-11-25 사용자 수정안: 조·악기 줄은 웹과 같이 카드 맨 위 ----------
+   ┌ 조·악기 ───────────────────────────────────────┐
+   │      │ ▶     │    안내 문구 (Ready)    │      │ [점]     │
+   │ (빈) │ 기준음 │ 악보(오선지)            │ (빈) │ 음표·쉼표 │
+   │      │ 스케일 │ 맞음/틀림 안내           │      │ 정답·다음 │
+   │ 건반 (폭 전체)                                    │
+   └────────────────────────────────────────────────┘
+   - 재생 버튼 + 악보를 한 덩어리로 왼쪽 빈 칸과 오른쪽 빈 칸 사이 가운데에 (2026-11-25 사용자 요청 — 1마디 악보·①②의 오선지일 때
+     재생 버튼이 왼쪽 끝에 붙어 악보와 멀었음). 2마디 악보처럼 넓으면 빈 칸이 0이 됨
+   - 안내 문구는 따로 줄을 만들지 않고 악보 그림 위쪽의 빈 곳에 겹쳐 가운데 정렬 — 한 줄 자리를 늘 비워 둬서 문구가 생겼다
+     사라져도 들썩이지 않음 (악보를 그만큼 위로 당김, 2026-11-25 사용자 요청)
+   - ①·②는 음표·쉼표 버튼이 없어서 오른쪽 칸은 [정답 확인]·[다음 문제]만 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .ear-card { padding: 10px 14px 12px; gap: 6px; }
+  .ear-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, max-content) minmax(0, 1fr) auto;
+    column-gap: 14px; row-gap: 6px; align-items: center; }
+  .ear-panel > * { grid-column: 3; }
+  /* 안내 문구: 악보 칸 맨 위 한 줄 (높이 고정). ③(악보)일 때는 문구 길이가 칸 폭을 바꾸지 않게 폭 계산에서 뺌 */
+  .ear-hint { grid-row: 2; text-align: center; white-space: nowrap; height: 19px; min-height: 0; line-height: 19px; position: relative; z-index: 1; }
+  /* 문구 길이가 칸 폭을 바꾸지 않게 폭 계산에서 빼고, 최소 폭은 나올 수 있는 문구 중 가장 긴 것(--hint-w, pages/ear.js setHintWidth)
+     — 문구가 바뀔 때 재생 버튼이 좌우로 움직이지 않게 (2026-11-25 사용자 요청) */
+  .ear-hint { contain: inline-size; min-width: var(--hint-w, 0px); }
+  /* 시작 전: 긴 소개 문구는 여러 줄로 (아직 악보가 없어서 들썩일 것이 없음) */
+  .ear-panel:has(#btnStart:not([hidden])) .ear-hint { contain: none; white-space: normal; height: auto; line-height: 1.45; }
+  /* 카운트인("Ready" "Start"): 안내 문구 줄의 오른쪽 끝 */
+  .ear-count { grid-row: 2; justify-self: end; align-self: center; z-index: 1; pointer-events: none; font-size: 17px; line-height: 19px; min-height: 0; }
+  .ear-play-row { grid-column: 2; grid-row: 2 / span 3; align-self: center;
+    grid-template-columns: auto; grid-template-areas: "main" "left" "right"; justify-items: center; gap: 8px; }
+  .ear-play-row > .ear-play-side:first-child { grid-area: left; justify-self: center; }
+  .ear-play-row > .ear-play-side:last-child { grid-area: right; justify-self: center; }
+  .ear-play-row > .ear-start, .ear-play-row > .ear-replay { grid-area: main; }
+  .ear-play-side .btn { padding: 6px 10px; font-size: 13px; }
+  .ear-replay { width: 60px; height: 60px; }
+  .ear-replay svg { width: 28px; height: 28px; }
+  .ear-start { padding: 10px 18px; font-size: 15px; }
+  /* 악보·오선지: 그림 위쪽(맨 윗줄 위 약 30px)이 비어 있어서 안내 줄 밑까지 끌어올림 — 높은음자리표 머리는 문구 아래 */
+  .ear-score, .ear-staff-wrap { grid-row: 3; margin-top: -20px; }
+  .ear-panel .feedback { grid-row: 4; }
+  .ear-debug { grid-column: 1 / -1; grid-row: 8; }
+  /* 컴퓨터 창이 낮을 때만: ③의 임시표 줄(오선지는 숨김)은 따로 (폰은 임시표 줄이 없음) */
+  .ear-staff-wrap:has(> .ear-staff[hidden]) { grid-column: 1 / -1; grid-row: 5; margin-top: 0; }
+  /* 음표·쉼표: 4칸 격자, [점]은 첫 줄 맨 오른쪽(16분음표 위), 음표는 둘째 줄 */
+  .ear-durs { grid-column: 5; grid-row: 2 / span 2; align-self: start; gap: 4px; }
+  .ear-dur-row { display: grid; grid-template-columns: repeat(4, 42px); gap: 4px; }
+  .ear-dur-row .ear-dot { grid-column: 4; grid-row: 1; }
+  .ear-dur-row .ear-dur { grid-row: 2; }
+  .ear-dur, .ear-rest, .ear-dot { min-width: 42px; height: 34px; font-size: 19px; }
+  .ear-dot { font-size: 26px; padding-top: 6px; }
+  .ear-actions { grid-column: 5; grid-row: 4; gap: 6px; }
+  .ear-actions .btn { padding: 7px 8px; font-size: 12px; white-space: nowrap; }
+  .ear-midi, .ear-kb { grid-column: 1 / -1; }
+  .ear-midi { grid-row: 6; }
+  .ear-kb { grid-row: 7; height: 112px; }
+  .ear-staff svg { height: 92px; }
+  .ear-score svg { height: calc(var(--score-lines, 1) * 96px); }
 }

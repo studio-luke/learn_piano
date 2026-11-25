@@ -124,6 +124,11 @@
             </div>
           </div>
 
+          <!-- 폰 세로 안내 (건반 바로 위, 2026-11-25 사용자 요청 — 다른 연습 페이지와 같게): 출제 설정이 아래에 있다는 알약(누르면 스크롤, ×는 닫기)과
+               가로로 돌리기 권유(×로 닫음). 보이는 곳은 practice.css 폰 세로 미디어 쿼리, 언제 숨길지는 pages/ear.js -->
+          <div class="scroll-tip" id="earScrollTip" hidden><button class="scroll-tip-go" id="earScrollTipGo" type="button"><span class="scroll-tip-arrow" aria-hidden="true">▼</span><span data-i18n="earScrollTip">아래로 내리면 출제 설정을 바꿀 수 있어요</span></button><button class="scroll-tip-x" id="earScrollTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></div>
+          <p class="rotate-tip" id="earRotateTip" hidden><span data-i18n="rotateTip">폰을 가로로 돌리면 건반이 커져요.</span><button class="ear-tip-x" id="earRotateTipX" type="button" aria-label="닫기" data-i18n-aria="close">×</button></p>
+
           <!-- 건반 오른쪽 위: MIDI 상태 글씨 (출제 설정의 "MIDI 입력 허용" 옆과 같은 내용, 컴퓨터만 — pages/ear.js renderMidi) -->
           <div class="ear-midi"><small class="midi-status" id="midiStatusKb"></small></div>
           <div class="keyboard ear-kb" id="keyboard" role="img" aria-label="피아노 건반 (F3–F5)" data-i18n-aria="earKbAria"></div>
