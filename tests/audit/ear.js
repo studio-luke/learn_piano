@@ -31,7 +31,7 @@ runAudit({
   page: "ear",
   states: Object.keys(STATES),
   setup,
-  async check(page, { state, orient, h }) {
+  async check(page, { orient }) {
     await page.evaluate(() => window.scrollTo(0, document.querySelector(".ear-card").getBoundingClientRect().top + scrollY));
     await page.waitForTimeout(50);
     const m = await page.evaluate(() => {
@@ -42,9 +42,6 @@ runAudit({
       };
     });
     const issues = [];
-    // 알고 있는 예외: 키가 아주 작은 폰 세로(iPhone SE + 주소창, 높이 560px 미만)의 ③ 2마디 — 악보가 두 줄이라 더 줄이면 너무 작아져서
-    // 건반 아래쪽은 스크롤해서 봄 (2026-11-25 사용자 확인). 가로 스크롤 등 다른 문제는 그대로 검사
-    const knownTall = state === "note3-2bar" && orient === "portrait" && h < 560;
     if (m.overflowX > 0) issues.push(`horizontal scroll ${m.overflowX}px`);
     if (m.nextRight > m.vw) issues.push("next button cut on the right");
     if (orient === "landscape") {
@@ -52,7 +49,7 @@ runAudit({
       if (m.next > m.vh) issues.push(`next button below first screen (${Math.round(m.next - m.vh)}px)`);
     } else {
       if (m.next > m.vh + 1) issues.push(`next button below first screen (${Math.round(m.next - m.vh)}px)`);
-      if (m.kb > m.barTop + 1 && !knownTall) issues.push(`bottom bar covers keyboard (${Math.round(m.kb - m.barTop)}px)`);
+      if (m.kb > m.barTop + 1) issues.push(`bottom bar covers keyboard (${Math.round(m.kb - m.barTop)}px)`);
     }
     return issues;
   },

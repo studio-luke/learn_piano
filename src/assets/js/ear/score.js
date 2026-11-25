@@ -18,7 +18,12 @@ import { BAR } from "./rhythm.js";
 import { BAR_W, layoutBar, beamGroups, shownAccidentals } from "./layout.js";
 
 const SP = 10, HALF = SP / 2;
-const LINE_H = 110;          // 한 줄(오선 하나)의 높이
+const LINE_H = 110;          // 한 줄(오선 하나)의 높이 — 맨 윗줄 위 34(기둥·음자리표) + 오선 40 + 아래 36(덧줄 셋, F3까지)
+// 폰(compact — 악보를 눌러 고르기가 없는 기기, 2026-11-25 사용자 요청: 두 번째 줄 아래 빈칸이 커서):
+//   줄 사이 간격 110 → 96 (앞 줄의 아래 덧줄 자리와 다음 줄의 위쪽 자리가 겹치지만, F3 머리 아래 끝 109 < 다음 줄 음자리표 위 끝 약 112)
+//   마지막 줄은 C4(덧줄 하나)까지만 그림 높이에 넣고(92), 그보다 낮은 음(B3~F3)은 그림 밖(맞음/틀림 안내 자리)으로 삐져나와 그림
+const LINE_STEP_COMPACT = 96, LAST_BOTTOM_COMPACT = 92;
+let lineStep = LINE_H;       // 이번에 그리는 악보의 줄 간격 (renderScore가 정함 — yOf가 씀)
 const TOP = 34;              // 한 줄 안에서 맨 윗줄(F5)의 y
 const STEM = 33;             // 기둥 길이
 const BEAM_W = 4.6;          // 빔 두께
@@ -28,8 +33,8 @@ const SIG_X = 40, SIG_W = 9;
 const stepOf = n => n.oct * 7 + n.l;
 
 /** 악보 그림 좌표 y → 줄·칸 번호 (line번째 줄 기준) — 마우스를 올린 높이를 음으로 바꿀 때 (pages/ear.js) */
-export const stepAtY = (y, line) => 38 - Math.round((y - line * LINE_H - TOP) / HALF);
-const yOf = (step, line) => line * LINE_H + TOP + (38 - step) * HALF;
+export const stepAtY = (y, line) => 38 - Math.round((y - line * LINE_H - TOP) / HALF);   // 컴퓨터(compact 아님)에서만 씀
+const yOf = (step, line) => line * lineStep + TOP + (38 - step) * HALF;
 
 /** 비스듬한 타원 (머리 그리기) */
 function ellipse(cx, cy, rx, ry, deg, steps = 24) {
@@ -56,9 +61,11 @@ const REST_PATH = {
  * @param tokens  [{ pos, dur, rest, note?: {l,a,oct}, cls? }] — rhythm.js makeDictation 모양. note가 없는 음표는 가운데 줄(B4)에 (리듬만 보여 줄 때)
  * @param opt     { bars, sig: theory.js signature(), perLine: 한 줄 마디 수, cursor: 입력 자리(문제 처음부터 16분 단위, 없으면 null),
  *                  ghost: 마우스를 올린 자리의 흐린 음표 { pos, dur, step, a? } (없으면 null — a가 없으면 조표대로, 빔 없이 혼자),
- *                  solved: 끝까지 다 맞혔는지 — 오선·마디줄·음자리표·조표·박자표까지 모두 초록으로 }
+ *                  solved: 끝까지 다 맞혔는지 — 오선·마디줄·음자리표·조표·박자표까지 모두 초록으로,
+ *                  compact: 폰 — 줄 간격·마지막 줄 아래 빈칸을 줄임 (위 LINE_STEP_COMPACT) }
  */
-export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2, cursor = null, ghost = null, solved = false } = {}) {
+export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, letters: new Set() }, perLine = 2, cursor = null, ghost = null, solved = false, compact = false } = {}) {
+  lineStep = compact ? LINE_STEP_COMPACT : LINE_H;
   const head = solved ? " good" : "";   // 끝까지 다 맞히면 음자리표·조표·박자표도 초록 (끝난 느낌 — 2026-11-25 사용자 요청)
   const lines = Math.ceil(bars / perLine);
   // 마디별 토큰과 폭
@@ -103,11 +110,12 @@ export function renderScore(el, tokens, { bars = 1, sig = { a: 0, count: 0, lett
       }
     }
     // 오선 (줄 끝까지)
-    for (let i = 0; i < 5; i++) svgBody = `<line class="st-line" x1="0" x2="${x + (last === bars - 1 ? 1.4 : 0)}" y1="${line * LINE_H + TOP + i * SP}" y2="${line * LINE_H + TOP + i * SP}"/>` + svgBody;
+    for (let i = 0; i < 5; i++) svgBody = `<line class="st-line" x1="0" x2="${x + (last === bars - 1 ? 1.4 : 0)}" y1="${line * lineStep + TOP + i * SP}" y2="${line * lineStep + TOP + i * SP}"/>` + svgBody;
     maxW = Math.max(maxW, x + 2);
   }
-  const H = lines * LINE_H;
-  el.style.setProperty("--score-lines", lines);
+  const H = (lines - 1) * lineStep + (compact ? LAST_BOTTOM_COMPACT : LINE_H);
+  el.style.setProperty("--score-lines", H / LINE_H);   // CSS 높이는 "줄 수 × 한 줄 높이" — 줄인 만큼 소수로
+  el.classList.toggle("compact", compact);
   // 끝까지 다 맞히면 오선·마디줄까지 악보 전체를 초록으로 (2026-11-25 사용자 요청 — ear.css .ear-score svg.solved)
   el.innerHTML = `<svg viewBox="0 0 ${maxW} ${H}" aria-hidden="true"${solved ? ' class="solved"' : ""}>${svgBody}</svg>`;
 }

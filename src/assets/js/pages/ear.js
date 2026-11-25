@@ -374,7 +374,7 @@ function drawScore() {
   const ghost = cursor !== null && scoreGhost !== null && !refText && N.write !== "rhythm"
     ? { pos: cursor, dur: ghostDur(), step: scoreGhost, a: acc === "key" ? null : acc } : null;
   const solved = done && N.dAns >= N.dict.length;   // 정답 확인으로 끝난 게 아니라 끝까지 맞힘
-  renderScore($("earScore"), toks, { bars: N.dictBars, sig: signature(key()), perLine, cursor, ghost, solved });
+  renderScore($("earScore"), toks, { bars: N.dictBars, sig: signature(key()), perLine, cursor, ghost, solved, compact: !IS_PC });
 }
 // ---------- 디버그 모드 (관리자만, 기기에 저장 chordoven.earDebug) (2026-11-24 사용자 요청) ----------
 // 켜면: 정답을 글자로 바로 보여 줌(③은 코드 진행도), [다음 문제]·단축키는 문제를 안 끝내도 늘 됨

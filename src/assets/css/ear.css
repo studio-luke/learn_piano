@@ -186,7 +186,10 @@
 .ear-score .st-clef { font-family: "Noto Music", "Bravura Text", "Apple Symbols", "Segoe UI Symbol", serif; font-size: 40px; fill: currentColor; }
 .ear-score .st-time { font-family: var(--font-display); font-size: 22px; font-weight: 700; fill: currentColor; }
 .ear-score .good { fill: var(--ok); stroke: var(--ok); }
-.ear-score svg.solved { color: var(--ok); }   /* 끝까지 다 맞힘: 오선·마디줄 등 currentColor로 그린 것 모두 초록 */
+.ear-score svg.solved { color: var(--ok); }
+/* 폰: 마지막 줄 아래 낮은 음(B3~F3)은 그림 밖으로 삐져나와 그림 (score.js compact) — 맞음/틀림 안내 상자보다 위에 */
+.ear-score.compact { position: relative; z-index: 1; pointer-events: none; }
+.ear-score.compact svg { overflow: visible; }   /* 끝까지 다 맞힘: 오선·마디줄 등 currentColor로 그린 것 모두 초록 */
 .ear-score .bad { fill: var(--warn); stroke: var(--warn); }
 .ear-score .ref { fill: var(--ref); stroke: var(--ref); }
 .ear-score .ghost { fill: var(--muted); stroke: var(--muted); opacity: 0.5; }   /* 마우스를 올린 자리의 흐린 음표 */
@@ -316,6 +319,15 @@
   .ear-kb { height: 88px; }
 }
 
+/* ---------- 폰 세로(좁은 화면): 조 표시와 악기를 한 줄에 — "악기" 글자는 화면에서만 숨김(읽어 주는 기능에는 남김), 간격도 조금 좁힘
+   (2026-11-25 사용자 요청 — 두 줄로 나뉘어 세로 공간을 차지했음). 그래도 넘치는 언어·조 이름이면 예전처럼 다음 줄로 ---------- */
+@media (max-width: 600px) and (orientation: portrait) {
+  .ear-tools { gap: 6px 8px; }
+  .ear-key-row { gap: 4px 8px; }
+  .ear-inst > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .ear-inst select { padding: 5px 6px; }
+}
+
 /* ---------- 폰 세로: [정답 확인]·[다음 문제] 줄을 화면 아래에 붙임 (랜덤 코드 연습 .actions와 같은 방식, 2026-11-25 레이아웃 검사) ----------
    ③ 2마디처럼 악보가 길면 버튼이 화면 밖으로 밀려서. 키가 작은 화면(높이 700px 이하)은 악보 한 줄을 120 → 100px로 */
 @media (max-width: 600px) and (orientation: portrait) {
@@ -327,8 +339,7 @@
   }
 }
 /* 키가 작은 폰 세로(높이 800px 이하 — 주소창이 보이는 대부분의 폰, 360×780 등): 악보·건반·재생 버튼·음표 버튼·여백을 줄여
-   카드 위부터 건반까지가 아래 버튼 줄에 가리지 않게. 560px 이하(iPhone SE + 주소창)는 한 번 더 줄임 —
-   그래도 ③ 2마디는 넘쳐서 스크롤 (tests/audit/ear.js 예외) */
+   카드 위부터 건반까지가 아래 버튼 줄에 가리지 않게. 560px 이하(iPhone SE + 주소창)는 한 번 더 줄임 */
 @media (max-width: 600px) and (orientation: portrait) and (max-height: 800px) {
   .ear-card { padding-top: 10px; gap: 8px; }
   .ear-panel { gap: 6px; }
@@ -345,5 +356,6 @@
   .ear-staff svg { height: 88px; }
   .ear-replay { width: 48px; height: 48px; }
   .ear-replay svg { width: 22px; height: 22px; }
-  .ear-kb { height: 92px; }
+  .ear-panel { gap: 5px; }
+  .ear-kb { height: 88px; }
 }
