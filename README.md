@@ -11,7 +11,7 @@ HTML·CSS·JS(ES 모듈) 파일에 작은 빌드 스크립트 하나(`tools/buil
 npm run dev        # 사이트를 만들고 로컬 서버 → http://localhost:8766 (src/를 고치면 자동으로 다시 만듦 → 새로고침). 연습은 /ko/trainer/chords/
 npm run build      # 사이트 만들기만: src/ → dist/ (Cloudflare도 배포 때 이걸 실행)
 npm test           # 엔진 규칙·번역 키·설정 안전 검사 (설치할 것 없음, Node 18 이상)
-npm run audit      # 폰 화면 레이아웃 검사 (처음 한 번: npm i && npx playwright install chromium)
+npm run audit -- ear   # 그 페이지만 폰 화면 레이아웃 검사 (chords · ear, 처음 한 번: npm i && npx playwright install chromium)
 ```
 
 직접 고치는 건 항상 `src/`예요. `dist/`는 빌드가 매번 새로 만드는 결과물이라 고치지 않고, git에도 올리지 않아요(main에 push하면 Cloudflare가 직접 만들어 배포).
@@ -24,7 +24,7 @@ npm run audit      # 폰 화면 레이아웃 검사 (처음 한 번: npm i && np
 | `/ko/about` … | `about.html` | About Us — 서비스 소개와 문의 연락처 (언어별) |
 | `/ko/trainer/chords/` … | `trainer/chords/index.html` | 랜덤 코드 연습(코드 트레이너). 누구나 사용, 로그인하면 기록 저장 (언어별) |
 | `/ko/trainer/chord-improv/` … | `trainer/chord-improv/index.html` | 코드 초견 — 메트로놈에 맞춰 나오는 코드를 보고 연주. 탭 [무작위 코드 \| 8마디 코드진행(`?mode=prog`)] (언어별, 만드는 중) |
-| `/ko/trainer/ear/` … | `trainer/ear/index.html` | 청음 연습 — 단음·코드 갈래 × 단계, 악기 음색 선택 (언어별, 만드는 중 — 단음 ①·②) |
+| `/ko/trainer/ear/` … | `trainer/ear/index.html` | 청음 연습 — 단음·코드 갈래 × 단계, 악기 음색 선택 (언어별, 만드는 중 — 단음 ①·②·③ 완료, 코드 갈래 준비 중) |
 | `/`, `/about`, `/trainer/chords/` | (빌드가 만듦) | 언어 고르는 입구 — 저장된 언어 → 브라우저 언어 → 영어 순으로 위 언어별 주소로 넘겨줌 (예전에 공유한 링크도 계속 동작) |
 | `/mypage` | `mypage.html` | 마이페이지 — 내 연습 통계, 틀린 문제 다시 풀기 (로그인한 회원) |
 | `/teacher/` | `teacher/index.html` | 선생님 — 학생 목록 (관리자만) |
@@ -70,6 +70,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
     pages/naming.js         코드 추론하기 페이지 (trainer/chords-name/)
     pages/ear.js            청음 연습 페이지 (trainer/ear/, 모양은 css/ear.css)
     ear/theory.js instruments.js keys.js staff.js   청음 연습의 조성·출제·채점(순수 함수)·연주 악기(피아노 외 FluidR3 GM)·답 고르는 건반(F3~F5)·눌러서 음을 고르는 오선지
+    ear/rhythm.js harmony.js layout.js score.js     단음 ③ 멜로디 받아쓰기의 리듬 출제·채점, 코드 진행 위의 멜로디(개연성·모티브·패턴), 악보 마디 안 배치, 리듬 악보 그리기
     pages/improv.js         코드 초견 페이지 (trainer/chord-improv/, 모양은 css/improv.css)
     improv/metronome.js keys.js   코드 초견의 메트로놈(박을 소리 장치 시계에 미리 예약, 카운트인)·88건반(누르는 동안만 선택, 컴퓨터만)
     improv/random.js settings.js timing.js slash.js   코드 초견의 무작위 코드 모드(이전·현재·다음 코드)·출제 설정·마디수 계산·분수코드 출제
@@ -101,7 +102,7 @@ src/                        ← 사이트 원본 (직접 고치는 곳. 페이�
 
 supabase/schema.sql   DB 표·권한(RLS)·함수. Supabase SQL Editor에서 실행 (다시 실행해도 안전)
 dist/                 빌드 결과 = 실제 사이트 (자동 생성, git에 안 올림)
-tests/                engine.test.js, naming.test.js, improv.test.js, schema.test.js, account.test.js, build.test.js, preset.test.js (npm test), layout-audit.js (npm run audit)
+tests/                engine.test.js, naming.test.js, improv.test.js, schema.test.js, account.test.js, build.test.js, preset.test.js (npm test), audit/ (페이지별 폰 레이아웃 검사 — npm run audit -- <페이지>)
 tools/build.js        사이트 만들기: 언어별 페이지·입구·sitemap.xml (언어별 페이지 목록 PAGES, 사이트 주소 SITE)
 tools/serve.js        로컬 서버 (npm run dev — 빌드 후 dist/를 사이트처럼 보여주고 src/ 변경을 지켜봄, 레이아웃 검사도 사용)
 package.json          npm 명령 (dev, build, test, audit)
@@ -165,7 +166,7 @@ HTML은 틀만 있고 내용은 JS가 채워요.
 - [ ] 각 코드별 설명 페이지
 - [ ] 화성학 이론 학습 페이지
 - [ ] 코드 진행 만들기 실습 페이지 (키를 선택하면 쓸 수 있는 코드 목록 보여주고(다이아토닉, 세컨더리 도미넌트 등 분리) 고르기, 코드 당 1~4박 여부에 따라 조정 가능하게 해야함)
-- [ ] 청음 연습 페이지 (`/trainer/ear/`, 만드는 중 — 단음 ① 음 하나·② 마지막 음 완료): 단음 ①~③ · 코드 ①~⑤, 악기 음색 선택(피아노·사람 목소리·EP·기타·현악기). 나중에 아르페지오·밴드 합주 등 연주 방식, 기록·통계
+- [ ] 청음 연습 페이지 (`/trainer/ear/`, 만드는 중 — 단음 ① 음 하나·② 마지막 음·③ 멜로디 받아쓰기 완료, 코드 ①~⑤ 준비 중): 단음 ①~③ · 코드 ①~⑤, 악기 음색 선택(피아노·사람 목소리·EP·기타·현악기). 나중에 아르페지오·밴드 합주 등 연주 방식, 기록·통계
 - [ ] '내 음악 실력 테스트' 페이지
 
 ## 사용한 자료

@@ -5,7 +5,7 @@
 //
 // 실제 사이트(Cloudflare)처럼 빌드 결과인 dist/ 폴더의 파일을 보내요 (그 밖의 개발용 파일은 보내지 않음).
 // npm run dev로 켜면 먼저 사이트를 만들고(tools/build.js), src/의 파일을 고칠 때마다 자동으로 다시 만들어요 → 브라우저 새로고침만 하면 됨.
-// 레이아웃 검사(tests/layout-audit.js)도 이 서버를 씁니다.
+// 레이아웃 검사(tests/audit/)도 이 서버를 씁니다.
 //
 // npm run dev:stub (포트 8769): 같은 서버인데 모든 html에 가짜 Supabase(tools/stub/supabase-stub.js)를 끼워 넣어
 // 진짜 계정 없이 로그인한 상태의 화면을 확인 (2026-11-09). dist/ 파일은 건드리지 않고 보낼 때만 바꿔요.

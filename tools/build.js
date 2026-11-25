@@ -1,5 +1,5 @@
 // ===== 사이트 만들기 (빌드):  src/ → dist/ =====
-// 실행: npm run build   (npm run dev·npm run audit는 알아서 먼저 실행해요)
+// 실행: npm run build   (npm run dev·npm run audit -- <페이지>는 알아서 먼저 실행해요)
 //
 // 왜 필요한가: 검색엔진(구글 등)이 언어마다 따로 페이지를 찾을 수 있게, 글 페이지를 언어별 주소로 만들어 둬요.
 //   src/about.html  →  dist/ko/about.html, dist/en/about.html, dist/ja/about.html, dist/zh/about.html

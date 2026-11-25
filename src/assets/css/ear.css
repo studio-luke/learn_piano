@@ -164,9 +164,12 @@
 .ear-rest:active { background: var(--sunken); }
 .ear-durs.locked { filter: grayscale(1); opacity: 0.4; pointer-events: none; }
 
-/* ---------- 단음 ③ 카운트인 글자 ("Ready" "Start") — 비어 있으면 자리를 차지하지 않음 ---------- */
-.ear-count { text-align: center; font-family: var(--font-display); font-size: 30px; line-height: 1; color: var(--accent); min-height: 30px; }
-.ear-count:empty { display: none; }
+/* ---------- 단음 ③ 카운트인 글자 ("Ready" "Start") ----------
+   따로 줄을 만들지 않고 악보 그림 위쪽 빈 곳(맨 윗줄 위)에 겹쳐 가운데에 — 글자가 생겼다 사라져도 악보·건반이 들썩이지 않게
+   (2026-11-25 사용자 요청). 높이 0 + 아래 여백 −10px로 패널의 틈(10px)까지 없앰. 악보가 없는 ①·②에서는 아예 안 그림 */
+.ear-count { text-align: center; font-family: var(--font-display); font-size: 28px; line-height: 1; color: var(--accent);
+  height: 0; margin-bottom: -10px; position: relative; z-index: 1; pointer-events: none; }
+.ear-panel:has(> .ear-score[hidden]) .ear-count { display: none; }
 .ear-count.go { color: var(--ok); }
 .ear-score[hidden], .ear-staff-wrap[hidden], .ear-staff[hidden], .ear-kb[hidden] { display: none; }
 /* 단음 ③ 리듬만: 건반·임시표를 회색으로 꺼 둠 (잠금과 같은 모양, 따로 켜고 꺼서 잠금이 풀려도 그대로) */
@@ -260,7 +263,7 @@
   /* 시작 전: 긴 소개 문구는 여러 줄로 (아직 악보가 없어서 들썩일 것이 없음) */
   .ear-panel:has(#btnStart:not([hidden])) .ear-hint { contain: none; white-space: normal; height: auto; line-height: 1.45; }
   /* 카운트인("Ready" "Start"): 안내 문구 줄의 오른쪽 끝 */
-  .ear-count { grid-row: 2; justify-self: end; align-self: center; z-index: 1; pointer-events: none; font-size: 17px; line-height: 19px; min-height: 0; }
+  .ear-count { grid-row: 2; justify-self: end; align-self: center; font-size: 17px; line-height: 19px; height: auto; margin-bottom: 0; }
   .ear-play-row { grid-column: 2; grid-row: 2 / span 3; align-self: center;
     grid-template-columns: auto; grid-template-areas: "main" "left" "right"; justify-items: center; gap: 8px; }
   .ear-play-row > .ear-play-side:first-child { grid-area: left; justify-self: center; }
@@ -290,4 +293,57 @@
   .ear-kb { grid-row: 7; height: 112px; }
   .ear-staff svg { height: 92px; }
   .ear-score svg { height: calc(var(--score-lines, 1) * 96px); }
+}
+
+/* ---------- 폰 가로 + 키가 아주 낮은 화면 (높이 340px 이하 — 주소창이 보이는 가로 폰, 2026-11-25 레이아웃 검사) ----------
+   건반·악보·재생 버튼·여백을 조금씩 줄여 높이 295px(iPhone 13 mini + 주소창)에도 카드 위부터 건반까지 한 화면에 */
+@media (orientation: landscape) and (max-height: 340px) {
+  .ear-card { padding: 6px 12px 8px; gap: 4px; }
+  .ear-panel { row-gap: 4px; }
+  .ear-key-now { font-size: 13px; }
+  .ear-key-now b { font-size: 16px; }
+  .ear-inst select { padding: 3px 6px; font-size: 13px; }
+  .ear-replay { width: 48px; height: 48px; }
+  .ear-replay svg { width: 22px; height: 22px; }
+  .ear-play-row { gap: 6px; }
+  .ear-play-side .btn { padding: 4px 8px; font-size: 12px; }
+  .ear-score svg { height: calc(var(--score-lines, 1) * 80px); }
+  .ear-staff svg { height: 78px; }
+  .ear-score, .ear-staff-wrap { margin-top: -14px; }   /* 악보가 작아져 위쪽 빈 곳도 줄어서 덜 당김 */
+  .ear-panel .feedback { min-height: calc(13px * 1.45 + 6px); padding-block: 3px; }
+  .ear-dur, .ear-rest, .ear-dot { height: 30px; }
+  .ear-actions .btn { padding: 5px 8px; }
+  .ear-kb { height: 88px; }
+}
+
+/* ---------- 폰 세로: [정답 확인]·[다음 문제] 줄을 화면 아래에 붙임 (랜덤 코드 연습 .actions와 같은 방식, 2026-11-25 레이아웃 검사) ----------
+   ③ 2마디처럼 악보가 길면 버튼이 화면 밖으로 밀려서. 키가 작은 화면(높이 700px 이하)은 악보 한 줄을 120 → 100px로 */
+@media (max-width: 600px) and (orientation: portrait) {
+  .ear-actions {
+    position: sticky; bottom: 0; z-index: 5;
+    margin: 0 calc(-1 * clamp(14px, 3vw, 28px)) -18px; padding: 8px clamp(14px, 3vw, 28px) calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface); border-top: 1px solid var(--line);
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+}
+/* 키가 작은 폰 세로(높이 800px 이하 — 주소창이 보이는 대부분의 폰, 360×780 등): 악보·건반·재생 버튼·음표 버튼·여백을 줄여
+   카드 위부터 건반까지가 아래 버튼 줄에 가리지 않게. 560px 이하(iPhone SE + 주소창)는 한 번 더 줄임 —
+   그래도 ③ 2마디는 넘쳐서 스크롤 (tests/audit/ear.js 예외) */
+@media (max-width: 600px) and (orientation: portrait) and (max-height: 800px) {
+  .ear-card { padding-top: 10px; gap: 8px; }
+  .ear-panel { gap: 6px; }
+  .ear-score svg { height: calc(var(--score-lines, 1) * 84px); }
+  .ear-staff svg { height: 100px; }
+  .ear-replay { width: 56px; height: 56px; }
+  .ear-replay svg { width: 26px; height: 26px; }
+  .ear-dur, .ear-rest, .ear-dot { height: 34px; }
+  .ear-panel .feedback { min-height: calc(13px * 1.45 + 6px); padding-block: 3px; }
+  .ear-kb { height: 104px; }
+}
+@media (max-width: 600px) and (orientation: portrait) and (max-height: 560px) {
+  .ear-score svg { height: calc(var(--score-lines, 1) * 72px); }
+  .ear-staff svg { height: 88px; }
+  .ear-replay { width: 48px; height: 48px; }
+  .ear-replay svg { width: 22px; height: 22px; }
+  .ear-kb { height: 92px; }
 }

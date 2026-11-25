@@ -1,6 +1,6 @@
 /* ===== 연습 페이지 (index.html) =====
    왼쪽: 연습 카드(.desk — 코드, 건반, 버튼), 오른쪽: 출제 설정(.sheet). 폰에서는 위아래로 쌓임.
-   폰 세로·가로 레이아웃은 실제 기기 크기로 검사해서 맞춘 것이라 바꾸면 npm run audit로 다시 확인할 것. */
+   폰 세로·가로 레이아웃은 실제 기기 크기로 검사해서 맞춘 것이라 바꾸면 npm run audit -- chords로 다시 확인할 것. */
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
 @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
