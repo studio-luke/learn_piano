@@ -118,16 +118,23 @@ export function candidates(key, opt = {}, low = LOW, high = HIGH) {
 /** 단음 ①: 바로 앞 문제와의 거리 상한 — 장10도(반음 16개). F3 다음 E5처럼 멀리 뛰면 이질적이라서 (2026-11-24 사용자 요청) */
 export const MAX_JUMP = 16;
 
+/** 단음 ①: 기준음(스케일 재생의 으뜸음)에서 옥타브 이내(반음 1~11개, 위·아래)인 음의 가중치 — 기준음·옥타브 음·그보다 먼 음은 1
+ *  (2026-11-26 사용자 요청 — 기준음과 가까운 음이 더 자주 나오게) */
+export const NEAR_REF_W = 2;
+
 /**
  * 문제 음 하나 고르기 — 바로 앞 문제와 같은 음(같은 건반)은 피하고, 앞 문제와 장10도(MAX_JUMP)보다 멀리 떨어진 음도 피함
- * (그렇게 거르면 후보가 없을 때는 거르지 않음). 조 밖의 음도 다른 음과 똑같이 고름 (따로 비율을 정하지 않음)
+ * (그렇게 거르면 후보가 없을 때는 거르지 않음). 남은 후보 가운데 기준음에서 옥타브 이내(기준음·옥타브 음 제외)는 NEAR_REF_W배로.
+ * 조 밖의 음도 다른 음과 똑같이 고름 (따로 비율을 정하지 않음)
  * @param rnd  0~1 난수 함수 (테스트에서 고정값을 넣으려고)
  */
 export function pickNote(key, opt = {}, prevMidi = null, rnd = Math.random) {
   const all = candidates(key, opt);
   const near = prevMidi === null ? all : all.filter(n => n.midi !== prevMidi && Math.abs(n.midi - prevMidi) <= MAX_JUMP);
   const pool = near.length ? near : all.length > 1 ? all.filter(n => n.midi !== prevMidi) : all;
-  return pool[Math.floor(rnd() * pool.length)];
+  const ref = scaleMidis(key)[0];
+  const w = n => { const d = Math.abs(n.midi - ref); return d > 0 && d < 12 ? NEAR_REF_W : 1; };
+  return weighted(pool, pool.map(w), rnd);
 }
 
 /** 가중치 목록에서 하나 고르기: items[i]를 weights[i]에 비례해서 (rnd = 0~1 난수) */

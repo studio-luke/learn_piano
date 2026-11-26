@@ -44,10 +44,21 @@ const LEVELS = [
   { mode: "chord5", track: "chord", num: "5", key: "earC5", hard: true },
 ];
 const levelOf = m => LEVELS.find(x => x.mode === m);
-const modeFromUrl = () => levelOf(new URLSearchParams(location.search).get("mode")) ? new URLSearchParams(location.search).get("mode") : "note1";
+// 처음 보여 줄 단계: 주소 ?mode가 있으면 그것, 없으면 이 기기에서 마지막으로 고른 단계(chordoven.ear.lastMode), 그것도 없으면 단음 ①
+// (2026-11-26 사용자 요청 — 링크로 들어온 단계가 기억보다 먼저)
+const modeFromUrl = () => {
+  const m = new URLSearchParams(location.search).get("mode");
+  if (levelOf(m)) return m;
+  const saved = store.get("ear.lastMode");
+  return levelOf(saved) ? saved : "note1";
+};
 let mode = modeFromUrl();
-// 갈래마다 마지막으로 본 단계 (갈래를 오갈 때 그 단계로) — 이번 방문 동안만
+// 갈래마다 마지막으로 본 단계 (갈래를 오갈 때 그 단계로) — 이 기기에 기억 (chordoven.ear.lastOfTrack, 2026-11-26)
 const lastOfTrack = { note: "note1", chord: "chord1" };
+{
+  const saved = store.getJSON("ear.lastOfTrack") || {};
+  for (const tr of ["note", "chord"]) if (levelOf(saved[tr])?.track === tr) lastOfTrack[tr] = saved[tr];
+}
 /** 단음 단계(①·②)인지 — 같은 화면·출제 설정을 씀 */
 const isNoteMode = () => mode === "note1" || mode === "note2" || mode === "note3";
 /** 단음 ②(멜로디의 마지막 음)인지 */
@@ -67,6 +78,8 @@ function setModeInUrl(m) {
 function renderLevels() {
   const lv = levelOf(mode);
   lastOfTrack[lv.track] = mode;
+  store.set("ear.lastMode", mode);
+  store.setJSON("ear.lastOfTrack", lastOfTrack);
   for (const tr of ["note", "chord"]) {
     const b = $(tr === "note" ? "trackNote" : "trackChord");
     b.setAttribute("aria-selected", String(tr === lv.track));
@@ -847,13 +860,15 @@ function pick(m, spelled) {
     markKeys(answeredMarks([[m, "bad"]]));
     drawStaff({ note, cls: "bad" });
     const oct = r === "octUp" ? t("earOctUp") : r === "octDown" ? t("earOctDown") : "";
+    // 옥타브 힌트가 아니면 정답이 더 높은지·낮은지 덧붙임 (③과 같음 — 2026-11-26 사용자 요청)
+    const dir = oct ? "" : " " + t(N.q.midi > m ? "earHigher" : "earLower");
     if (N.life) {
       // 기준음 없이 들은 문제의 첫 오답: 기회를 하나 쓰고 오답으로 치지 않음 ([스케일]도 아직 안 나옴)
       N.life = false;
-      setFeedback("no", t("earLife") + (oct ? " " + oct : ""));
+      setFeedback("no", t("earLife") + (oct ? " " + oct : dir));
     } else {
       N.wrong = true;
-      setFeedback("no", oct || t("earWrong"));
+      setFeedback("no", oct || t("earWrong") + dir);
     }
   }
   renderNoteButtons();
@@ -1039,7 +1054,7 @@ function renderMidi() {
   }
 }
 
-setModeInUrl(mode);   // 주소에 mode가 없거나 모르는 값이면 지금 단계(처음엔 note1)로 고쳐 둠 (코드 초견과 같은 방식)
+setModeInUrl(mode);   // 주소에 mode가 없거나 모르는 값이면 지금 단계(기억한 단계, 없으면 note1)로 고쳐 둠 (코드 초견과 같은 방식)
 // 코드 ① 화면 (ear/chord1.js) — 악기·로그인 창·스크롤은 이 페이지 것을 함께 씀
 initChord1({ inst: () => inst, authOpen, cardTopIntoView, revealNextButton: () => revealNextButton($("btnCNext")) });
 renderInst(); renderSettings(); renderLevels(); resetNote(); renderMidi(); renderDurs();

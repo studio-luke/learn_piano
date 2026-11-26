@@ -1,7 +1,7 @@
 // 청음 연습 검사 (조성·스케일·출제·채점 — ear/theory.js).  실행: npm test
 import test from "node:test";
 import assert from "node:assert";
-import { keyNotes, pcOf, pickMelody, nameOf, signature, scaleMidis, candidates, pickNote, judgeNote, spellMidi, midiOf, otherKey, sameRoot, KEY_ROOTS, LOW, HIGH } from "../src/assets/js/ear/theory.js";
+import { NEAR_REF_W, keyNotes, pcOf, pickMelody, nameOf, signature, scaleMidis, candidates, pickNote, judgeNote, spellMidi, midiOf, otherKey, sameRoot, KEY_ROOTS, LOW, HIGH } from "../src/assets/js/ear/theory.js";
 
 const names = list => list.map(nameOf);
 
@@ -511,4 +511,15 @@ test("ear level 3 harmony: chromatic passing / neighbour tones — only with chr
     seen += n;
   }
   assert.ok(seen > 100, String(seen));
+});
+
+test("ear: note ① — notes within an octave of the reference tone (not the tone or its octave) come NEAR_REF_W times as often", () => {
+  const k = { root: "C", minor: false };   // 기준음 C4(60) — 후보 F3~F5 다이아토닉
+  const ref = scaleMidis(k)[0];
+  const cnt = new Map();
+  let x = 1; const rnd = () => (x = (x * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 60000; i++) { const m = pickNote(k, {}, null, rnd).midi; cnt.set(m, (cnt.get(m) || 0) + 1); }
+  const avg = f => { const v = [...cnt].filter(([m]) => f(Math.abs(m - ref))).map(([, c]) => c); return v.reduce((a, b) => a + b, 0) / v.length; };
+  const inner = avg(d => d > 0 && d < 12), outer = avg(d => d === 0 || d >= 12);
+  assert.ok(Math.abs(inner / outer - NEAR_REF_W) < 0.15, `ratio ${inner / outer}`);
 });
