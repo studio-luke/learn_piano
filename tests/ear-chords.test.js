@@ -6,12 +6,13 @@ import { Engine as E } from "../src/assets/js/core/engine.js";
 
 const mod12 = n => ((n % 12) + 12) % 12;
 const ALL = C.GROUPS.flatMap(g => g.ids);
+const RULED = ALL.filter(id => id !== "69" && id !== "m69");   // 정해진 모양으로만 나오는 6(9)·m6(9)를 뺀 것 (배치 규칙 검사용)
 
 test("ear chords: bass is the root (C2–D♯3, from the instrument's lowest note, octaves half and half), upper voices from F3 a minor third or more above the bass", () => {
   let close = 0, open = 0;
   const octs = new Map();   // 베이스 건반 → [낮은 옥타브 횟수, 높은 옥타브 횟수]
   for (const inv of [false, true]) for (let i = 0; i < 3000; i++) {
-    const q = C.makeChord({ types: ALL, inv });
+    const q = C.makeChord({ types: RULED, inv });
     const k = q.rootPc, o = octs.get(k) || [0, 0];
     if (k <= 3) o[q.bass.midi < 48 ? 0 : 1]++;   // C~D♯: C2~D♯2 또는 C3~D♯3
     octs.set(k, o);
@@ -20,6 +21,7 @@ test("ear chords: bass is the root (C2–D♯3, from the instrument's lowest not
     assert.strictEqual(mod12(q.bass.midi), q.rootPc);
     assert.ok(q.upper[0].midi >= C.UPPER_LOW && q.upper.at(-1).midi <= C.UPPER_HIGH);
     assert.ok(q.upper[0].midi - q.bass.midi >= C.MIN_GAP, `${q.name} gap`);
+    if (q.shape) continue;   // 유명한 모양(m7(♭5) 밀집형)은 아래 검사에서 따로
     // 자리바꿈 허용: 이웃한 음은 한 옥타브 미만 (밀집 배치가 아니어도 됨) / 꺼짐: 기본형 밀집 배치만 (2026-11-25 사용자 결정)
     for (let k = 1; k < q.upper.length; k++) assert.ok(q.upper[k].midi - q.upper[k - 1].midi < 12, `${q.name}: gap`);
     if (!inv) assert.ok(q.upper.at(-1).midi - q.upper[0].midi < 12, `${q.name}: close root position`);
@@ -59,7 +61,7 @@ test("ear chords: only the chosen types, never the same type twice in a row (whe
     prev = q;
   }
   for (let i = 0; i < 50; i++) assert.strictEqual(C.makeChord({ types: ["6"], inv: false }, Math.random, { type: "6" }).type, "6");
-  assert.deepStrictEqual(C.DEFAULT_TYPES, ["M7", "dom7", "m7", "m7b5", "dim7", "mM7", "7sus4", "6", "m6"]);
+  assert.deepStrictEqual(C.DEFAULT_TYPES, ["M7", "dom7", "m7", "m7b5", "dim7", "mM7", "7sus4", "6", "m6", "69", "m69"]);
 });
 
 test("ear chords: black-key roots take the spelling with fewer hard notes (C♯m7, not D♭m7)", () => {
@@ -122,7 +124,8 @@ test("ear chords: tensions follow the engine rules; with inversions the upper vo
   const counts = [0, 0, 0];
   for (let i = 0; i < 4000; i++) {
     const inv = i % 2 === 0;
-    const q = C.makeChord({ types: ALL, inv, tens: true, tenMax: 2 });
+    const q = C.makeChord({ types: RULED, inv, tens: true, tenMax: 2 });
+    if (q.shape) continue;   // 유명한 모양은 아래 따로 검사
     const T = E.BY_ID[q.type];
     counts[q.tens.length]++;
     assert.ok(q.tens.length <= Math.min(2, T.maxTen || 9), q.name);
@@ -153,6 +156,8 @@ test("ear chords: tensions follow the engine rules; with inversions the upper vo
         assert.ok(core.filter(m => m > avg).length <= 1, `${q.name}: core not on top`);
       }
     }
+    // 7(♯11,13)의 3 · ♯11 · 13 · ♭7 배치 없음
+    if (q.type === "dom7") assert.notDeepStrictEqual(q.upper.map(n => mod12(n.midi - q.rootPc)), [4, 6, 9, 10], q.name);
     // 2도(반음·온음)가 세 번 이어지는 네 음 뭉침 없음
     for (let k = 0; k + 3 < q.upper.length; k++) assert.ok(![1, 2, 3].every(j => q.upper[k + j].midi - q.upper[k + j - 1].midi <= 2), `${q.name}: cluster of seconds`);
     // 7sus4(♭13): 완전5음 없음 (♭13과 반음으로 부딪혀서)
@@ -209,4 +214,106 @@ test("ear chords: judging with tensions — the tension must be written; hear-my
   // 문제에 없는 텐션(13)은 위 화음 맨 위 음보다 위에
   const v3 = C.voiceLike({ type: "dom7", tens: ["9", "13"], root: q.root }, q);
   assert.ok(v3.upper.at(-1) > up.at(-1) && mod12(v3.upper.at(-1) - q.rootPc) === 9);
+});
+
+// 유명한 보이싱 (2026-11-26 사용자 지정): 텐션 + 자리바꿈 허용에서 일정 비율, 텐션은 모양이 정함, 답은 그 텐션까지
+test("ear chords: famous voicings appear with tensions and inversions, spelled as the shape says", () => {
+  const seen = new Map();   // 코드 종류 → 나온 모양 묶음
+  let shaped = 0, n = 0;
+  for (let i = 0; i < 6000; i++) {
+    const q = C.makeChord({ types: ["dom7", "M7", "m7", "m7b5", "7sus4", "mM7"], inv: true, tens: true, tenMax: 2 });
+    n++;
+    if (!q.shape) continue;
+    shaped++;
+    (seen.get(q.type) || seen.set(q.type, new Set()).get(q.type)).add(q.shape);
+    assert.ok(q.upper[0].midi >= C.UPPER_LOW && q.upper.at(-1).midi <= C.STACK_HIGH, q.name);
+    assert.ok(q.upper[0].midi - q.bass.midi >= C.MIN_GAP, q.name);
+    // 모양에 든 텐션이 다 울리고, 이름(답)에도 다 있음
+    for (const id of q.tens) assert.ok(q.upper.some(u => mod12(u.midi - q.rootPc) === E.TEN[id][0]), `${q.name}: ${id}`);
+    assert.ok(C.judgeChord(q.name.slice(C.rootText(q.root).length), q).correct, q.name);
+    // 어퍼스트럭처: 베이스 바로 위는 가이드톤
+    if (q.shape === "ust" && q.type !== "m7b5") assert.ok([3, 4, 10, 11].includes(mod12(q.upper[0].midi - q.rootPc)), `${q.name}: guide tone at the bottom`);
+  }
+  assert.ok(shaped > 0.2 * n && shaped < 0.6 * n, `about TEMPLATE_P of the questions (${shaped} / ${n})`);
+  assert.deepStrictEqual([...seen.get("dom7")].sort(), ["251", "#9", "4th", "dim", "ust"].sort());
+  assert.ok(seen.get("M7").has("ust") && seen.get("M7").has("sowhat") && seen.get("m7").has("sowhat"));
+  // C7 + D 어퍼스트럭처: 텐션 셋 (제한 없음일 때만), [최대 1개]면 텐션 2개 이상인 모양은 안 나옴
+  let three = false;
+  for (let i = 0; i < 4000; i++) {
+    const q = C.makeChord({ types: ["dom7"], inv: true, tens: true, tenMax: 2 });
+    if (q.tens.join() === "9,#11,13") three = true;
+    const q1 = C.makeChord({ types: ["dom7", "M7", "m7"], inv: true, tens: true, tenMax: 1 });
+    assert.ok(q1.tens.length <= 1, q1.name);
+  }
+  assert.ok(three, "C7(9,♯11,13) from the D upper structure");
+  // 텐션을 끄면 텐션 있는 모양은 없음 (m7(♭5) 밀집형만)
+  for (let i = 0; i < 500; i++) { const q = C.makeChord({ types: ["dom7", "m7b5"], inv: true }); assert.ok(!q.shape || q.shape === "close", q.name); }
+});
+
+test("ear chords: 6(9) and m6(9) come only as 3-6-9-5, 3-5-6-9 (root position) or 6-9-3-5", () => {
+  const shapes = new Set();
+  for (const inv of [false, true]) for (let i = 0; i < 1500; i++) {
+    const q = C.makeChord({ types: ["69", "m69"], inv });
+    const degs = q.upper.map(u => ({ 0: "1", 3: "3", 4: "3", 7: "5", 9: "6", 2: "9" })[mod12(u.midi - q.rootPc)]).join("-");
+    assert.ok(["3-6-9-5", "3-5-6-9", "6-9-3-5"].includes(degs), `${q.name}: ${degs}`);
+    if (!inv) assert.strictEqual(degs, "3-5-6-9", q.name);
+    else shapes.add(degs);
+    assert.ok(C.judgeChord(q.name.slice(C.rootText(q.root).length), q).correct, q.name);
+  }
+  assert.strictEqual(shapes.size, 3);
+});
+
+// 분수코드 (2026-11-26 사용자 결정): 전위형 90 : 하이브리드 10, 하이브리드는 근음 이름으로 적기 애매한 것만, 텐션 없음
+test("ear chords: slash chords — inversions and a few hybrids, the upper chord type is the answer", () => {
+  let slash = 0, hyb = 0;
+  const hybNames = new Set();
+  for (let i = 0; i < 6000; i++) {
+    const q = C.makeChord({ types: ["M7", "dom7", "m7", "dim7", "7sus4"], inv: i % 2 === 0, tens: true, tenMax: 2, slash: true });
+    if (!q.slash) continue;
+    slash++;
+    assert.deepStrictEqual(q.tens, []);
+    assert.ok(q.name.endsWith("/" + q.slash.name), q.name);
+    assert.notStrictEqual(mod12(q.bass.midi), q.rootPc, `${q.name}: bass is not the root`);
+    const typed = q.name.slice(C.rootText(q.root).length, -(q.slash.name.length + 1));
+    assert.ok(C.judgeChord(typed, q).correct, `${q.name}: "${typed}"`);
+    if (q.slash.hybrid) {
+      hyb++;
+      assert.strictEqual(mod12(q.upper[0].midi), q.rootPc, `${q.name}: hybrid upper chord in root position`);
+      const iv = mod12(q.bass.midi - q.rootPc);
+      hybNames.add(q.type + "|" + iv);
+      assert.ok(!q.pcs.has(mod12(q.bass.midi)), `${q.name}: hybrid bass is outside the upper chord`);
+    } else assert.ok(q.pcs.has(mod12(q.bass.midi)) || mod12(q.bass.midi - q.rootPc) === 10, `${q.name}: inversion bass is a chord tone (or the 7th under a triad, C/B♭)`);
+  }
+  assert.ok(slash > 0.15 * 6000 && slash < 0.35 * 6000, `about a quarter are slash chords (${slash})`);
+  assert.ok(hyb > 0.04 * slash && hyb < 0.18 * slash, `hybrids about a tenth (${hyb} / ${slash})`);
+  // 근음 이름으로 쓸 수 있는 하이브리드(B♭/C = C9sus4 등)는 안 나옴: D/C(maj|10) G/C(maj|5) Ddim7/C(dim7|10) Bdim7/C(dim7|1)
+  for (const h of hybNames) assert.ok(["maj|10", "maj|5", "dim7|10", "dim7|1", "min|5"].includes(h), h);
+  // 분수코드를 끄면 없음
+  for (let i = 0; i < 500; i++) assert.ok(!C.makeChord({ types: ["M7", "dom7"], inv: true }).slash);
+});
+
+test("ear chords: 7sus4(♭13) only as ♭7–4–♭13 with inversions; slash chords follow the chosen types, keep the root below E4, accept the chord with the bass", () => {
+  let sus13 = 0;
+  for (let i = 0; i < 6000; i++) {
+    const inv = i % 2 === 0;
+    const q = C.makeChord({ types: ["7sus4"], inv, tens: true, tenMax: 2 });
+    if (!q.tens.includes("b13")) continue;
+    sus13++;
+    assert.ok(inv, `${q.name}: not without inversions`);
+    assert.deepStrictEqual(q.tens, ["b13"], q.name);
+    assert.deepStrictEqual(q.upper.map(n => mod12(n.midi - q.rootPc)), [10, 5, 8], q.name);
+  }
+  assert.ok(sus13 > 0);
+  for (let i = 0; i < 4000; i++) {
+    const types = i % 2 ? ["M7", "dom7", "m7"] : ["maj", "dim7"];
+    const q = C.makeChord({ types, inv: i % 4 < 2, slash: true });
+    if (!q.slash) continue;
+    assert.ok(types.includes(q.type), `${q.name}: only chosen types`);
+    for (const n of q.upper) if (mod12(n.midi - q.rootPc) === 0) assert.ok(n.midi < C.SLASH_ROOT_BELOW, `${q.name}: root below E4`);
+  }
+  // 베이스까지 넣은 코드도 정답: B♭/A♭ = B♭7/A♭
+  let q;
+  do q = C.makeChord({ types: ["maj"], inv: false, slash: true }); while (!q.slash || mod12(q.bass.midi - q.rootPc) !== 10);
+  assert.ok(C.judgeChord("", q).correct && C.judgeChord("7", q).correct);
+  assert.strictEqual(C.judgeChord("M7", q).correct, false);
 });

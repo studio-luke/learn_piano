@@ -223,6 +223,9 @@
 /* 답 칸 앞의 근음 글자 (문제에 보여 줌 — 입력칸과 같은 글꼴·크기) */
 .ear-c-root { display: flex; align-items: center; justify-content: center; min-width: 44px; padding-inline: 6px; font-family: var(--font-display); font-size: 26px; color: var(--ink); }
 .ear-c-root:empty { visibility: hidden; }
+/* 분수코드의 "/베이스" — 입력칸 오른쪽 (근음 글자와 같은 글씨) */
+.ear-c-slash { display: flex; align-items: center; flex: none; padding-inline: 2px; font-family: var(--font-display); font-size: 26px; color: var(--ink); }
+.ear-c-slash:empty { display: none; }
 .answer-row:has(.ear-c-root) .answer-input { justify-content: flex-start; }
 /* 근음 글자 키가 없는 키패드: [M m dim aug sus add] [2 4 5 6 7 9 11 13] [♯ ♭ ( ) ,] */
 .keypad.no-root .pad-row.r0 .pad-key { font-family: inherit; font-size: 16px; }
@@ -446,6 +449,7 @@
   .ear-chord .answer { grid-column: 4; grid-row: 2; gap: 5px; }
   .ear-chord .answer-input { min-height: 38px; font-size: 20px; }
   .ear-chord .ear-c-root { font-size: 22px; min-width: 32px; }
+  .ear-c-slash { font-size: 22px; }
   .ear-chord .pad-key.back, .pad-key.ear-c-mine { width: 44px; }
   .ear-chord .pad-key { min-height: 32px; font-size: 14px; }
   .ear-chord .keypad, .ear-chord .pad-row { gap: 4px; }

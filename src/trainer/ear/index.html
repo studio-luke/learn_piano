@@ -164,6 +164,7 @@
             <div class="answer-row">
               <span class="ear-c-root" id="earCRoot" aria-hidden="true"></span>
               <div class="answer-input" id="answer" role="textbox" aria-readonly="true" aria-label="코드 종류" data-i18n-aria="earCAnswerAria"></div>
+              <span class="ear-c-slash" id="earCSlash" aria-hidden="true"></span><!-- 분수코드의 "/베이스" (문제에 보여 줌) -->
               <!-- 내 답 듣기: 틀리면 입력칸이 조금 줄어들며 ⌫ 왼쪽에 나타남 (2026-11-25 사용자 요청 — 평소엔 자리를 비워 두지 않음). 지금 입력칸의 코드를 들려줌(ear/chord1.js playMine) -->
               <button class="pad-key ear-c-mine" id="btnCMine" type="button" hidden aria-label="내 답 듣기" data-i18n-aria="earCMine" title="내 답 듣기" data-i18n-title="earCMine"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
               <button class="pad-key back" id="padBack" type="button" aria-label="한 칸 지우기" data-i18n-aria="backAria">⌫</button>
@@ -277,19 +278,24 @@
         <div class="group" id="earCTypes" style="gap: 16px"></div>
         <hr class="divider">
         <div class="opt">
-          <label class="check"><input type="checkbox" id="earCInv"><span><span data-i18n="earCInv">자리바꿈 허용</span><small data-i18n="earCInvSub">위 화음의 쌓는 순서가 달라져요 (베이스는 늘 근음)</small></span></label>
+          <label class="check"><input type="checkbox" id="earCInv"><span><span data-i18n="earCInv">자리바꿈 허용</span><small data-i18n="earCInvSub">위 화음의 쌓는 순서가 달라져요 (베이스는 그대로)</small></span></label>
         </div>
         <!-- 텐션 (2026-11-25 사용자 결정 — 랜덤 코드 연습과 같은 모양·문구): 켜면 최대 개수 [1개 · 2개]. 규칙은 ear/chords.js 머리 -->
         <div class="opt">
-          <label class="check"><input type="checkbox" id="earCTens"><span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span><small data-i18n="optCsubName">세븐코드에 ♭9 9 ♯9 11 ♯11 ♭13 13 텐션이 붙어 나와요.</small></span></label>
+          <label class="check"><input type="checkbox" id="earCTens"><span><span data-i18n="optC">세븐코드에 텐션 추가 허용</span></span></label>
           <div class="sub" id="earCTenBox" hidden>
             <div class="chips radios" role="radiogroup" aria-label="텐션 개수" data-i18n-aria="tensionCount">
               <label class="chip"><input type="radio" name="earCTenMax" id="earCTenMax1" value="1" checked><span data-i18n="max1">최대 1개</span></label>
-              <label class="chip"><input type="radio" name="earCTenMax" id="earCTenMax2" value="2"><span data-i18n="max2">최대 2개</span></label>
+              <label class="chip"><input type="radio" name="earCTenMax" id="earCTenMax2" value="2"><span data-i18n="earCTenAll">제한 없음</span></label>
             </div>
           </div>
         </div>
         <p class="warnbox" id="earCWarn"></p>
+        <!-- 분수코드 (2026-11-26 사용자 결정, 처음 꺼짐): 전위형 + 근음 이름으로 적기 애매한 하이브리드만 — 규칙은 ear/chords.js "분수코드".
+             텐션·분수코드 옵션 아래 설명글은 두지 않음 (2026-11-26 사용자 요청) -->
+        <div class="opt">
+          <label class="check"><input type="checkbox" id="earCSlashOpt"><span><span data-i18n="improvSlash">분수코드 허용</span></span></label>
+        </div>
       </aside>
     </div>
   </main>

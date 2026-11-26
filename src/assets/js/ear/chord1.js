@@ -23,14 +23,14 @@ const ARP_STEP = 0.32;                         // 펼쳐 듣기: 음 사이 간�
 
 let ctx = null;          // pages/ear.js가 넘겨주는 것 { inst(), authOpen(), cardTopIntoView(), revealNextButton() }
 let active = false;      // 지금 코드 ① 단계인지 (단축키·MIDI 소리)
-let S = null;            // 출제 설정 { types, inv, tens: 텐션 허용, tenMax: 최대 개수 1·2 }
+let S = null;            // 출제 설정 { types, inv, tens: 텐션 허용, tenMax: 1 = 최대 1개 · 2 = 제한 없음, slash: 분수코드 허용 }
 let keys = null;         // 건반
 // 문제 상태: q 문제, phase "idle"(시작 전) | "ask"(푸는 중) | "done"(맞힘·정답 확인), wrong 틀린 답 { chord, name }(마지막 것), solved 맞혔는지
 const C = { q: null, phase: "idle", wrong: null, solved: false };
 
 // ---------- 출제 설정 ----------
 function loadS() {
-  const s = Object.assign({ types: DEFAULT_TYPES.slice(), inv: false, tens: false, tenMax: 1 }, store.getJSON(STORE) || {});
+  const s = Object.assign({ types: DEFAULT_TYPES.slice(), inv: false, tens: false, tenMax: 1, slash: false }, store.getJSON(STORE) || {});
   const known = new Set(GROUPS.flatMap(g => g.ids));
   s.types = s.types.filter(id => known.has(id));
   if (!s.types.length) s.types = DEFAULT_TYPES.slice();
@@ -67,12 +67,14 @@ function buildSettings() {
   $("earCTens").onchange = e => { S.tens = e.target.checked; saveS(); renderSettings(); };
   $("earCTenMax1").onchange = () => { S.tenMax = 1; saveS(); };
   $("earCTenMax2").onchange = () => { S.tenMax = 2; saveS(); };
+  $("earCSlashOpt").onchange = e => { S.slash = e.target.checked; saveS(); };
 }
 function renderSettings() {
   $("earCTypes").querySelectorAll("[data-ctype]").forEach(b => { b.checked = S.types.includes(b.dataset.ctype); });
   $("earCInv").checked = S.inv;
   $("earCTens").checked = S.tens; $("earCTenBox").hidden = !S.tens;
   $("earCTenMax1").checked = S.tenMax !== 2; $("earCTenMax2").checked = S.tenMax === 2;
+  $("earCSlashOpt").checked = !!S.slash;
   // 텐션이 붙을 수 있는 7화음(dim7·augM7 빼고)이 하나도 없으면 안내 (랜덤 코드 연습과 같은 문구)
   $("earCWarn").textContent = S.tens && !S.types.some(id => E.BY_ID[id].ten?.length) ? t("warnC") : "";
 }
@@ -118,6 +120,7 @@ function render() {
   $("btnCStart").hidden = started;
   $("btnCReplay").hidden = !started;
   $("earCRoot").textContent = C.q ? rootText(C.q.root) : "";
+  $("earCSlash").textContent = C.q?.slash ? "/" + C.q.slash.name : "";
   // 틀린 뒤: 펼쳐 듣기·내 답 듣기. 끝난 뒤(틀린 답이 있었으면): 정답 듣기·내 답 듣기
   $("btnCArp").hidden = !started || (!C.wrong && !done);
   $("btnCMine").hidden = !C.wrong;
